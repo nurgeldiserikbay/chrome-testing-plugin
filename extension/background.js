@@ -227,7 +227,7 @@ async function addAnnotation(m, sender) {
   } catch (e) {
     return { ok: false, error: 'Не удалось сделать скриншот: ' + e.message };
   }
-  const n = S.annotations.length + 1;
+  const n = S.annotations.reduce((m, a) => Math.max(m, a.n), 0) + 1; // номера не переиспользуются после удаления
   const key = `${S.id}_shot_${n}`;
   await QADB.put('blobs', key, dataUrl);
   S.annotations.push({
@@ -246,7 +246,42 @@ async function addAnnotation(m, sender) {
   if (m.viewport && !S.meta.viewport) S.meta.viewport = m.viewport;
   await saveSessionNow();
   pushOverlayState();
-  return { ok: true, n };
+  return { ok: true, n, count: S.annotations.length };
+}
+
+async function deleteAnnotation(m) {
+  await ready;
+  if (!S || !S.active) return { ok: false, error: 'Фиксация бага не активна' };
+  const a = S.annotations.find((x) => x.n === m.n);
+  if (!a) return { ok: false, error: 'Пометка не найдена' };
+  S.annotations = S.annotations.filter((x) => x !== a);
+  await QADB.del('blobs', a.shotKey).catch(() => {});
+  await saveSessionNow();
+  pushOverlayState();
+  return { ok: true, count: S.annotations.length };
+}
+
+async function updateAnnotation(m, sender) {
+  await ready;
+  if (!S || !S.active) return { ok: false, error: 'Фиксация бага не активна' };
+  const a = S.annotations.find((x) => x.n === m.n);
+  if (!a) return { ok: false, error: 'Пометка не найдена' };
+  a.comment = m.comment || '';
+  if (m.recapture && sender.tab && sender.tab.id === S.tabId) {
+    try {
+      const dataUrl = await chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' });
+      await QADB.put('blobs', a.shotKey, dataUrl);
+      if (m.shape) a.shape = m.shape;
+      if (m.viewport) a.viewport = m.viewport;
+      a.url = sender.tab.url;
+    } catch (e) {
+      await saveSessionNow();
+      return { ok: false, error: 'Текст сохранён, но скриншот не обновился: ' + e.message };
+    }
+  }
+  a.edited = Date.now();
+  await saveSessionNow();
+  return { ok: true, count: S.annotations.length };
 }
 
 // ================= offscreen: видео и микрофон =================
@@ -552,6 +587,12 @@ const handlers = {
     return { ok: true };
   },
   annotation: (m, sender) => addAnnotation(m, sender),
+  'annotation-delete': (m) => deleteAnnotation(m),
+  'annotation-update': (m, sender) => updateAnnotation(m, sender),
+  'annotations-list': async () => {
+    await ready;
+    return { ok: true, items: S && S.active ? S.annotations.map((a) => ({ n: a.n, kind: a.kind, comment: a.comment, url: a.url })) : [] };
+  },
   'overlay-hello': async (m, sender) => {
     await ready;
     const st = status();
