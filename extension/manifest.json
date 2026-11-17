@@ -3,7 +3,7 @@
   "name": "QA Bug Recorder",
   "short_name": "QA Bug",
   "description": "Фиксация багов: пометки и выбор элемента на странице, видео, голос, логи консоли, запросы и действия. Экспорт в Word, Markdown, HTML, HAR.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "minimum_chrome_version": "116",
   "permissions": [
     "tabs",
@@ -62,7 +62,8 @@
   "commands": {
     "found-bug": {
       "suggested_key": {
-        "default": "Alt+Shift+B"
+        "default": "Ctrl+Shift+Q",
+        "mac": "MacCtrl+Shift+Q"
       },
       "description": "Нашёл баг: открыть панель фиксации"
     },

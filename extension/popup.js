@@ -100,6 +100,17 @@ $('cancel').onclick = async () => {
 $('reports').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('report.html') }); window.close(); };
 $('shortcuts').onclick = () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
 
+async function showShortcut() {
+  try {
+    const c = (await chrome.commands.getAll()).find((x) => x.name === 'found-bug');
+    const k = $('keys');
+    if (c && c.shortcut) { k.textContent = `${c.shortcut} — нашёл баг`; k.classList.remove('warn'); }
+    else { k.textContent = '⚠ Горячая клавиша не назначена — настроить'; k.classList.add('warn'); }
+  } catch (_) {}
+}
+$('keys').onclick = () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+
+showShortcut();
 loadSettings();
 bufferInfo();
 refresh();

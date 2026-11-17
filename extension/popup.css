@@ -38,3 +38,5 @@ select{font:inherit;padding:3px 6px;border-radius:6px;border:1px solid #d1d5db}
 .err{margin:0 14px 12px;padding:9px 11px;border-radius:8px;background:#fef2f2;color:#991b1b;font-size:12px}
 footer{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-top:1px solid #f3f4f6}
 .keys{color:#9ca3af;font-size:11px}
+.keys.link{color:#9ca3af;font-size:11px;padding:0}
+.keys.link.warn{color:#b45309;font-weight:600}
