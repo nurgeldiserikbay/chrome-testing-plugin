@@ -29,6 +29,18 @@
   .bar .x.warn{background:#7f1d1d;color:#fff}
   .bar .cnt{background:#374151;font-size:12px;padding:6px 9px}
   .bar .cnt.open{background:${BLUE};color:#fff}
+  .bar .type{background:#1f2937;border:1px solid #374151}
+  .bar .type.open{background:${BLUE};border-color:${BLUE};color:#fff}
+  .types{position:fixed;right:16px;bottom:72px;width:400px;max-height:70vh;overflow:auto;background:#fff;color:#111827;border-radius:12px;
+         box-shadow:0 16px 48px rgba(0,0,0,.3);pointer-events:auto;font:13px/1.35 ${FONT};padding:6px}
+  .types h4{margin:6px 8px 8px;font-size:14px}
+  .types h4 small{display:block;font-weight:400;color:#6b7280;font-size:12px;margin-top:2px}
+  .ty{display:flex;gap:10px;width:100%;text-align:left;appearance:none;border:0;background:transparent;border-radius:9px;padding:8px 10px;cursor:pointer;font:inherit;color:inherit;align-items:flex-start}
+  .ty:hover{background:#f3f4f6}
+  .ty.on{background:#eff6ff;box-shadow:inset 0 0 0 1.5px ${BLUE}}
+  .ty i{font-style:normal;font-size:18px;line-height:1.2}
+  .ty b{display:block;font-weight:600}
+  .ty small{color:#6b7280}
   .sep{width:1px;height:22px;background:#374151;margin:0 3px}
   .grip{cursor:move;padding:0 5px;color:#6b7280;font-size:14px;letter-spacing:-3px}
   .title{display:flex;align-items:center;gap:6px;padding:0 8px 0 2px;font-weight:600;font-variant-numeric:tabular-nums}
@@ -84,6 +96,7 @@
 <div class="hint" hidden></div>
 <div class="toast" hidden></div>
 <div class="list" hidden></div>
+<div class="types" hidden></div>
 <div class="note" hidden>
   <div class="nt"><span class="ntt">Пометка #<span class="nn">1</span></span><small class="sel"></small></div>
   <textarea placeholder="Что здесь не так? Опишите проблему…"></textarea>
@@ -93,6 +106,7 @@
 <div class="bar">
   <span class="grip" title="Перетащить панель">⋮⋮</span>
   <span class="title" title="Фиксация бага: пометки, логи и запросы. Видео пишется, только если нажать «Записать видео»"><i>🐞</i>Баг <b class="t">00:00</b><span class="vrec">● REC</span></span>
+  <button data-act="type" class="type" title="Тип бага: от него зависит, какие данные попадут в отчёт">✨ Тип: авто</button>
   <span class="sep"></span>
   <button data-tool="element" title="Выбрать элемент с багом">🎯 Элемент</button>
   <button data-tool="arrow" title="Нарисовать стрелку">➚ Стрелка</button>
@@ -111,7 +125,8 @@
 
   const $ = (s) => root.querySelector(s);
   const cv = $('.cv'), ctx = cv.getContext('2d'), bar = $('.bar'), note = $('.note'), ta = $('textarea'),
-    hint = $('.hint'), toastEl = $('.toast'), chipsEl = $('.chips'), listEl = $('.list');
+    hint = $('.hint'), toastEl = $('.toast'), chipsEl = $('.chips'), listEl = $('.list'), typesEl = $('.types');
+  const BT = globalThis.QA_BUG_TYPES;
 
   let state = { startTime: Date.now(), annotations: 0 };
   let dpr = 1, mode = null, drawing = null, hover = null, pending = null, editing = null, busy = false;
@@ -348,6 +363,7 @@
     if (busy) return;
     if (pending) cancelNote();
     closeList();
+    if (m === 'type') { exitMode(); openTypes(); return; }
     if (m === 'note') { exitMode(); openNote({ kind: 'note' }); return; }
     if (mode === m) { exitMode(); return; }
     mode = m;
@@ -417,6 +433,8 @@
     $('.sel').textContent = shape.element ? shape.element.selector : '';
     $('.vo').hidden = !state.voice;
     $('.save').textContent = edit ? 'Сохранить изменения' : 'Сохранить';
+    const tp = BT && (BT.byId(state.bugType) || BT.auto);
+    ta.placeholder = tp ? tp.placeholder : 'Что здесь не так? Опишите проблему…';
     ta.value = edit ? shape.label || '' : '';
     note.hidden = false;
     const nw = 340, nh = note.offsetHeight || 190;
@@ -444,7 +462,7 @@
   // скриншот: на нём только одна пометка, без панели и прочих пометок
   async function withCapture(s, fn) {
     capturing = true;
-    note.hidden = true; bar.hidden = true; hint.hidden = true; toastEl.hidden = true; listEl.hidden = true;
+    note.hidden = true; bar.hidden = true; hint.hidden = true; toastEl.hidden = true; listEl.hidden = true; typesEl.hidden = true;
     const others = shapes;
     shapes = [];
     pending = s;
@@ -526,6 +544,7 @@
   // ================= список пометок =================
   const KIND = { element: '🎯', arrow: '➚', rect: '▭', note: '💬' };
   async function openList() {
+    closeTypes();
     const r = await send({ type: 'annotations-list' });
     const items = (r && r.items) || [];
     $('[data-act=list]').classList.add('open');
@@ -565,6 +584,31 @@
   }
   function closeList() { listEl.hidden = true; $('[data-act=list]').classList.remove('open'); }
 
+  // ================= тип бага =================
+  function showType() {
+    if (!BT) return;
+    const t = BT.byId(state.bugType) || BT.auto;
+    const b = $('[data-act=type]');
+    b.textContent = `${t.icon} ${t.id === 'auto' ? 'Тип: авто' : t.name.split(' — ')[0]}`;
+  }
+  function openTypes() {
+    if (!BT) return;
+    closeList();
+    $('[data-act=type]').classList.add('open');
+    const cur = state.bugType || 'auto';
+    typesEl.hidden = false;
+    typesEl.innerHTML = `<h4>Тип бага<small>От типа зависит, какие данные покажет отчёт. Остальное не потеряется — его можно включить в отчёте.</small></h4>` +
+      [BT.auto, ...BT.list].map((t) => `<button class="ty ${t.id === cur ? 'on' : ''}" data-id="${t.id}"><i>${t.icon}</i><span><b>${escH(t.name)}</b><small>${escH(t.hint)}</small></span></button>`).join('');
+    typesEl.querySelectorAll('.ty').forEach((b) => (b.onclick = async () => {
+      const r = await send({ type: 'set-type', bugType: b.dataset.id });
+      if (r && r.ok) { state.bugType = r.bugType; showType(); }
+      closeTypes();
+      const t = BT.byId(state.bugType) || BT.auto;
+      showToast(`Тип бага: ${t.icon} ${t.name}`, 'ok');
+    }));
+  }
+  function closeTypes() { typesEl.hidden = true; $('[data-act=type]').classList.remove('open'); }
+
   // ================= клавиатура и сохранение =================
   $('.save').addEventListener('click', saveNote);
   $('.cancel').addEventListener('click', cancelNote);
@@ -580,6 +624,7 @@
     if (pending) { cancelNote(); e.stopPropagation(); }
     else if (mode) { exitMode(); e.stopPropagation(); }
     else if (!listEl.hidden) { closeList(); e.stopPropagation(); }
+    else if (!typesEl.hidden) { closeTypes(); e.stopPropagation(); }
   };
   window.addEventListener('keydown', onKey, true);
 
@@ -616,6 +661,8 @@
       b.title = marksHidden ? 'Показать пометки' : 'Скрыть пометки на странице';
       hot = null;
       redraw();
+    } else if (act === 'type') {
+      if (typesEl.hidden) openTypes(); else closeTypes();
     } else if (act === 'list') {
       if (listEl.hidden) openList(); else closeList();
     } else if (act === 'voice' || act === 'video') {
@@ -644,6 +691,7 @@
   function applyState(st) {
     state = Object.assign(state, st);
     setCount(state.annotations || 0);
+    showType();
     root.querySelector('[data-act=voice]').classList.toggle('rec', !!state.voice);
     root.querySelector('[data-act=video]').classList.toggle('rec', !!state.video);
     tick();

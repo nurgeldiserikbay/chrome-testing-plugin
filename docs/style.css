@@ -229,3 +229,16 @@ details p{margin:0;padding:0 22px 20px;color:#3b4050}
 .switch.dt img{max-height:640px;object-fit:cover;object-position:top}
 @media (max-width:1000px){.dt-grid{grid-template-columns:1fr}.switch.dt{position:static}}
 .dt-item.on{border-color:var(--red);box-shadow:0 6px 18px -8px rgba(255,45,85,.35)}
+
+/* ---------- типы багов ---------- */
+.btypes{background:#fff}
+.bt-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:36px}
+.bt{border:1.5px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,transform .15s}
+.bt:hover{border-color:var(--red);transform:translateY(-2px)}
+.bt i{font-style:normal;font-size:26px}
+.bt b{font-size:16px}
+.bt span{font-size:13.5px;color:var(--muted);line-height:1.45}
+.bt.auto{background:var(--ink);border-color:var(--ink);color:#fff}
+.bt.auto span{color:#b7bdca}
+@media (max-width:1000px){.bt-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.bt-grid{grid-template-columns:1fr}}

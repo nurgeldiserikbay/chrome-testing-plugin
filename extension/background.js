@@ -89,6 +89,7 @@ const status = () => ({
   voice: !!(S && S.voice.some((v) => v.recording)),
   voiceStart: S && (S.voice.find((v) => v.recording) || {}).start,
   cdp: !!(S && S.meta.cdp),
+  bugType: (S && S.bugType) || 'auto',
 });
 
 function pushOverlayState() {
@@ -102,7 +103,7 @@ function toast(text, kind = 'info') {
 
 async function injectOverlay(tabId) {
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['bridge.js', 'overlay.js'] });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['bridge.js', 'bugtypes.js', 'overlay.js'] });
   } catch (_) {}
 }
 
@@ -146,6 +147,7 @@ async function startBug(tabId) {
     resources: within(b.resources),
     snapshot: null,
     annotations: [],
+    bugType: 'auto',
     videos: [],
     voice: [],
     fields: null,
@@ -588,6 +590,13 @@ const handlers = {
   },
   annotation: (m, sender) => addAnnotation(m, sender),
   'annotation-delete': (m) => deleteAnnotation(m),
+  'set-type': async (m) => {
+    await ready;
+    if (!S || !S.active) return { ok: false };
+    S.bugType = m.bugType || 'auto';
+    await saveSessionNow();
+    return { ok: true, bugType: S.bugType };
+  },
   'annotation-update': (m, sender) => updateAnnotation(m, sender),
   'annotations-list': async () => {
     await ready;

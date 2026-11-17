@@ -23,12 +23,14 @@
     <header class="rhead">
       <input id="f-title" class="title" placeholder="Краткое название бага, например: «Кнопка „Оплатить“ не реагирует»">
       <div class="hrow">
+        <label>Тип бага <select id="f-type" class="ftype"></select></label>
         <label>Серьёзность <select id="f-severity">
           <option>Блокирующий</option><option>Критический</option><option selected>Значительный</option><option>Незначительный</option><option>Тривиальный</option>
         </select></label>
         <label>Приоритет <select id="f-priority"><option value="">—</option><option>Высокий</option><option>Средний</option><option>Низкий</option></select></label>
         <span id="created" class="muted"></span>
       </div>
+      <div id="type-info" class="type-info"></div>
     </header>
 
     <section class="export card">
@@ -95,5 +97,6 @@
 <script src="zip.js"></script>
 <script src="docx.js"></script>
 <script src="exporters.js"></script>
+<script src="bugtypes.js"></script>
 <script src="report.js"></script>
 </body></html>

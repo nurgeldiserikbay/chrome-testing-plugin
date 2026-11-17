@@ -154,7 +154,7 @@
 
     return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escH(m.title)}</title><style>${css}</style></head><body><div class="wrap">
-<h1>${escH(m.title)}</h1><span class="sev">${escH(m.severity)}</span>${m.priority ? ` <span class="sev" style="background:#e0e7ff;color:#3730a3">Приоритет: ${escH(m.priority)}</span>` : ''}
+<h1>${escH(m.title)}</h1>${m.typeLabel ? `<span class="sev" style="background:#eff6ff;color:#1e3a8a">${escH(m.typeLabel)}</span> ` : ''}<span class="sev">${escH(m.severity)}</span>${m.priority ? ` <span class="sev" style="background:#e0e7ff;color:#3730a3">Приоритет: ${escH(m.priority)}</span>` : ''}
 <p class="meta">Создан ${escH(m.createdAt)} · QA Bug Recorder</p>
 <h2>Описание</h2>
 ${block('Шаги воспроизведения', m.steps)}
@@ -187,7 +187,7 @@ ${htmlStorage(m.storage)}
   }
 
   function exportMarkdown(m) {
-    let md = `# ${m.title}\n\n**Серьёзность:** ${m.severity}${m.priority ? ` · **Приоритет:** ${m.priority}` : ''}  \n**Создан:** ${m.createdAt}\n\n`;
+    let md = `# ${m.title}\n\n${m.typeLabel ? `**Тип:** ${m.typeLabel}  \n` : ''}**Серьёзность:** ${m.severity}${m.priority ? ` · **Приоритет:** ${m.priority}` : ''}  \n**Создан:** ${m.createdAt}\n\n`;
     if (m.steps) md += `## Шаги воспроизведения\n\n${m.steps}\n\n`;
     if (m.expected) md += `## Ожидаемый результат\n\n${m.expected}\n\n`;
     if (m.actual) md += `## Фактический результат\n\n${m.actual}\n\n`;
@@ -270,6 +270,7 @@ ${htmlStorage(m.storage)}
     d.docTitle = m.title;
     const W = g.DOCX_TEXT_WIDTH;
     d.title(m.title);
+    if (m.typeLabel) d.p([d.run('Тип бага: ', { bold: true }), d.run(m.typeLabel)]);
     d.p([d.run('Серьёзность: ', { bold: true }), d.run(m.severity, { color: 'B91C1C', bold: true }), m.priority ? d.run('   Приоритет: ', { bold: true }) + d.run(m.priority) : '', d.run('   Создан: ', { bold: true }), d.run(m.createdAt)]);
 
     const section = (title, text) => { if (text) { d.h(title, 2); d.p(text); } };

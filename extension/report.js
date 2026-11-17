@@ -25,11 +25,13 @@ async function init() {
     if (b) mediaBlobs[v.key] = b;
   }
   if (!R.fields) {
-    R.fields = { title: '', severity: 'Значительный', priority: '', steps: autoSteps(), expected: '', actual: '', notes: '' };
+    R.fields = { title: '', type: R.bugType || 'auto', severity: 'Значительный', priority: '', steps: autoSteps(), expected: '', actual: '', notes: '' };
     saveR();
   }
+  if (!R.fields.type) R.fields.type = R.bugType || 'auto';
   $('#report').hidden = false;
   renderAll();
+  applyType(true);
 }
 
 function renderList(all) {
@@ -227,6 +229,7 @@ async function buildModel(o) {
     videos: media(R.videos, 'video'),
     voice: media(R.voice, 'voice'),
     details: o.details,
+    typeLabel: (() => { const t = effType(); return `${t.icon} ${t.name}` + ((R.fields.type || 'auto') === 'auto' ? ' (определён автоматически)' : ''); })(),
     findings: findings().filter((f) => f.level !== 'ok').map((f) => ({ level: f.level, title: f.title, text: f.plain || stripTags(f.text) })),
     events: o.events === 'none' ? [] : timelineItems(o.events === 'all' ? 'all-events' : 'important-events').filter(keep).map((x) => ({ rel: x.ts - st, cat: CAT_RU[x.cat] || x.cat, level: x.level, text: o.mask ? maskS(x.text) : x.text })),
     perf: o.perf ? perfModel() : null,
@@ -320,6 +323,8 @@ async function doExport(kind) {
 function renderAll() {
   const f = R.fields;
   $('#f-title').value = f.title;
+  fillTypeSelect();
+  $('#f-type').value = f.type || 'auto';
   $('#f-severity').value = f.severity;
   $('#f-priority').value = f.priority || '';
   $('#f-steps').value = f.steps;
@@ -586,66 +591,132 @@ function rendersAgg() {
 }
 const evOf = (kind) => R.events.filter((e) => e.kind === kind);
 
-function findings() {
+function allFindings() {
   const F = [];
-  const add = (level, title, text, tab, filter, plain) => F.push({ level, title, text, tab, filter, plain });
-  const errs = R.console.filter((c) => c.level === 'error');
-  if (errs.length) add('error', `Ошибки JavaScript: ${errs.length}`, `<code>${esc(short(errs[errs.length - 1].text.split('\n')[0], 140))}</code>`, 'console', 'error', short(errs[errs.length - 1].text.split('\n')[0], 140));
+  const add = (cat, level, title, text, tab, filter, plain) => F.push({ cat, level, title, text, tab, filter, plain });
+  const errs = R.console.filter((c) => c.level === 'error' && c.source !== 'resource');
+  if (errs.length) add('js', 'error', `Ошибки JavaScript: ${errs.length}`, `<code>${esc(short(errs[errs.length - 1].text.split('\n')[0], 140))}</code>`, 'console', 'error', short(errs[errs.length - 1].text.split('\n')[0], 140));
   const nerr = allNet().filter((e) => netErr(e) && !noise(e));
-  if (nerr.length) {
-    const t = nerr.slice(-3).map((e) => { let p = e.url; try { p = new URL(e.url).pathname; } catch (_) {} return `${e.method} ${X.statusLabel(e)} ${short(p, 50)}`; });
-    add('error', `Ошибки запросов: ${nerr.length}`, t.map((x) => `<code>${esc(x)}</code>`).join('<br>'), 'network', 'errors', t.join('; '));
+  const apiErr = nerr.filter((e) => e.source !== 'perf' && !['Image', 'Script', 'Stylesheet', 'Font', 'Media'].includes(e.type));
+  const resErr = nerr.filter((e) => !apiErr.includes(e));
+  const pth = (e) => { let p = e.url; try { p = new URL(e.url).pathname; } catch (_) {} return p; };
+  if (apiErr.length) {
+    const t = apiErr.slice(-3).map((e) => `${e.method} ${X.statusLabel(e)} ${short(pth(e), 50)}`);
+    add('requests', 'error', `Ошибки запросов: ${apiErr.length}`, t.map((x) => `<code>${esc(x)}</code>`).join('<br>'), 'network', 'errors', t.join('; '));
+  }
+  const resCon = R.console.filter((c) => c.source === 'resource');
+  if (resErr.length || resCon.length) {
+    const t = resErr.length ? resErr.slice(-3).map((e) => `${X.statusLabel(e)} ${short(pth(e), 60)}`) : resCon.slice(-3).map((c) => short(c.loc || c.text, 70));
+    add('resources', 'error', `Не загрузились картинки, шрифты или стили: ${Math.max(resErr.length, resCon.length)}`, t.map((x) => `<code>${esc(x)}</code>`).join('<br>'), 'network', 'errors', t.join('; '));
   }
   const appeared = evOf('appeared').filter((e) => e.level === 'error');
-  if (appeared.length) add('error', 'Сообщения об ошибке на странице', esc(short(appeared[appeared.length - 1].text, 160)), 'timeline', 'dom');
+  if (appeared.length) add('appeared', 'error', 'Сообщения об ошибке на странице', esc(short(appeared[appeared.length - 1].text, 160)), 'timeline', 'dom');
   const dialogs = evOf('dialog');
-  if (dialogs.length) add('warn', `Всплывающие диалоги: ${dialogs.length}`, esc(short(dialogs[dialogs.length - 1].text, 160)), 'timeline', 'user');
+  if (dialogs.length) add('dialogs', 'warn', `Всплывающие диалоги: ${dialogs.length}`, esc(short(dialogs[dialogs.length - 1].text, 160)), 'timeline', 'user');
   const invalid = evOf('invalid');
-  if (invalid.length) add('warn', `Ошибки валидации форм: ${invalid.length}`, esc(short(invalid[invalid.length - 1].text, 160)), 'timeline', 'user');
+  if (invalid.length) add('validation', 'warn', `Ошибки валидации форм: ${invalid.length}`, esc(short(invalid[invalid.length - 1].text, 160)), 'timeline', 'user');
   const wsBad = R.events.filter((e) => e.cat === 'ws' && e.level === 'error');
-  if (wsBad.length) add('error', `Проблемы WebSocket: ${wsBad.length}`, esc(short(wsBad[wsBad.length - 1].text, 160)), 'timeline', 'ws');
-  if (R.events.some((e) => e.kind === 'network' && e.level === 'error')) add('error', 'Пропадала сеть', 'Браузер переходил в офлайн во время теста', 'timeline', 'user');
+  if (wsBad.length) add('ws', 'error', `Проблемы WebSocket: ${wsBad.length}`, esc(short(wsBad[wsBad.length - 1].text, 160)), 'timeline', 'ws');
+  if (R.events.some((e) => e.kind === 'network' && e.level === 'error')) add('offline', 'error', 'Пропадала сеть', 'Браузер переходил в офлайн во время теста', 'timeline', 'user');
   const slow = evOf('slow-interaction');
   if (slow.length) {
     const w = slow.reduce((a, b) => (b.value > a.value ? b : a));
-    add(w.value >= 500 ? 'error' : 'warn', `Медленные отклики интерфейса: ${slow.length}`, `Худший: ${w.value} мс${w.selector ? ` · <code>${esc(short(w.selector, 60))}</code>` : ''}`, 'perf', null, `Худший: ${w.value} мс ${w.selector || ''}`);
+    add('slow', w.value >= 500 ? 'error' : 'warn', `Медленные отклики интерфейса: ${slow.length}`, `Худший: ${w.value} мс${w.selector ? ` · <code>${esc(short(w.selector, 60))}</code>` : ''}`, 'perf', null, `Худший: ${w.value} мс ${w.selector || ''}`);
   }
   const lf = evOf('long-frame');
   if (lf.length) {
     const w = lf.reduce((a, b) => (b.value > a.value ? b : a));
     const src = w.detail && w.detail.scripts && w.detail.scripts[0] ? w.detail.scripts[0].src : '';
-    add(w.value >= 250 ? 'error' : 'warn', `Долгие кадры (зависания): ${lf.length}`, `Худший: ${w.value} мс${src ? ` · <code>${esc(short(src, 70))}</code>` : ''}`, 'perf', null, `Худший: ${w.value} мс ${src}`);
+    add('frames', w.value >= 250 ? 'error' : 'warn', `Долгие кадры (зависания): ${lf.length}`, `Худший: ${w.value} мс${src ? ` · <code>${esc(short(src, 70))}</code>` : ''}`, 'perf', null, `Худший: ${w.value} мс ${src}`);
   }
   const fps = evOf('fps');
-  if (fps.length) add('warn', `Просадки FPS: ${fps.length}`, `Минимум ${Math.min(...fps.map((e) => e.value))} кадров/с`, 'perf');
+  if (fps.length) add('fps', 'warn', `Просадки FPS: ${fps.length}`, `Минимум ${Math.min(...fps.map((e) => e.value))} кадров/с`, 'perf');
   vitalsOf().filter((v) => v.value != null && v.rating !== 'good').forEach((v) =>
-    add(v.rating === 'poor' ? 'error' : 'warn', `${v.name} — ${v.ratingRu.toLowerCase()}: ${v.fmt}`, `${v.title}${v.selector ? ` · <code>${esc(short(v.selector, 60))}</code>` : ''}`, 'perf', null, `${v.title} ${v.selector || ''}`));
+    add(v.name === 'CLS' ? 'shifts' : 'vitals', v.rating === 'poor' ? 'error' : 'warn', `${v.name} — ${v.ratingRu.toLowerCase()}: ${v.fmt}`, `${v.title}${v.selector ? ` · <code>${esc(short(v.selector, 60))}</code>` : ''}`, 'perf', null, `${v.title} ${v.selector || ''}`));
   const ra = rendersAgg();
   if (ra.list.length && (ra.busy || ra.list[0][1][0] >= 50)) {
     const top = ra.list.slice(0, 3).map(([n, v]) => `${n} ×${v[0] + v[1]}`).join(', ');
-    add('warn', 'Частые перерисовки React', esc(top), 'perf', null, top);
+    add('react', 'warn', 'Частые перерисовки React', esc(top), 'perf', null, top);
   }
   if (R.samples.length >= 3) {
     const h = R.samples.map((x) => x.heap).filter((x) => x != null);
-    if (h.length >= 3 && h[h.length - 1] - h[0] > 20 && h[h.length - 1] > h[0] * 1.3) add('warn', 'Растёт потребление памяти', `${h[0]} → ${h[h.length - 1]} МБ за время записи`, 'perf');
+    if (h.length >= 3 && h[h.length - 1] - h[0] > 20 && h[h.length - 1] > h[0] * 1.3) add('memory', 'warn', 'Растёт потребление памяти', `${h[0]} → ${h[h.length - 1]} МБ за время записи`, 'perf');
   }
-  if (R.snapshot && R.snapshot.domNodes > 3000) add('info', `Тяжёлая страница: ${R.snapshot.domNodes} DOM-узлов`, 'Больше 3000 узлов может замедлять отрисовку', 'perf');
-  if (!F.length) add('ok', 'Явных технических ошибок не найдено', 'Консоль и запросы без ошибок. Смотрите пометки, шаги и видео.', null);
+  if (R.snapshot && R.snapshot.domNodes > 3000) add('dom', 'info', `Тяжёлая страница: ${R.snapshot.domNodes} DOM-узлов`, 'Больше 3000 узлов может замедлять отрисовку', 'perf');
+  return F;
+}
+
+// находки с учётом типа бага
+function findings() {
+  const all = allFindings();
+  const cats = showAll ? null : effType().view.findings;
+  const F = cats ? all.filter((f) => cats.includes(f.cat)) : all.slice();
+  F.hidden = all.length - F.length;
+  if (!F.length) F.push({ level: 'ok', title: cats ? 'Для этого типа бага проблем не найдено' : 'Явных технических ошибок не найдено', text: 'Смотрите пометки, шаги и видео.' });
   return F;
 }
 
 function renderSummary() {
   const F = findings();
-  $('#summary').innerHTML = F.map((f, i) => `<div class="find ${f.level}" data-i="${i}"><b>${esc(f.title)}</b><div class="fd">${f.text}</div></div>`).join('');
-  $('#summary').querySelectorAll('.find').forEach((el) => (el.onclick = () => {
+  $('#summary').innerHTML = F.map((f, i) => `<div class="find ${f.level}" data-i="${i}"><b>${esc(f.title)}</b><div class="fd">${f.text}</div></div>`).join('') +
+    (F.hidden ? `<div class="find more" id="show-hidden"><b>Ещё ${F.hidden} ${F.hidden === 1 ? 'находка' : 'находки'} не относятся к этому типу</b><div class="fd">Нажмите, чтобы показать все данные</div></div>` : '');
+  $('#summary').querySelectorAll('.find[data-i]').forEach((el) => (el.onclick = () => {
     const f = F[+el.dataset.i];
     if (!f.tab) return;
+    if (!visibleTabs().includes(f.tab)) { showAll = true; applyType(false); }
     tab = f.tab;
     if (f.filter) filters[f.tab === 'timeline' ? 'timeline' : f.tab] = f.filter;
     $('#search').value = '';
     renderTab();
     document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth' });
   }));
+  const more = $('#show-hidden');
+  if (more) more.onclick = () => { showAll = true; applyType(false); };
+}
+
+// ================= тип бага =================
+const BT = window.QA_BUG_TYPES;
+let showAll = false;
+function suggested() { return BT.suggest(R); }
+function effType() {
+  const sel = R.fields.type || 'auto';
+  return BT.byId(sel === 'auto' ? suggested().id : sel) || BT.byId('other');
+}
+function visibleTabs() { return showAll ? BT.ALL_TABS : effType().view.tabs; }
+const TAB_RU = { timeline: 'таймлайн', actions: 'действия', console: 'консоль', network: 'сеть', perf: 'производительность', storage: 'хранилище', env: 'окружение' };
+
+/** Применить тип: вкладки, фильтры, сводка; resetExport — выставить настройки выгрузки по умолчанию для типа */
+function applyType(resetExport) {
+  const t = effType();
+  const vis = visibleTabs();
+  document.querySelectorAll('.tabs [data-tab]').forEach((b) => (b.hidden = !vis.includes(b.dataset.tab)));
+  if (!vis.includes(tab)) tab = vis[0];
+  if (resetExport) {
+    filters.timeline = t.view.timeline;
+    filters.network = t.view.network;
+    const e = t.export;
+    $('#o-console').value = e.console;
+    $('#o-network').value = e.network;
+    $('#o-events').value = e.events;
+    $('#o-perf').checked = e.perf;
+    $('#o-storage').checked = e.storage;
+    $('#o-details').checked = e.details;
+  }
+  const sel = R.fields.type || 'auto';
+  const sug = suggested();
+  const shown = vis.map((x) => TAB_RU[x]).join(', ');
+  let info = sel === 'auto'
+    ? `✨ Тип определён автоматически: <b>${t.icon} ${esc(t.name)}</b> — ${esc(sug.reason)}. Можно выбрать другой.`
+    : `Тип: <b>${t.icon} ${esc(t.name)}</b>.`;
+  info += showAll
+    ? ` Показаны все данные. <button class="link" id="type-only">Показать только нужные для типа</button>`
+    : ` Показаны: пометки, ${shown}. <button class="link" id="type-all">Показать все данные</button>`;
+  $('#type-info').innerHTML = info;
+  const a = $('#type-all'), o = $('#type-only');
+  if (a) a.onclick = () => { showAll = true; applyType(false); };
+  if (o) o.onclick = () => { showAll = false; applyType(false); };
+  renderSummary();
+  renderTab();
 }
 
 // ---------- график ----------
@@ -786,6 +857,11 @@ bindField('#f-expected', 'expected');
 bindField('#f-actual', 'actual');
 bindField('#f-notes', 'notes');
 $('#f-severity').onchange = () => { R.fields.severity = $('#f-severity').value; saveR(); };
+function fillTypeSelect() {
+  if ($('#f-type').options.length) return;
+  $('#f-type').innerHTML = [BT.auto, ...BT.list].map((t) => `<option value="${t.id}">${t.icon} ${t.name}</option>`).join('');
+}
+$('#f-type').onchange = () => { R.fields.type = $('#f-type').value; showAll = false; saveR(); applyType(true); };
 $('#f-priority').onchange = () => { R.fields.priority = $('#f-priority').value; saveR(); };
 $('#regen').onclick = () => {
   if ($('#f-steps').value.trim() && !confirm('Заменить текущие шаги автоматически собранными?')) return;
@@ -799,7 +875,7 @@ $('#lightbox').onclick = () => ($('#lightbox').hidden = true);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#lightbox').hidden = true; });
 
 // сохраняем выбор опций экспорта
-const OPT_IDS = ['o-console', 'o-network', 'o-events', 'o-perf', 'o-storage', 'o-before', 'o-details', 'o-mask', 'o-embed'];
+const OPT_IDS = ['o-before', 'o-mask', 'o-embed']; // остальные настройки выгрузки задаёт тип бага
 chrome.storage.local.get('qa_export_opts').then(({ qa_export_opts: s }) => {
   if (s) OPT_IDS.forEach((id) => { const el = document.getElementById(id); if (id in s) el.type === 'checkbox' ? (el.checked = s[id]) : (el.value = s[id]); });
 });
