@@ -1,7 +1,7 @@
 importScripts('db.js');
 
 // ================= настройки и лимиты =================
-const DEFAULT_SETTINGS = { bufferMin: 5, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true };
+const DEFAULT_SETTINGS = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true };
 const BUF_LIM = { console: 800, network: 500, actions: 300, nav: 100, events: 1500, samples: 60, resources: 400 };
 const SES_LIM = { console: 5000, network: 3000, actions: 2000, nav: 500, events: 10000, samples: 2000, resources: 3000 };
 const BUF_BODY = 4000;
@@ -64,12 +64,114 @@ function ingest(tabId, kind, e) {
       if (S[kind].length < SES_LIM[kind]) S[kind].push(e);
       else S.meta.truncated = true;
       saveSession();
+      if (kind === 'console' || kind === 'network') autoCheck(kind, e);
     }
   }
   if (e.source === 'cdp') return; // данные DevTools-протокола только в сессию
   const be = kind === 'network' && e.body && e.body.length > BUF_BODY ? { ...e, body: e.body.slice(0, BUF_BODY) + '\n… [обрезано]' } : e;
   pushBuf(tabId, kind, be);
   saveBuf();
+}
+
+// ================= автоматические пункты «Ошибка» =================
+// Ошибка JS или упавший запрос во время проверки → отдельный пункт со скриншотом и контекстом.
+const AUTO_LIMIT = 40;
+const autoState = { group: null, timer: null };
+const noiseUrl = (u) => /\/favicon\.ico(\?|$)|\/__webpack_hmr|hot-update|sockjs-node/.test(u || '');
+let autoSettingsCache = null;
+async function autoEnabled() {
+  if (autoSettingsCache === null) autoSettingsCache = (await getSettings()).autoErrors !== false;
+  return autoSettingsCache;
+}
+chrome.storage.onChanged.addListener((ch) => { if (ch.qa_settings) autoSettingsCache = null; });
+
+function pathOf(u) { try { const x = new URL(u); return x.pathname + (x.search.length > 60 ? x.search.slice(0, 60) + '…' : x.search); } catch (_) { return u; } }
+
+function autoCheck(kind, e) {
+  if (!S || !S.active) return;
+  let err = null;
+  if (kind === 'console' && e.level === 'error' && e.source !== 'resource') {
+    const first = String(e.text || '').split('\n')[0];
+    err = { type: 'js', sig: 'js:' + first.slice(0, 160), title: first.slice(0, 200), ts: e.ts, ref: { ts: e.ts, text: e.text, loc: e.loc, source: e.source } };
+  } else if (kind === 'network' && (e.failed || e.status >= 400) && !e.canceled && !noiseUrl(e.url)) {
+    if (e.source === 'perf' || ['Image', 'Stylesheet', 'Font', 'Media'].includes(e.type)) return;
+    const st = e.failed ? (e.error || 'сбой') : e.status;
+    err = { type: 'request', sig: `req:${e.method}:${pathOf(e.url).split('?')[0]}:${e.failed ? 'fail' : e.status}`, title: `${e.method} ${st} ${pathOf(e.url)}`, ts: e.ts, ref: { id: e.id, ts: e.ts, url: e.url, method: e.method } };
+  }
+  if (!err) return;
+  autoEnabled().then((on) => { if (on) queueAuto(err); });
+}
+
+function queueAuto(err) {
+  if (!S || !S.active) return;
+  S.errors ||= [];
+  // повтор той же ошибки в течение минуты — считаем, а не создаём новый пункт
+  const same = S.errors.find((x) => x.sigs.includes(err.sig) && err.ts - x.lastTs < 60000);
+  if (same) {
+    // запрос и ошибка консоли от одного действия приходят почти одновременно — это один повтор, а не два
+    if (err.ts - (same.lastInc || same.ts) > 2500) { same.count++; same.lastInc = err.ts; }
+    same.lastTs = err.ts;
+    saveSession(); pushOverlayState();
+    return;
+  }
+  if (S.errors.length >= AUTO_LIMIT) { S.meta.autoErrorsTruncated = (S.meta.autoErrorsTruncated || 0) + 1; return; }
+  if (!autoState.group) autoState.group = [];
+  if (!autoState.group.some((x) => x.sig === err.sig)) autoState.group.push(err);
+  clearTimeout(autoState.timer);
+  // ждём немного: связанные ошибки (упал запрос → ошибка JS) попадут в один пункт, а сайт успеет показать сообщение
+  autoState.timer = setTimeout(flushAuto, 1200);
+}
+
+async function flushAuto() {
+  const group = autoState.group;
+  autoState.group = null;
+  if (!group || !group.length || !S || !S.active) return;
+  const n = (S.errors.reduce((m, x) => Math.max(m, x.n), 0) || 0) + 1;
+  const req = group.find((x) => x.type === 'request');
+  const js = group.find((x) => x.type === 'js');
+  const item = {
+    n,
+    ts: Math.min(...group.map((x) => x.ts)),
+    lastTs: Math.max(...group.map((x) => x.ts)),
+    lastInc: Math.max(...group.map((x) => x.ts)),
+    count: 1,
+    kind: req && js ? 'mixed' : req ? 'request' : 'js',
+    title: req ? `Ошибка запроса: ${req.title}` : `Ошибка JavaScript: ${js.title}`,
+    sigs: group.map((x) => x.sig),
+    refs: group.map((x) => ({ type: x.type, ...x.ref })),
+    url: null,
+    shotKey: null,
+  };
+  try {
+    const tab = await chrome.tabs.get(S.tabId);
+    item.url = tab.url;
+    // скриншот только если вкладка с проверкой сейчас на экране
+    if (tab.active) {
+      const ready = await chrome.tabs.sendMessage(S.tabId, { type: 'qa-capture-prep' }).catch(() => null);
+      try {
+        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+        item.shotKey = `${S.id}_err_${n}`;
+        await QADB.put('blobs', item.shotKey, dataUrl);
+      } catch (_) {}
+      if (ready) chrome.tabs.sendMessage(S.tabId, { type: 'qa-capture-done' }).catch(() => {});
+    }
+  } catch (_) {}
+  S.errors.push(item);
+  await saveSessionNow();
+  pushOverlayState();
+  toast(`⚠ Поймана ${item.kind === 'js' ? 'ошибка JavaScript' : 'ошибка запроса'} — сохранена отдельным пунктом${item.shotKey ? ' со скриншотом' : ''}`, 'warn');
+}
+
+async function deleteError(m) {
+  await ready;
+  if (!S || !S.active) return { ok: false };
+  const it = (S.errors || []).find((x) => x.n === m.n);
+  if (!it) return { ok: false, error: 'Пункт не найден' };
+  S.errors = S.errors.filter((x) => x !== it);
+  if (it.shotKey) await QADB.del('blobs', it.shotKey).catch(() => {});
+  await saveSessionNow();
+  pushOverlayState();
+  return { ok: true };
 }
 
 // ================= жизненный цикл бага =================
@@ -90,6 +192,7 @@ const status = () => ({
   voiceStart: S && (S.voice.find((v) => v.recording) || {}).start,
   cdp: !!(S && S.meta.cdp),
   bugType: (S && S.bugType) || 'auto',
+  autoErrors: S ? (S.errors || []).length : 0,
 });
 
 function pushOverlayState() {
@@ -103,7 +206,7 @@ function toast(text, kind = 'info') {
 
 async function injectOverlay(tabId) {
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['bridge.js', 'bugtypes.js', 'overlay.js'] });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['bridge.js', 'overlay.js'] });
   } catch (_) {}
 }
 
@@ -147,6 +250,7 @@ async function startBug(tabId) {
     resources: within(b.resources),
     snapshot: null,
     annotations: [],
+    errors: [],
     bugType: 'auto',
     videos: [],
     voice: [],
@@ -174,6 +278,7 @@ function finishBug(opts) {
 async function doFinish({ open = true } = {}) {
   await ready;
   if (!S || !S.active) return { ok: false, error: 'Нет активного бага' };
+  if (autoState.group) { clearTimeout(autoState.timer); await flushAuto(); }
   try { await stopVoice(); } catch (_) {}
   try { await stopVideo(); } catch (_) {}
   S.snapshotEnd = await takeSnapshot(S.tabId);
@@ -306,7 +411,7 @@ async function maybeCloseOffscreen() {
 const sendOff = (msg) => chrome.runtime.sendMessage({ target: 'offscreen', ...msg });
 
 async function startVideo(streamId) {
-  if (!S || !S.active) throw new Error('Сначала нажмите «Нашёл баг»');
+  if (!S || !S.active) throw new Error('Сначала начните проверку');
   if (S.videos.some((v) => v.recording)) return status();
   try {
     if (!streamId) streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: S.tabId });
@@ -346,7 +451,7 @@ async function stopVideo() {
 }
 
 async function startVoice() {
-  if (!S || !S.active) throw new Error('Сначала нажмите «Нашёл баг»');
+  if (!S || !S.active) throw new Error('Сначала начните проверку');
   if (S.voice.some((v) => v.recording)) return status();
   await ensureOffscreen();
   const n = S.voice.length + 1;
@@ -472,7 +577,7 @@ chrome.debugger.onEvent.addListener(async (src, method, p) => {
     }
     case 'Network.responseReceived': {
       const e = cdpReq[p.requestId];
-      if (e) { applyResp(e, p.response); if (p.type) e.type = p.type; saveSession(); }
+      if (e) { applyResp(e, p.response); if (p.type) e.type = p.type; saveSession(); if (e.status >= 400 && ['XHR', 'Fetch', 'Document'].includes(e.type)) autoCheck('network', e); }
       break;
     }
     case 'Network.loadingFinished': {
@@ -501,6 +606,7 @@ chrome.debugger.onEvent.addListener(async (src, method, p) => {
       e.duration = Math.round((p.timestamp - e._t) * 1000);
       delete cdpReq[p.requestId];
       saveSession();
+      if (['XHR', 'Fetch', 'Document'].includes(e.type)) autoCheck('network', e);
       break;
     }
     case 'Log.entryAdded': {
@@ -590,6 +696,7 @@ const handlers = {
   },
   annotation: (m, sender) => addAnnotation(m, sender),
   'annotation-delete': (m) => deleteAnnotation(m),
+  'error-delete': (m) => deleteError(m),
   'set-type': async (m) => {
     await ready;
     if (!S || !S.active) return { ok: false };
@@ -600,7 +707,11 @@ const handlers = {
   'annotation-update': (m, sender) => updateAnnotation(m, sender),
   'annotations-list': async () => {
     await ready;
-    return { ok: true, items: S && S.active ? S.annotations.map((a) => ({ n: a.n, kind: a.kind, comment: a.comment, url: a.url })) : [] };
+    return {
+      ok: true,
+      items: S && S.active ? S.annotations.map((a) => ({ n: a.n, kind: a.kind, comment: a.comment, url: a.url })) : [],
+      errors: S && S.active ? (S.errors || []).map((x) => ({ n: x.n, kind: x.kind, title: x.title, count: x.count, url: x.url })) : [],
+    };
   },
   'overlay-hello': async (m, sender) => {
     await ready;

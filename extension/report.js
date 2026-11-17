@@ -19,19 +19,19 @@ async function init() {
   if (!R) { $('#empty').hidden = false; return; }
   for (const k of ['events', 'samples', 'resources', 'nav', 'actions', 'console', 'network']) R[k] = R[k] || [];
   R.resources.forEach((r, i) => (r.id = r.id || 'res' + i));
+  R.errors = R.errors || [];
   for (const a of R.annotations) shots[a.n] = await QADB.get('blobs', a.shotKey);
+  for (const x of R.errors) if (x.shotKey) shots['e' + x.n] = await QADB.get('blobs', x.shotKey);
   for (const v of [...R.videos, ...R.voice]) {
     const b = await QADB.get('blobs', v.key);
     if (b) mediaBlobs[v.key] = b;
   }
   if (!R.fields) {
-    R.fields = { title: '', type: R.bugType || 'auto', severity: 'Значительный', priority: '', steps: autoSteps(), expected: '', actual: '', notes: '' };
+    R.fields = { title: '', severity: 'Значительный', priority: '', steps: autoSteps(), expected: '', actual: '', notes: '' };
     saveR();
   }
-  if (!R.fields.type) R.fields.type = R.bugType || 'auto';
   $('#report').hidden = false;
   renderAll();
-  applyType(true);
 }
 
 function renderList(all) {
@@ -132,8 +132,8 @@ function env() {
     ['ОС', os + (R.meta.platform ? ` (${R.meta.platform})` : '')],
     ['Размер окна', vp ? `${vp.w}×${vp.h}, масштаб ${vp.dpr}x` : '—'],
     ['Язык браузера', R.meta.language || ''],
-    ['Баг зафиксирован', new Date(R.startTime).toLocaleString('ru-RU')],
-    ['Длительность фиксации', X.fmtDur((R.endTime || Date.now()) - R.startTime)],
+    ['Начало проверки', new Date(R.startTime).toLocaleString('ru-RU')],
+    ['Длительность проверки', X.fmtDur((R.endTime || Date.now()) - R.startTime)],
     ['User-Agent', R.meta.userAgent || '']
   );
   const sn = R.snapshot;
@@ -147,7 +147,7 @@ function env() {
       ['Сенсорный экран', sn.touch ? `да (${sn.touch} касаний)` : 'нет'],
       ['DOM-узлов на странице', String(sn.domNodes)],
       ['Память JS', sn.heapMB != null ? `${sn.heapMB} МБ из ${sn.heapLimitMB} МБ` : '—'],
-      ['Прокрутка в момент бага', `${sn.scroll.y} px из ${sn.scroll.height} px`],
+      ['Прокрутка в начале проверки', `${sn.scroll.y} px из ${sn.scroll.height} px`],
       ['Service Worker', sn.serviceWorker ? 'активен' : 'нет'],
       ['Откуда пришли (referrer)', sn.referrer || '—']
     );
@@ -175,6 +175,10 @@ function opts() {
     events: $('#o-events').value,
     perf: $('#o-perf').checked,
     storage: $('#o-storage').checked,
+    remarks: $('#o-remarks').checked,
+    errors: $('#o-errors').checked,
+    recordings: $('#o-recordings').checked,
+    appendix: $('#o-appendix').checked,
   };
 }
 const netErr = (e) => e.failed || e.status >= 400;
@@ -198,16 +202,15 @@ const b64bytes = (dataUrl) => {
 };
 const imgSize = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res({ w: i.naturalWidth, h: i.naturalHeight }); i.onerror = () => res({ w: 0, h: 0 }); i.src = src; });
 
-async function buildModel(o) {
+async function buildModel(o, only) {
   const st = R.startTime;
   const keep = (e) => o.before || e.ts >= st;
-  const anns = [];
-  for (const a of R.annotations) {
-    const dataUrl = shots[a.n];
-    const item = { ...a, rel: a.ts - st, dataUrl, file: `screenshots/pometka-${String(a.n).padStart(2, '0')}.png` };
-    if (dataUrl) { item.bytes = b64bytes(dataUrl); Object.assign(item, await imgSize(dataUrl)); }
-    anns.push(item);
+  const items = [];
+  for (const i of itemList()) {
+    if (only ? i.key !== only : !((i.kind === 'remark' && o.remarks) || (i.kind === 'error' && o.errors) || (i.kind === 'recording' && o.recordings))) continue;
+    items.push(await itemModel(i, o));
   }
+  const apx = !only && o.appendix;
   const net = filterNet(allNet().filter(keep), o.network).map((e) => {
     const x = { ...e, rel: e.ts - st };
     if (o.mask) { x.reqHeaders = maskH(e.reqHeaders); x.resHeaders = maskH(e.resHeaders); x.url = maskS(e.url); x.postData = maskS(e.postData); x.body = maskS(e.body); }
@@ -216,24 +219,243 @@ async function buildModel(o) {
   });
   const media = (arr, kind) => arr.filter((v) => mediaBlobs[v.key]).map((v) => ({ ...v, rel: v.start - st, durationMs: (v.end || Date.now()) - v.start, size: mediaBlobs[v.key].size, file: `media/${kind}-${v.n}.webm` }));
   const f = R.fields;
+  const usedVoice = new Set(items.flatMap((it) => (it.voice || []).map((v) => v.key)));
+  const one = only && items[0];
   return {
-    title: f.title || 'Баг-репорт',
-    severity: f.severity, priority: f.priority, steps: f.steps, expected: f.expected, actual: f.actual, notes: f.notes,
+    title: one ? (one.kind === 'remark' ? one.comment || 'Замечание' : one.kind === 'error' ? one.title : 'Запись видео') : f.title || 'Отчёт о проверке',
+    severity: f.severity, priority: f.priority, steps: one ? '' : f.steps, expected: one ? '' : f.expected, actual: one ? '' : f.actual, notes: one ? '' : f.notes,
     createdAt: new Date(st).toLocaleString('ru-RU'),
     generatedAt: new Date().toLocaleString('ru-RU'),
-    env: env(),
-    annotations: anns,
-    actions: timeline().filter(keep).map((a) => ({ rel: a.ts - st, text: a.kind === 'nav' ? 'Переход: ' + (o.mask ? maskS(a.url) : a.url) : X.describeAction(a), page: a.page || a.url || '' })),
-    console: filterConsole(R.console.filter(keep), o.console).map((c) => ({ ...c, rel: c.ts - st, text: o.mask ? maskS(c.text) : c.text })),
-    network: net,
-    videos: media(R.videos, 'video'),
-    voice: media(R.voice, 'voice'),
+    env: one ? env().filter(([k]) => ['Страница', 'Браузер', 'ОС', 'Размер окна', 'Экран', 'Язык браузера'].includes(k)) : env(),
+    items,
+    appendix: apx,
+    annotations: [],
+    actions: !apx ? [] : timeline().filter(keep).map((a) => ({ rel: a.ts - st, text: a.kind === 'nav' ? 'Переход: ' + (o.mask ? maskS(a.url) : a.url) : X.describeAction(a), page: a.page || a.url || '' })),
+    console: !apx ? [] : filterConsole(R.console.filter(keep), o.console).map((c) => ({ ...c, rel: c.ts - st, text: o.mask ? maskS(c.text) : c.text })),
+    network: apx ? net : items.flatMap((it) => [...(it.requests || []), ...(it.requestsNear || [])]).filter((e, k, arr) => arr.findIndex((y) => y.id === e.id && y.ts === e.ts) === k),
+    videos: [],
+    voice: only ? [] : media(R.voice, 'voice').filter((v) => !usedVoice.has(v.key)),
     details: o.details,
-    typeLabel: (() => { const t = effType(); return `${t.icon} ${t.name}` + ((R.fields.type || 'auto') === 'auto' ? ' (определён автоматически)' : ''); })(),
-    findings: findings().filter((f) => f.level !== 'ok').map((f) => ({ level: f.level, title: f.title, text: f.plain || stripTags(f.text) })),
-    events: o.events === 'none' ? [] : timelineItems(o.events === 'all' ? 'all-events' : 'important-events').filter(keep).map((x) => ({ rel: x.ts - st, cat: CAT_RU[x.cat] || x.cat, level: x.level, text: o.mask ? maskS(x.text) : x.text })),
-    perf: o.perf ? perfModel() : null,
-    storage: o.storage && R.snapshot ? storageModel(o.mask) : null,
+    findings: !apx ? [] : findings().filter((f) => f.level !== 'ok').map((f) => ({ level: f.level, title: f.title, text: f.plain || stripTags(f.text) })),
+    events: !apx || o.events === 'none' ? [] : timelineItems(o.events === 'all' ? 'all-events' : 'important-events').filter(keep).map((x) => ({ rel: x.ts - st, cat: CAT_RU[x.cat] || x.cat, level: x.level, text: o.mask ? maskS(x.text) : x.text })),
+    perf: apx && o.perf ? perfModel() : null,
+    storage: apx && o.storage && R.snapshot ? storageModel(o.mask) : null,
+  };
+}
+
+// ================= пункты: замечания, ошибки, записи =================
+let itemFilter = 'all';
+const ITEM_ICON = { remark: '💬', error: '⚠', recording: '🎬' };
+function itemList() {
+  const list = [];
+  R.annotations.forEach((a) => list.push({ kind: 'remark', key: 'r' + a.n, ts: a.ts, a }));
+  (R.errors || []).forEach((x) => list.push({ kind: 'error', key: 'e' + x.n, ts: x.ts, x }));
+  R.videos.filter((v) => mediaBlobs[v.key]).forEach((v) => list.push({ kind: 'recording', key: 'v' + v.n, ts: v.start, v }));
+  return list.sort((a, b) => a.ts - b.ts);
+}
+const between = (arr, from, to) => arr.filter((e) => e.ts >= from && e.ts <= to);
+const findReq = (ref) => {
+  const net = allNet();
+  return net.find((e) => ref.id && e.id === ref.id) || net.filter((e) => e.url === ref.url && e.method === ref.method).sort((a, b) => Math.abs(a.ts - ref.ts) - Math.abs(b.ts - ref.ts))[0];
+};
+/** контекст пункта «Ошибка» */
+function errorCtx(x) {
+  const t0 = x.ts, t1 = x.lastTs || x.ts;
+  const jsErrors = x.refs.filter((r) => r.type === 'js').map((r) => ({ text: r.text, loc: r.loc }));
+  const requests = x.refs.filter((r) => r.type === 'request').map(findReq).filter(Boolean);
+  const before = timeline().filter((a) => a.ts <= t0 + 500 && a.ts >= t0 - 120000).slice(-10)
+    .map((a) => ({ ts: a.ts, text: a.kind === 'nav' ? 'Переход: ' + a.url : X.describeAction(a) }));
+  const consoleNear = between(R.console, t0 - 15000, t1 + 3000).filter((c) => c.level === 'error' || c.level === 'warn').slice(-20);
+  const requestsNear = between(allNet(), t0 - 15000, t1 + 3000).filter((e) => !noise(e) && (['XHR', 'Fetch'].includes(e.type) || netErr(e))).slice(-20);
+  const eventsNear = between(R.events, t0 - 15000, t1 + 3000).filter((e) => e.kind !== 'vital' && isImportantEvent(e)).slice(-15);
+  return { jsErrors, requests, before, consoleNear, requestsNear, eventsNear };
+}
+/** контекст пункта «Запись»: всё за время записи + 1–2 минуты до неё */
+function recCtx(v) {
+  const pre = ((R.options && R.options.bufferMin) || 2) * 60000;
+  const from = v.start - Math.min(pre, 120000), to = v.end || Date.now();
+  const tl = timelineItems('important').filter((x) => x.ts >= from && x.ts <= to && x.cat !== 'net' && x.cat !== 'console');
+  return {
+    from, to,
+    timeline: tl,
+    requests: between(allNet(), from, to).filter((e) => !noise(e) && (['XHR', 'Fetch'].includes(e.type) || netErr(e))),
+    console: between(R.console, from, to).filter((c) => c.level === 'error' || c.level === 'warn'),
+    perf: between(R.events, from, to).filter((e) => ['long-frame', 'slow-interaction', 'fps', 'layout-shift'].includes(e.kind) && e.level !== 'info'),
+  };
+}
+const voiceFor = (a) => R.voice.filter((v) => mediaBlobs[v.key] && a.ts >= v.start - 2000 && a.ts <= (v.end || Date.now()) + 2000);
+
+function renderItems() {
+  const all = itemList();
+  const cnt = { remark: 0, error: 0, recording: 0 };
+  all.forEach((i) => cnt[i.kind]++);
+  const errRepeats = (R.errors || []).reduce((s, x) => s + (x.count > 1 ? x.count - 1 : 0), 0);
+  $('#counts').innerHTML = `<span>💬 Замечаний: ${cnt.remark}</span><span class="${cnt.error ? 'e' : ''}">⚠ Ошибок поймано: ${cnt.error}${errRepeats ? ` (+${errRepeats} повторов)` : ''}</span><span>🎬 Записей: ${cnt.recording}</span>`;
+  const fb = (k, t) => `<button data-f="${k}" class="${itemFilter === k ? 'on' : ''}">${t}</button>`;
+  $('#ifil').innerHTML = fb('all', `Все (${all.length})`) + fb('remark', `💬 Замечания (${cnt.remark})`) + fb('error', `⚠ Ошибки (${cnt.error})`) + fb('recording', `🎬 Записи (${cnt.recording})`);
+  $('#ifil').querySelectorAll('button').forEach((b) => (b.onclick = () => { itemFilter = b.dataset.f; renderItems(); }));
+  const list = all.filter((i) => itemFilter === 'all' || i.kind === itemFilter);
+  if (!list.length) {
+    $('#items').innerHTML = `<div class="card muted">${all.length ? 'Нет пунктов этого вида.' : 'Пунктов нет. На странице используйте 🎯 Элемент, ➚ Стрелка, ▭ Область, 💬 Заметка или ⏺ Записать видео. Ошибки консоли и запросов сохраняются автоматически.'}</div>`;
+    return;
+  }
+  const dl = (key) => `<details class="dl"><summary>⬇ Скачать пункт</summary><div class="menu"><button data-dl="${key}" data-f="docx">📄 Word</button><button data-dl="${key}" data-f="md">📝 Markdown (.zip)</button><button data-dl="${key}" data-f="html">🌐 HTML</button></div></details>`;
+  const head = (i, num, title, extra = '') => `<div class="it-h"><span class="ic">${ITEM_ICON[i.kind]} ${num}</span><b>${esc(title)}</b><span class="chip time" data-ts="${i.ts}" title="Перейти к моменту в видео">${X.fmtRel(i.ts - R.startTime)}</span>${extra}<span class="acts">${dl(i.key)}<button data-del="${i.key}" title="Удалить пункт">🗑</button></span></div>`;
+  const tbl = (head2, rows) => (rows.length ? `<table><tr>${head2.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>` : '<div class="zero">Нет данных</div>');
+  const cls = (l) => (l === 'error' ? 'err' : l === 'warn' ? 'warn' : '');
+  const reqRows = (arr) => arr.map((e) => `<tr class="${netErr(e) ? 'err' : ''}">${relCell(e.ts)}<td>${esc(e.method)}</td><td><b>${esc(X.statusLabel(e))}</b></td><td class="u mono">${esc(short(e.url, 180))}</td><td>${X.fmtDur(e.duration)}</td></tr>`);
+  const conRows = (arr) => arr.map((c) => `<tr class="${cls(c.level)}">${relCell(c.ts)}<td>${X.LEVEL_RU[c.level] || c.level}</td><td class="mono msg">${esc(short(c.text, 1500))}</td></tr>`);
+  const reqDet = (e) => {
+    const h = (o) => Object.entries(o || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
+    return `<div class="fact"><div class="fl">Запрос</div><pre>${esc(`${e.method} ${e.url}\n→ ${X.statusLabel(e)} ${e.statusText || ''}${e.duration != null ? ' · ' + X.fmtDur(e.duration) : ''}${e.error ? '\n' + e.error : ''}`)}</pre></div>` +
+      (e.postData ? `<div class="fact"><div class="fl">Тело запроса</div><pre>${esc(e.postData)}</pre></div>` : '') +
+      (e.body ? `<div class="fact"><div class="fl">Ответ сервера</div><pre>${esc(e.body)}</pre></div>` : '') +
+      (e.reqHeaders && Object.keys(e.reqHeaders).length ? `<div class="fact"><div class="fl">Заголовки запроса</div><pre>${esc(h(e.reqHeaders))}</pre></div>` : '') +
+      (e.resHeaders && Object.keys(e.resHeaders).length ? `<div class="fact"><div class="fl">Заголовки ответа</div><pre>${esc(h(e.resHeaders))}</pre></div>` : '');
+  };
+  const mini = (key, tabs) => {
+    const ok = tabs.filter((t) => t);
+    return `<div class="mt" data-k="${key}">${ok.map((t, i) => `<button data-i="${i}" class="${i ? '' : 'on'}">${t[0]}</button>`).join('')}</div>` +
+      ok.map((t, i) => `<div class="mb" data-k="${key}" data-i="${i}" ${i ? 'hidden' : ''}>${t[1]}</div>`).join('');
+  };
+
+  $('#items').innerHTML = list.map((i) => {
+    if (i.kind === 'remark') {
+      const a = i.a;
+      const vo = voiceFor(a);
+      return `<div class="it remark">${head(i, a.n, a.comment || '(без комментария)')}
+        <div class="it-b ${shots[a.n] ? '' : 'one'}">${shots[a.n] ? `<img src="${shots[a.n]}" alt="">` : ''}
+        <div class="facts">
+          <div class="fact"><div class="fl">Замечание</div><textarea rows="3" data-c="${a.n}">${esc(a.comment)}</textarea></div>
+          ${a.element ? `<div class="fact"><div class="fl">Элемент</div><div class="sel">${esc(a.element.selector)}<br>&lt;${esc(a.element.tag)}&gt; ${Math.round(a.element.rect.w)}×${Math.round(a.element.rect.h)}${a.element.text ? ' · «' + esc(short(a.element.text, 80)) + '»' : ''}</div></div>` : ''}
+          ${vo.map((v) => `<div class="fact"><div class="fl">🎤 Голос</div><audio controls data-key="${v.key}"></audio></div>`).join('')}
+          <div class="fact"><div class="fl">Страница</div><div class="url">${esc(a.url)}</div></div>
+        </div></div></div>`;
+    }
+    if (i.kind === 'error') {
+      const x = i.x;
+      const c = errorCtx(x);
+      const req = c.requests[0];
+      const facts = [
+        c.jsErrors.length ? `<div class="fact"><div class="fl">Ошибка JavaScript</div><pre>${esc(c.jsErrors.map((j) => j.text + (j.loc ? '\n@ ' + j.loc : '')).join('\n\n'))}</pre></div>` : '',
+        req ? `<div class="fact"><div class="fl">Запрос с ошибкой</div><pre>${esc(`${req.method} ${X.statusLabel(req)} ${req.url}`)}</pre></div>` : '',
+        c.before.length ? `<div class="fact"><div class="fl">Перед ошибкой пользователь</div><ol>${c.before.slice(-5).map((b) => `<li>${esc(b.text)}</li>`).join('')}</ol></div>` : '',
+        `<div class="fact"><div class="fl">Страница</div><div class="url">${esc(x.url || '')}</div></div>`,
+      ].join('');
+      const tabs = [
+        c.requests.length ? ['Детали запроса', `<div class="facts" style="padding:12px 16px">${c.requests.map(reqDet).join('')}</div>`] : null,
+        ['Действия перед ошибкой', tbl(['Время', 'Действие'], c.before.map((b) => `<tr>${relCell(b.ts)}<td>${esc(b.text)}</td></tr>`))],
+        c.eventsNear.length ? ['События на странице', tbl(['Время', 'Событие'], c.eventsNear.map((e) => `<tr class="${cls(e.level)}">${relCell(e.ts)}<td>${esc(e.text)}</td></tr>`))] : null,
+        ['Консоль рядом', tbl(['Время', 'Уровень', 'Сообщение'], conRows(c.consoleNear))],
+        ['Запросы рядом', tbl(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], reqRows(c.requestsNear))],
+      ];
+      return `<div class="it error">${head(i, x.n, x.title, x.count > 1 ? `<span class="pill bad">повторялась ${x.count} раз</span>` : '')}
+        <div class="it-b ${x.shotKey && shots['e' + x.n] ? '' : 'one'}">${shots['e' + x.n] ? `<img src="${shots['e' + x.n]}" alt="">` : ''}<div class="facts">${facts}</div></div>
+        ${mini(i.key, tabs)}</div>`;
+    }
+    const v = i.v;
+    const c = recCtx(v);
+    const tabs = [
+      ['Что происходило', tbl(['Время', 'Тип', 'Событие'], c.timeline.map((x) => `<tr class="${x.cat === 'mark' ? 'mark' : x.level === 'error' ? 'ev-err' : x.level === 'warn' ? 'ev-warn' : ''}">${relCell(x.ts)}<td><span class="cat cat-${x.cat}">${CAT_RU[x.cat] || x.cat}</span></td><td>${esc(x.text)}</td></tr>`))],
+      ['Запросы', tbl(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], reqRows(c.requests))],
+      ['Консоль', tbl(['Время', 'Уровень', 'Сообщение'], conRows(c.console))],
+      c.perf.length ? ['Производительность', tbl(['Время', 'Событие'], c.perf.map((e) => `<tr class="${cls(e.level)}">${relCell(e.ts)}<td>${esc(e.text)}</td></tr>`))] : null,
+    ];
+    return `<div class="it recording">${head(i, v.n, `Запись видео · ${X.fmtDur((v.end || Date.now()) - v.start)}`, `<span class="muted">${X.fmtSize(mediaBlobs[v.key].size)} · данные за ${Math.round((v.start - c.from) / 1000)} с до начала и во время записи</span>`)}
+      <div class="it-b one"><video controls preload="metadata" data-key="${v.key}" data-start="${v.start}"></video></div>
+      ${mini(i.key, tabs)}</div>`;
+  }).join('');
+
+  // медиа
+  $('#items').querySelectorAll('video[data-key],audio[data-key]').forEach((el) => {
+    el.src = URL.createObjectURL(mediaBlobs[el.dataset.key]);
+    el.addEventListener('loadedmetadata', function fix() {
+      el.removeEventListener('loadedmetadata', fix);
+      if (el.duration === Infinity) { el.currentTime = 1e101; el.addEventListener('timeupdate', function back() { el.removeEventListener('timeupdate', back); el.currentTime = 0; }); }
+    });
+  });
+  $('#items').querySelectorAll('img').forEach((im) => (im.onclick = () => { $('#lightbox img').src = im.src; $('#lightbox').hidden = false; }));
+  $('#items').querySelectorAll('[data-c]').forEach((t) => (t.oninput = () => {
+    const a = R.annotations.find((x) => x.n === +t.dataset.c);
+    a.comment = t.value;
+    const b = t.closest('.it').querySelector('.it-h b');
+    b.textContent = t.value || '(без комментария)';
+    saveR();
+  }));
+  $('#items').querySelectorAll('.it-h .time').forEach((c) => (c.onclick = () => seekTo(+c.dataset.ts)));
+  $('#items').querySelectorAll('.mt button').forEach((b) => (b.onclick = () => {
+    const k = b.parentElement.dataset.k;
+    b.parentElement.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    $('#items').querySelectorAll(`.mb[data-k="${k}"]`).forEach((m) => (m.hidden = m.dataset.i !== b.dataset.i));
+  }));
+  $('#items').querySelectorAll('[data-dl]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; doExport(b.dataset.f, b.dataset.dl); }));
+  $('#items').querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
+    const key = b.dataset.del;
+    if (!confirm('Удалить этот пункт из отчёта?')) return;
+    const n = +key.slice(1);
+    if (key[0] === 'r') {
+      const a = R.annotations.find((x) => x.n === n);
+      R.annotations = R.annotations.filter((x) => x !== a);
+      await QADB.del('blobs', a.shotKey).catch(() => {});
+    } else if (key[0] === 'e') {
+      const x = R.errors.find((y) => y.n === n);
+      R.errors = R.errors.filter((y) => y !== x);
+      if (x.shotKey) await QADB.del('blobs', x.shotKey).catch(() => {});
+    } else {
+      const v = R.videos.find((y) => y.n === n);
+      R.videos = R.videos.filter((y) => y !== v);
+      await QADB.del('blobs', v.key).catch(() => {});
+      delete mediaBlobs[v.key];
+    }
+    saveR();
+    renderItems();
+  }));
+}
+
+/** модель одного пункта для выгрузки */
+async function itemModel(i, o) {
+  const st = R.startTime;
+  const m = (e) => {
+    const x = { ...e, rel: e.ts - st };
+    if (o.mask) { x.reqHeaders = maskH(e.reqHeaders); x.resHeaders = maskH(e.resHeaders); x.url = maskS(e.url); x.postData = maskS(e.postData); x.body = maskS(e.body); }
+    if (!o.details) { delete x.reqHeaders; delete x.resHeaders; delete x.postData; delete x.body; }
+    return x;
+  };
+  const shot = async (dataUrl, file, target) => {
+    if (!dataUrl) return;
+    Object.assign(target, { dataUrl, file, bytes: b64bytes(dataUrl) }, await imgSize(dataUrl));
+  };
+  if (i.kind === 'remark') {
+    const a = i.a;
+    const it = { kind: 'remark', key: i.key, n: a.n, rel: a.ts - st, url: a.url, comment: a.comment, element: a.element,
+      voice: voiceFor(a).map((v) => ({ key: v.key, file: `media/voice-${v.n}.webm` })) };
+    await shot(shots[a.n], `screenshots/zamechanie-${String(a.n).padStart(2, '0')}.png`, it);
+    return it;
+  }
+  if (i.kind === 'error') {
+    const x = i.x;
+    const c = errorCtx(x);
+    const it = {
+      kind: 'error', key: i.key, n: x.n, rel: x.ts - st, url: o.mask ? maskS(x.url) : x.url, title: o.mask ? maskS(x.title) : x.title, count: x.count,
+      jsErrors: c.jsErrors.map((j) => ({ text: o.mask ? maskS(j.text) : j.text, loc: j.loc })),
+      requests: c.requests.map(m),
+      before: c.before.map((b) => ({ rel: b.ts - st, text: o.mask ? maskS(b.text) : b.text })),
+      consoleNear: c.consoleNear.map((cc) => ({ rel: cc.ts - st, level: cc.level, text: o.mask ? maskS(cc.text) : cc.text, loc: cc.loc })),
+      requestsNear: c.requestsNear.map(m),
+      eventsNear: c.eventsNear.map((e) => ({ rel: e.ts - st, level: e.level, text: e.text })),
+    };
+    await shot(shots['e' + x.n], `screenshots/oshibka-${String(x.n).padStart(2, '0')}.png`, it);
+    return it;
+  }
+  const v = i.v;
+  const c = recCtx(v);
+  return {
+    kind: 'recording', key: i.key, n: v.n, rel: v.start - st, durationMs: (v.end || Date.now()) - v.start, size: mediaBlobs[v.key].size,
+    file: `media/video-${v.n}.webm`, videoKey: v.key,
+    timeline: c.timeline.map((x) => ({ rel: x.ts - st, cat: CAT_RU[x.cat] || x.cat, level: x.level, text: o.mask ? maskS(x.text) : x.text })),
+    requests: c.requests.map(m),
+    console: c.console.map((cc) => ({ rel: cc.ts - st, level: cc.level, text: o.mask ? maskS(cc.text) : cc.text })),
+    perf: c.perf.map((e) => ({ rel: e.ts - st, text: e.text })),
   };
 }
 
@@ -265,49 +487,69 @@ function consoleTxt(m) {
 }
 async function mediaFiles(m) {
   const files = [];
-  for (const v of [...m.videos, ...m.voice]) files.push({ name: v.file, data: await blobBytes(mediaBlobs[v.key]) });
-  return files;
+  for (const it of m.items) {
+    if (it.kind === 'recording' && mediaBlobs[it.videoKey]) files.push({ name: it.file, data: await blobBytes(mediaBlobs[it.videoKey]) });
+    for (const v of it.voice || []) if (mediaBlobs[v.key]) files.push({ name: v.file, data: await blobBytes(mediaBlobs[v.key]) });
+  }
+  for (const v of m.voice) if (mediaBlobs[v.key]) files.push({ name: v.file, data: await blobBytes(mediaBlobs[v.key]) });
+  return files.filter((f, i, arr) => arr.findIndex((x) => x.name === f.name) === i);
 }
+async function embedMedia(m) {
+  const media = {};
+  for (const it of m.items) {
+    if (it.kind === 'recording' && mediaBlobs[it.videoKey]) media[it.file] = await blobToDataUrl(mediaBlobs[it.videoKey]);
+    for (const v of it.voice || []) if (mediaBlobs[v.key]) media[v.file] = await blobToDataUrl(mediaBlobs[v.key]);
+  }
+  for (const v of m.voice) media[v.file] = await blobToDataUrl(mediaBlobs[v.key]);
+  return media;
+}
+const shotFiles = (m) => m.items.filter((it) => it.bytes).map((it) => ({ name: it.file, data: it.bytes }));
 
-async function doExport(kind) {
+async function doExport(kind, only) {
   const st = $('#ex-status');
   const btns = document.querySelectorAll('[data-ex]');
   btns.forEach((b) => (b.disabled = true));
   st.textContent = 'Готовлю файл…';
   try {
     const o = opts();
-    const m = await buildModel(o);
-    const base = baseName();
+    const m = await buildModel(o, only);
+    if (!m.items.length && !m.appendix) { st.textContent = 'Нечего выгружать: нет пунктов выбранных видов. Отметьте их в «⚙ Что включать в отчёт».'; return; }
+    const base = baseName() + (only ? '_' + ({ r: 'zamechanie', e: 'oshibka', v: 'zapis' }[only[0]]) + '-' + only.slice(1) : '');
+    const hasMedia = m.items.some((it) => it.kind === 'recording' || (it.voice || []).length) || m.voice.length;
     if (kind === 'docx') {
-      download(X.exportDOCX(m), base + '.docx');
-      if (m.videos.length || m.voice.length) st.textContent = 'Word сохранён. Видео и голос в .docx не встраиваются — используйте «Всё одним архивом» или скачайте их под плеером.';
-      else st.textContent = 'Готово: ' + base + '.docx';
+      if (hasMedia) {
+        const files = [{ name: 'report.docx', data: await blobBytes(X.exportDOCX(m)) }, ...(await mediaFiles(m))];
+        download(QAZip.makeZip(files), base + '_word.zip');
+        st.textContent = 'Готово: архив с Word и видео/голосом (в .docx видео не встраивается)';
+      } else {
+        download(X.exportDOCX(m), base + '.docx');
+        st.textContent = 'Готово: ' + base + '.docx';
+      }
     } else if (kind === 'md') {
-      const files = [{ name: 'report.md', data: X.exportMarkdown(m) }];
-      m.annotations.forEach((a) => a.bytes && files.push({ name: a.file, data: a.bytes }));
-      files.push(...(await mediaFiles(m)));
+      const files = [{ name: 'report.md', data: X.exportMarkdown(m) }, ...shotFiles(m), ...(await mediaFiles(m))];
       if (m.network.length) files.push({ name: 'network.har', data: JSON.stringify(X.exportHAR(m), null, 2) });
       if (m.console.length) files.push({ name: 'console.log', data: consoleTxt(m) });
       download(QAZip.makeZip(files), base + '_markdown.zip');
-      st.textContent = 'Готово: report.md + скриншоты, медиа и HAR в архиве';
+      st.textContent = 'Готово: report.md + скриншоты' + (hasMedia ? ', медиа' : '') + (m.network.length ? ' и HAR' : '') + ' в архиве';
     } else if (kind === 'html') {
-      const media = {};
-      if (o.embed) for (const v of [...m.videos, ...m.voice]) media[v.file] = await blobToDataUrl(mediaBlobs[v.key]);
+      const media = o.embed ? await embedMedia(m) : {};
       download(new Blob([X.exportHTML(m, media)], { type: 'text/html' }), base + '.html');
-      st.textContent = 'Готово: один HTML-файл' + (o.embed && Object.keys(media).length ? ' со встроенным видео/голосом' : '');
+      st.textContent = 'Готово: один HTML-файл' + (Object.keys(media).length ? ' со встроенным видео/голосом' : '');
     } else if (kind === 'har') {
-      download(new Blob([JSON.stringify(X.exportHAR(m), null, 2)], { type: 'application/json' }), base + '.har');
+      const full = await buildModel({ ...o, appendix: true, network: 'all', details: true });
+      download(new Blob([JSON.stringify(X.exportHAR(full), null, 2)], { type: 'application/json' }), base + '.har');
       st.textContent = 'Готово: HAR открывается в DevTools → Network → Import';
     } else if (kind === 'all') {
       const files = [
         { name: 'report.docx', data: await blobBytes(X.exportDOCX(m)) },
         { name: 'report.html', data: X.exportHTML(m, {}) },
         { name: 'report.md', data: X.exportMarkdown(m) },
+        ...shotFiles(m),
+        ...(await mediaFiles(m)),
       ];
-      m.annotations.forEach((a) => a.bytes && files.push({ name: a.file, data: a.bytes }));
-      files.push(...(await mediaFiles(m)));
-      files.push({ name: 'network.har', data: JSON.stringify(X.exportHAR(m), null, 2) });
-      files.push({ name: 'console.log', data: consoleTxt(m) });
+      const full = await buildModel({ ...o, appendix: true, network: 'all', details: true, console: 'all' });
+      files.push({ name: 'network.har', data: JSON.stringify(X.exportHAR(full), null, 2) });
+      files.push({ name: 'console.log', data: consoleTxt(full) });
       download(QAZip.makeZip(files), base + '.zip');
       st.textContent = 'Готово: Word + HTML + Markdown + скриншоты + медиа + HAR';
     }
@@ -323,19 +565,17 @@ async function doExport(kind) {
 function renderAll() {
   const f = R.fields;
   $('#f-title').value = f.title;
-  fillTypeSelect();
-  $('#f-type').value = f.type || 'auto';
   $('#f-severity').value = f.severity;
   $('#f-priority').value = f.priority || '';
   $('#f-steps').value = f.steps;
   $('#f-expected').value = f.expected;
   $('#f-actual').value = f.actual;
   $('#f-notes').value = f.notes || '';
-  $('#created').textContent = 'Зафиксирован ' + new Date(R.startTime).toLocaleString('ru-RU') + ' · ' + short(R.meta.startUrl, 80);
-  document.title = (f.title || 'Баг-репорт') + ' — QA Bug Recorder';
+  $('#created').textContent = 'Проверка ' + new Date(R.startTime).toLocaleString('ru-RU') + ' · ' + short(R.meta.startUrl, 80);
+  document.title = (f.title || 'Отчёт о проверке') + ' — QA Bug Recorder';
 
   const warns = [];
-  if (R.active) warns.push('Фиксация этого бага ещё идёт. Нажмите «✓ Готово» на панели на странице, затем обновите отчёт.');
+  if (R.active) warns.push('Проверка ещё идёт. Нажмите «✓ Готово» на панели на странице, затем обновите отчёт.');
   if (R.meta.truncated) warns.push('Часть записей не сохранена: превышен лимит объёма.');
   if (R.meta.cdpError) warns.push('Полный захват сети не включился: ' + R.meta.cdpError);
   [...R.videos, ...R.voice].filter((v) => v.error).forEach((v) => warns.push('Ошибка записи: ' + v.error));
@@ -343,7 +583,7 @@ function renderAll() {
   $('#banner').innerHTML = warns.map(esc).join('<br>');
 
   renderMedia();
-  renderAnns();
+  renderItems();
   renderSummary();
   renderTab();
   $('#t-timeline').textContent = timelineItems('important').length;
@@ -360,7 +600,7 @@ function renderAll() {
 
 function renderMedia() {
   const items = [];
-  for (const v of R.videos) {
+  for (const v of []) {
     const b = mediaBlobs[v.key];
     if (!b) continue;
     items.push(`<div class="card"><div class="lbl">Видео ${v.n} · ${X.fmtDur((v.end || Date.now()) - v.start)} · ${X.fmtSize(b.size)} <button class="link" data-dl="${v.key}" data-name="video-${v.n}.webm">⬇ скачать</button></div><video controls preload="metadata" data-key="${v.key}" data-start="${v.start}"></video></div>`);
@@ -368,6 +608,7 @@ function renderMedia() {
   for (const v of R.voice) {
     const b = mediaBlobs[v.key];
     if (!b) continue;
+    if (R.annotations.some((a) => voiceFor(a).includes(v))) continue; // голос показан в замечании
     items.push(`<div class="card"><div class="lbl">🎤 Голос ${v.n} · ${X.fmtRel(v.start - R.startTime)} · ${X.fmtDur((v.end || Date.now()) - v.start)} <button class="link" data-dl="${v.key}" data-name="voice-${v.n}.webm">⬇ скачать</button></div><audio controls data-key="${v.key}"></audio></div>`);
   }
   $('#media-sec').hidden = !items.length;
@@ -399,39 +640,8 @@ function seekTo(ts) {
   return true;
 }
 
-function renderAnns() {
-  $('#ann-count').textContent = R.annotations.length;
-  if (!R.annotations.length) {
-    $('#anns').innerHTML = '<div class="muted">Пометок нет. На странице используйте 🎯 Элемент, ➚ Стрелка, ▭ Область или 💬 Заметка.</div>';
-    return;
-  }
-  $('#anns').innerHTML = R.annotations
-    .map((a) => `<div class="ann">
-      ${shots[a.n] ? `<img src="${shots[a.n]}" data-n="${a.n}" alt="">` : ''}
-      <div class="ab">
-        <div class="ah"><span class="num">${a.n}</span><span class="chip">${X.KIND_RU[a.kind] || a.kind}</span>
-          <span class="chip time" data-ts="${a.ts}" title="Перейти к моменту в видео">${X.fmtRel(a.ts - R.startTime)}</span>
-          <button class="rm" data-rm="${a.n}" title="Удалить пометку">🗑</button></div>
-        <textarea rows="2" data-c="${a.n}" placeholder="Комментарий">${esc(a.comment)}</textarea>
-        ${a.element ? `<div class="sel" title="CSS-селектор элемента">${esc(a.element.selector)}<br>&lt;${esc(a.element.tag)}&gt; ${Math.round(a.element.rect.w)}×${Math.round(a.element.rect.h)}${a.element.text ? ' · «' + esc(short(a.element.text, 80)) + '»' : ''}</div>` : ''}
-        <div class="url">${esc(a.url)}</div>
-      </div></div>`)
-    .join('');
-  $('#anns').querySelectorAll('img').forEach((i) => (i.onclick = () => { $('#lightbox img').src = i.src; $('#lightbox').hidden = false; }));
-  $('#anns').querySelectorAll('[data-c]').forEach((t) => (t.oninput = () => { R.annotations.find((a) => a.n === +t.dataset.c).comment = t.value; saveR(); }));
-  $('#anns').querySelectorAll('.time').forEach((c) => (c.onclick = () => { if (!seekTo(+c.dataset.ts)) c.title = 'Видео на этот момент нет'; }));
-  $('#anns').querySelectorAll('[data-rm]').forEach((b) => (b.onclick = async () => {
-    if (!confirm('Удалить пометку #' + b.dataset.rm + '?')) return;
-    const a = R.annotations.find((x) => x.n === +b.dataset.rm);
-    R.annotations = R.annotations.filter((x) => x !== a);
-    await QADB.del('blobs', a.shotKey);
-    saveR();
-    renderAnns();
-  }));
-}
-
 function relCell(ts) { return `<td class="mono">${X.fmtRel(ts - R.startTime)}</td>`; }
-function dividerRow(cols) { return `<tr class="divider"><td colspan="${cols}">▼ нажато «Нашёл баг»</td></tr>`; }
+function dividerRow(cols) { return `<tr class="divider"><td colspan="${cols}">▼ начало проверки</td></tr>`; }
 
 function withDivider(list, cols, rowFn) {
   let out = '', placed = false;
@@ -451,7 +661,7 @@ function renderTab() {
 
   if (tab === 'actions') {
     const list = timeline().filter((a) => match(a.url, a.text, a.label, a.value, a.selector));
-    body.innerHTML = `<div class="tf"><span class="muted">Клики, ввод и переходы. «−» — до нажатия «Нашёл баг». Пароли не сохраняются.</span></div>` + (list.length
+    body.innerHTML = `<div class="tf"><span class="muted">Клики, ввод и переходы. «−» — до начала проверки. Пароли не сохраняются.</span></div>` + (list.length
       ? `<table><tr><th style="width:80px">Время</th><th>Действие</th><th style="width:34%">Элемент / страница</th></tr>${withDivider(list, 3, (a) =>
           `<tr class="${a.ts < R.startTime ? 'before' : ''}">${relCell(a.ts)}<td>${esc(a.kind === 'nav' ? 'Переход: ' + a.url : X.describeAction(a))}</td><td class="u mono">${esc(a.kind === 'nav' ? a.title || '' : a.selector || '')}</td></tr>`)}</table>`
       : '<div class="zero">Действий нет. Сбор идёт с момента загрузки страницы после установки расширения.</div>');
@@ -649,10 +859,8 @@ function allFindings() {
 // находки с учётом типа бага
 function findings() {
   const all = allFindings();
-  const cats = showAll ? null : effType().view.findings;
-  const F = cats ? all.filter((f) => cats.includes(f.cat)) : all.slice();
-  F.hidden = all.length - F.length;
-  if (!F.length) F.push({ level: 'ok', title: cats ? 'Для этого типа бага проблем не найдено' : 'Явных технических ошибок не найдено', text: 'Смотрите пометки, шаги и видео.' });
+  const F = all.slice();
+  if (!F.length) F.push({ level: 'ok', title: 'Явных технических ошибок не найдено', text: 'Консоль и запросы без ошибок.' });
   return F;
 }
 
@@ -663,60 +871,13 @@ function renderSummary() {
   $('#summary').querySelectorAll('.find[data-i]').forEach((el) => (el.onclick = () => {
     const f = F[+el.dataset.i];
     if (!f.tab) return;
-    if (!visibleTabs().includes(f.tab)) { showAll = true; applyType(false); }
     tab = f.tab;
     if (f.filter) filters[f.tab === 'timeline' ? 'timeline' : f.tab] = f.filter;
     $('#search').value = '';
     renderTab();
     document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth' });
   }));
-  const more = $('#show-hidden');
-  if (more) more.onclick = () => { showAll = true; applyType(false); };
-}
 
-// ================= тип бага =================
-const BT = window.QA_BUG_TYPES;
-let showAll = false;
-function suggested() { return BT.suggest(R); }
-function effType() {
-  const sel = R.fields.type || 'auto';
-  return BT.byId(sel === 'auto' ? suggested().id : sel) || BT.byId('other');
-}
-function visibleTabs() { return showAll ? BT.ALL_TABS : effType().view.tabs; }
-const TAB_RU = { timeline: 'таймлайн', actions: 'действия', console: 'консоль', network: 'сеть', perf: 'производительность', storage: 'хранилище', env: 'окружение' };
-
-/** Применить тип: вкладки, фильтры, сводка; resetExport — выставить настройки выгрузки по умолчанию для типа */
-function applyType(resetExport) {
-  const t = effType();
-  const vis = visibleTabs();
-  document.querySelectorAll('.tabs [data-tab]').forEach((b) => (b.hidden = !vis.includes(b.dataset.tab)));
-  if (!vis.includes(tab)) tab = vis[0];
-  if (resetExport) {
-    filters.timeline = t.view.timeline;
-    filters.network = t.view.network;
-    const e = t.export;
-    $('#o-console').value = e.console;
-    $('#o-network').value = e.network;
-    $('#o-events').value = e.events;
-    $('#o-perf').checked = e.perf;
-    $('#o-storage').checked = e.storage;
-    $('#o-details').checked = e.details;
-  }
-  const sel = R.fields.type || 'auto';
-  const sug = suggested();
-  const shown = vis.map((x) => TAB_RU[x]).join(', ');
-  let info = sel === 'auto'
-    ? `✨ Тип определён автоматически: <b>${t.icon} ${esc(t.name)}</b> — ${esc(sug.reason)}. Можно выбрать другой.`
-    : `Тип: <b>${t.icon} ${esc(t.name)}</b>.`;
-  info += showAll
-    ? ` Показаны все данные. <button class="link" id="type-only">Показать только нужные для типа</button>`
-    : ` Показаны: пометки, ${shown}. <button class="link" id="type-all">Показать все данные</button>`;
-  $('#type-info').innerHTML = info;
-  const a = $('#type-all'), o = $('#type-only');
-  if (a) a.onclick = () => { showAll = true; applyType(false); };
-  if (o) o.onclick = () => { showAll = false; applyType(false); };
-  renderSummary();
-  renderTab();
 }
 
 // ---------- график ----------
@@ -775,7 +936,7 @@ function renderPerf(body) {
       <div class="chart"><div class="ct"><span>DOM-узлы</span><span>${range('nodes', '')}</span></div>${spark(pts('nodes'), '#0891b2')}</div>
       <div class="chart"><div class="ct"><span>FPS (минимум за 5 с)</span><span>${range('fps', 'к/с')}</span></div>${spark(pts('fps'), '#16a34a')}</div>
     </div>
-    <div class="muted" style="margin-top:-8px">Пунктир — момент нажатия «Нашёл баг».</div>
+    <div class="muted" style="margin-top:-8px">Пунктир — начало проверки.</div>
 
     <div class="ph">Перерисовки React <small>${ra.list.length ? `всего обновлений: ${ra.commits}` : ''}</small></div>
     ${ra.list.length ? tbl(['Компонент', 'Перерисовок', 'Монтирований', ''], ra.list.slice(0, 25).map(([n, v]) =>
@@ -807,7 +968,7 @@ function renderStorage(body, match) {
     : '<div class="muted" style="padding:0 16px 8px">Пусто</div>';
   const kv = (arr, keyName) => arr.filter((x) => match(x[keyName], x.value)).map((x) => `<tr><td class="mono" style="width:28%">${esc(x[keyName])}</td><td style="width:70px">${X.fmtSize(x.size)}</td><td class="mono msg u">${esc(x.value)}</td></tr>`);
   const changes = R.events.filter((e) => e.cat === 'storage' && match(e.text));
-  body.innerHTML = `<div class="tf"><span class="muted">Снимок в момент нажатия «Нашёл баг». Значения с секретными именами (token, session, password…) не сохраняются.</span></div><div class="stor">
+  body.innerHTML = `<div class="tf"><span class="muted">Снимок в начале проверки. Значения с секретными именами (token, session, password…) не сохраняются.</span></div><div class="stor">
     <h4>Cookies (${sn.cookies.length})</h4>${t(kv(sn.cookies, 'name'), ['Имя', 'Размер', 'Значение'])}
     <h4>localStorage (${sn.localStorage.length})</h4>${t(kv(sn.localStorage, 'key'), ['Ключ', 'Размер', 'Значение'])}
     <h4>sessionStorage (${sn.sessionStorage.length})</h4>${t(kv(sn.sessionStorage, 'key'), ['Ключ', 'Размер', 'Значение'])}
@@ -857,11 +1018,6 @@ bindField('#f-expected', 'expected');
 bindField('#f-actual', 'actual');
 bindField('#f-notes', 'notes');
 $('#f-severity').onchange = () => { R.fields.severity = $('#f-severity').value; saveR(); };
-function fillTypeSelect() {
-  if ($('#f-type').options.length) return;
-  $('#f-type').innerHTML = [BT.auto, ...BT.list].map((t) => `<option value="${t.id}">${t.icon} ${t.name}</option>`).join('');
-}
-$('#f-type').onchange = () => { R.fields.type = $('#f-type').value; showAll = false; saveR(); applyType(true); };
 $('#f-priority').onchange = () => { R.fields.priority = $('#f-priority').value; saveR(); };
 $('#regen').onclick = () => {
   if ($('#f-steps').value.trim() && !confirm('Заменить текущие шаги автоматически собранными?')) return;
@@ -871,6 +1027,7 @@ $('#regen').onclick = () => {
 document.querySelectorAll('[data-ex]').forEach((b) => (b.onclick = () => doExport(b.dataset.ex)));
 document.querySelectorAll('.tabs [data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; renderTab(); }));
 $('#search').oninput = () => renderTab();
+$('#o-appendix').onchange = () => $('#apx-opts').classList.toggle('on', $('#o-appendix').checked);
 $('#lightbox').onclick = () => ($('#lightbox').hidden = true);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#lightbox').hidden = true; });
 

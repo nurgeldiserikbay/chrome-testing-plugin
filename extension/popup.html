@@ -4,31 +4,32 @@
 <header><img src="icons/32.png" alt=""><span>QA Bug Recorder</span></header>
 
 <section id="idle" hidden>
-  <button id="found" class="big">🐞 Нашёл баг</button>
-  <p class="sub">Логи консоли, запросы и ваши действия за последние минуты уже собраны — они попадут в отчёт.</p>
+  <button id="found" class="big">▶ Начать проверку</button>
+  <p class="sub">Работайте с сайтом как обычно. Ошибки консоли и запросов сохранятся сами — со скриншотом и контекстом. Ваши замечания (стрелка, область, элемент) — отдельными пунктами.</p>
   <div class="buf" id="buf"></div>
 
   <details id="settings">
     <summary>Настройки</summary>
-    <label><input type="checkbox" id="s-videoOnStart"> Записывать видео автоматически<small>Сразу при нажатии «Нашёл баг». По умолчанию выключено: видео включается кнопкой, когда нужно.</small></label>
+    <label><input type="checkbox" id="s-videoOnStart"> Записывать видео автоматически<small>Сразу при начале проверки. По умолчанию выключено: видео включается кнопкой, когда нужно.</small></label>
     <label><input type="checkbox" id="s-tabAudio"> Записывать звук вкладки в видео</label>
     <label><input type="checkbox" id="s-reactRenders"> Считать перерисовки React<small>Какие компоненты и сколько раз рендерились. Выключите, если пользуетесь расширением React DevTools: они мешают друг другу.</small></label>
     <label><input type="checkbox" id="s-cdp"> Полный захват сети (DevTools-протокол)<small>Все ресурсы, CORS-ошибки, предупреждения браузера. Chrome покажет полосу «отлаживается».</small></label>
-    <label class="row">Брать из буфера последние
-      <select id="s-bufferMin"><option value="1">1 мин</option><option value="2">2 мин</option><option value="5">5 мин</option><option value="10">10 мин</option><option value="15">15 мин</option></select>
+    <label><input type="checkbox" id="s-autoErrors"> Автоматически сохранять ошибки<small>Ошибка в консоли или упавший запрос → отдельный пункт со скриншотом, запросом и действиями перед ней.</small></label>
+    <label class="row">Для ошибок и записи брать данные за последние
+      <select id="s-bufferMin"><option value="1">1 мин</option><option value="2">2 мин</option><option value="5">5 мин</option></select>
     </label>
     <button id="shortcuts" class="link">Настроить горячие клавиши</button>
   </details>
 </section>
 
 <section id="active" hidden>
-  <div class="live">🐞 Идёт фиксация бага <b id="timer">00:00</b></div>
+  <div class="live">🐞 Идёт проверка <b id="timer">00:00</b></div>
   <div id="vstate" class="vstate">Видео не записывается — включите кнопкой «⏺ Записать видео», если нужно</div>
   <div class="stats">
-    <div><b id="c-ann">0</b><span>пометок</span></div>
+    <div><b id="c-ann">0</b><span>замечаний</span></div>
     <div><b id="c-act">0</b><span>действий</span></div>
     <div><b id="c-net">0</b><span>запросов</span></div>
-    <div><b id="c-err">0</b><span>ошибок</span></div>
+    <div><b id="c-err">0</b><span>ошибок поймано</span></div>
   </div>
   <div class="tools">
     <button data-tool="element">🎯 Элемент</button>
@@ -40,15 +41,15 @@
     <button id="voice">🎤 Голос</button>
     <button id="video">⏺ Записать видео</button>
   </div>
-  <button id="finish" class="big green">✓ Готово — открыть отчёт</button>
-  <button id="cancel" class="link danger">Отменить и удалить этот баг</button>
+  <button id="finish" class="big green">✓ Завершить — открыть отчёт</button>
+  <button id="cancel" class="link danger">Отменить проверку и удалить данные</button>
 </section>
 
 <div id="err" class="err" hidden></div>
 
 <footer>
-  <button id="reports" class="link">📁 Мои баг-репорты</button>
-  <button id="keys" class="keys link" title="Настроить горячие клавиши">Ctrl+Shift+Q — нашёл баг</button>
+  <button id="reports" class="link">📁 Мои отчёты</button>
+  <button id="keys" class="keys link" title="Настроить горячие клавиши">Ctrl+Shift+Q — начать проверку</button>
 </footer>
 <script src="popup.js"></script>
 </body></html>

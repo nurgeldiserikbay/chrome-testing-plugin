@@ -62,7 +62,7 @@
   function htmlStorage(st) {
     if (!st) return '';
     const t = (title, rows, head) => `<h3>${title} (${rows.length})</h3>` + (rows.length ? `<table><tr>${head.map((x) => `<th>${x}</th>`).join('')}</tr>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${i ? 'mono u' : 'mono'}">${escH(c)}</td>`).join('')}</tr>`).join('')}</table>` : '<p class="meta">Пусто</p>');
-    return '<h2>Cookies и хранилище</h2><p class="meta">Снимок в момент нажатия «Нашёл баг».</p>' +
+    return '<h2>Cookies и хранилище</h2><p class="meta">Снимок в момент начала проверки.</p>' +
       t('Cookies', st.cookies, ['Имя', 'Размер', 'Значение']) + t('localStorage', st.local, ['Ключ', 'Размер', 'Значение']) +
       t('sessionStorage', st.session, ['Ключ', 'Размер', 'Значение']) + t('Изменения во время теста', st.changes, ['Время', 'Операция']);
   }
@@ -97,6 +97,8 @@
       .vit .good{background:#ecfdf5;border-color:#a7f3d0}.vit .ni{background:#fffbeb;border-color:#fde68a}.vit .poor{background:#fef2f2;border-color:#fecaca}
       .vit b{display:block;font-size:20px} .vit small{color:var(--muted)}
       h3{font-size:15px;margin:20px 0 8px} .sub2{display:block;color:var(--muted);font-family:ui-monospace,Consolas,monospace;font-size:11.5px;white-space:pre-wrap}
+      .item .ih{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px} .item img{width:100%;border:1px solid var(--line);border-radius:8px;margin:6px 0}
+      .errcard{border-left:4px solid var(--red)} .ih.error .num{background:#c2410c} .ih.recording .num{background:#1f2937}
       ol{padding-left:22px} .foot{color:var(--muted);font-size:12px;margin-top:40px;text-align:center}`;
     const tblEnv = `<table>${m.env.map(([k, v]) => `<tr><th style="width:220px">${escH(k)}</th><td class="u">${escH(v)}</td></tr>`).join('')}</table>`;
 
@@ -160,14 +162,15 @@
 ${block('Шаги воспроизведения', m.steps)}
 <div class="grid">${block('Ожидаемый результат', m.expected) || '<div></div>'}${block('Фактический результат', m.actual) || '<div></div>'}</div>
 ${block('Дополнительно', m.notes)}
-${m.findings && m.findings.length ? `<h2>Что найдено автоматически</h2><div class="finds">${m.findings.map((f) => `<div class="find ${f.level}"><b>${escH(f.title)}</b><span>${escH(f.text)}</span></div>`).join('')}</div>` : ''}
 <h2>Окружение</h2>${tblEnv}
-${m.videos.length || m.voice.length ? `<h2>Видео и голос</h2>${videos}${voices}` : ''}
-${m.annotations.length ? `<h2>Пометки (${m.annotations.length})</h2><div class="ann">${anns}</div>` : ''}
-<h2>Действия пользователя (${m.actions.length})</h2><p class="meta">Время отсчитывается от нажатия «Нашёл баг», «−» — действия до нажатия.</p>${steps}
+${itemsHTML(m, media)}
+${m.voice.length ? `<h2>Голос</h2>${voices}` : ''}
+${m.appendix ? `<h2 style="margin-top:56px;border-top:3px solid var(--line);padding-top:24px">Приложение: все данные сессии</h2>
+${m.findings && m.findings.length ? `<h2>Что найдено автоматически</h2><div class="finds">${m.findings.map((f) => `<div class="find ${f.level}"><b>${escH(f.title)}</b><span>${escH(f.text)}</span></div>`).join('')}</div>` : ''}
+<h2>Действия пользователя (${m.actions.length})</h2><p class="meta">Время отсчитывается от начала проверки, «−» — до начала.</p>${steps}
 <h2>Консоль (${m.console.length})</h2>${consoleT}
 <h2>Сетевые запросы (${m.network.length})</h2>${netT}
-${details ? `<h2>Детали запросов</h2>${details}` : ''}
+${details ? `<h2>Детали запросов</h2>${details}` : ''}` : ''}
 ${htmlPerf(m.perf)}
 ${m.events && m.events.length ? `<h2>События страницы (${m.events.length})</h2><table><tr><th style="width:80px">Время</th><th style="width:110px">Тип</th><th>Событие</th></tr>${m.events.map((e) => `<tr class="${e.level === 'error' ? 'err' : e.level === 'warn' ? 'warn' : ''}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.cat)}</td><td>${escH(e.text)}</td></tr>`).join('')}</table>` : ''}
 ${htmlStorage(m.storage)}
@@ -192,30 +195,15 @@ ${htmlStorage(m.storage)}
     if (m.expected) md += `## Ожидаемый результат\n\n${m.expected}\n\n`;
     if (m.actual) md += `## Фактический результат\n\n${m.actual}\n\n`;
     if (m.notes) md += `## Дополнительно\n\n${m.notes}\n\n`;
-    if (m.findings && m.findings.length) {
+    if (m.appendix && m.findings && m.findings.length) {
       md += `## Что найдено автоматически\n\n` + m.findings.map((f) => `- ${f.level === 'error' ? '🔴' : f.level === 'warn' ? '🟡' : 'ℹ️'} **${f.title}** — ${f.text}`).join('\n') + '\n\n';
     }
     md += `## Окружение\n\n` + mdTable(['Параметр', 'Значение'], m.env.map(([k, v]) => [mdCell(k), mdCell(v, 1000)])) + '\n';
-    if (m.videos.length || m.voice.length) {
-      md += `## Видео и голос\n\n`;
-      m.videos.forEach((v) => (md += `- 🎬 [Видео ${v.n}](${v.file}) — начато в ${fmtRel(v.rel)}, ${fmtDur(v.durationMs)}, ${fmtSize(v.size)}\n`));
-      m.voice.forEach((v) => (md += `- 🎤 [Голосовой комментарий ${v.n}](${v.file}) — ${fmtRel(v.rel)}, ${fmtDur(v.durationMs)}\n`));
-      md += '\n';
-    }
-    if (m.annotations.length) {
-      md += `## Пометки\n\n`;
-      m.annotations.forEach((a) => {
-        md += `### ${a.n}. ${a.comment ? short(a.comment.split('\n')[0], 100) : '(без комментария)'}\n\n`;
-        md += `*${KIND_RU[a.kind] || a.kind} · ${fmtRel(a.rel)} · ${a.url}*\n\n`;
-        if (a.comment && a.comment.includes('\n')) md += a.comment + '\n\n';
-        if (a.element) {
-          md += `**Элемент:** \`${a.element.selector}\` — <${a.element.tag}>, ${Math.round(a.element.rect.w)}×${Math.round(a.element.rect.h)}${a.element.text ? `, текст: «${short(a.element.text, 120)}»` : ''}\n\n`;
-          md += `<details><summary>HTML и стили элемента</summary>\n\n` + fence(a.element.html, 'html') + '\n' + fence(Object.entries(a.element.styles || {}).map(([k, v]) => `${k}: ${v};`).join('\n'), 'css') + '\n</details>\n\n';
-        }
-        if (a.file) md += `![Пометка ${a.n}](${a.file})\n\n`;
-      });
-    }
-    md += `## Действия пользователя\n\n_Время от нажатия «Нашёл баг»; «−» — до нажатия._\n\n`;
+    md += itemsMD(m);
+    if (m.voice.length) md += `## Голос\n\n` + m.voice.map((v) => `- 🎤 [Голосовой комментарий ${v.n}](${v.file}) — ${fmtRel(v.rel)}, ${fmtDur(v.durationMs)}`).join('\n') + '\n\n';
+    if (m.appendix) {
+    md += `# Приложение: все данные сессии\n\n`;
+    md += `## Действия пользователя\n\n_Время от начала проверки; «−» — до начала._\n\n`;
     md += m.actions.length ? mdTable(['Время', 'Действие', 'Страница'], m.actions.map((a) => [fmtRel(a.rel), mdCell(a.text), mdCell(a.page, 120)])) : '_Нет данных._\n';
     md += `\n## Консоль\n\n`;
     md += m.console.length
@@ -225,7 +213,8 @@ ${htmlStorage(m.storage)}
     md += m.network.length
       ? mdTable(['Время', 'Метод', 'Статус', 'Тип', 'URL', 'Время отв.', 'Размер'], m.network.map((e) => [fmtRel(e.rel), e.method, (isErr(e) ? '🔴 ' : '') + statusLabel(e), e.type || '', mdCell(e.url + (e.error ? ` — ${e.error}` : ''), 250), fmtDur(e.duration), fmtSize(e.size)]))
       : '_Нет запросов._\n';
-    if (m.details) {
+    }
+    if (m.appendix && m.details) {
       const det = m.network.filter((e) => hasH(e.reqHeaders) || hasH(e.resHeaders) || e.postData || e.body);
       if (det.length) {
         md += `\n## Детали запросов\n\n`;
@@ -258,10 +247,134 @@ ${htmlStorage(m.storage)}
     if (m.storage) {
       const st = m.storage;
       const t = (title, rows, head) => `\n### ${title} (${rows.length})\n\n` + (rows.length ? mdTable(head, rows.map((r) => r.map((c) => mdCell(c, 300)))) : '_Пусто._\n');
-      md += `\n## Cookies и хранилище\n\n_Снимок в момент нажатия «Нашёл баг»._\n` + t('Cookies', st.cookies, ['Имя', 'Размер', 'Значение']) + t('localStorage', st.local, ['Ключ', 'Размер', 'Значение']) + t('sessionStorage', st.session, ['Ключ', 'Размер', 'Значение']) + t('Изменения во время теста', st.changes, ['Время', 'Операция']);
+      md += `\n## Cookies и хранилище\n\n_Снимок в момент начала проверки._\n` + t('Cookies', st.cookies, ['Имя', 'Размер', 'Значение']) + t('localStorage', st.local, ['Ключ', 'Размер', 'Значение']) + t('sessionStorage', st.session, ['Ключ', 'Размер', 'Значение']) + t('Изменения во время теста', st.changes, ['Время', 'Операция']);
     }
     md += `\n---\n_Сформировано QA Bug Recorder · ${m.generatedAt}_\n`;
     return md;
+  }
+
+  // ================= пункты: замечание / ошибка / запись =================
+  const ITEM_RU = { remark: 'Замечание', error: 'Ошибка', recording: 'Запись видео' };
+  const itemTitle = (it) =>
+    it.kind === 'remark' ? `💬 Замечание ${it.n}: ${short(it.comment || '(без комментария)', 90)}`
+      : it.kind === 'error' ? `⚠ Ошибка ${it.n}: ${short(it.title, 110)}`
+        : `🎬 Запись ${it.n} · ${fmtDur(it.durationMs)}`;
+  const reqLine = (e) => `${e.method} ${statusLabel(e)} ${e.url}${e.duration != null ? ` · ${fmtDur(e.duration)}` : ''}${e.error ? ` — ${e.error}` : ''}`;
+
+  function itemsHTML(m, media) {
+    if (!m.items || !m.items.length) return '';
+    const tbl = (head, rows) => `<table><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>`;
+    const lvlCls = (l) => (l === 'error' ? 'err' : l === 'warn' ? 'warn' : '');
+    const reqDetails = (e) => `<details open><summary class="mono">${escH(reqLine(e))}</summary>
+      ${hasH(e.reqHeaders) ? `<div class="label">Заголовки запроса</div><pre>${escH(hdrText(e.reqHeaders))}</pre>` : ''}
+      ${e.postData ? `<div class="label">Тело запроса</div><pre>${escH(e.postData)}</pre>` : ''}
+      ${hasH(e.resHeaders) ? `<div class="label">Заголовки ответа</div><pre>${escH(hdrText(e.resHeaders))}</pre>` : ''}
+      ${e.body ? `<div class="label">Ответ сервера</div><pre>${escH(e.body)}</pre>` : ''}</details>`;
+    const body = m.items.map((it) => {
+      const head = `<div class="ih ${it.kind}"><span class="num">${it.kind === 'error' ? '!' : it.kind === 'recording' ? '▶' : it.n}</span><b>${escH(itemTitle(it))}</b><span class="tag">${fmtRel(it.rel)}</span>${it.count > 1 ? `<span class="tag">повторялась ${it.count} раз</span>` : ''}</div>${it.url ? `<div class="meta" style="margin:0 0 10px;word-break:break-all">${escH(it.url)}</div>` : ''}`;
+      const img = it.dataUrl ? `<img src="${it.dataUrl}" alt="">` : '';
+      if (it.kind === 'remark') {
+        return `<div class="card item">${head}
+          ${it.comment && it.comment.includes('\n') ? `<div class="pre">${escH(it.comment)}</div>` : ''}
+          ${it.element ? `<div class="meta mono" style="margin-bottom:8px">Элемент: ${escH(it.element.selector)} · &lt;${escH(it.element.tag)}&gt; ${Math.round(it.element.rect.w)}×${Math.round(it.element.rect.h)}</div>` : ''}
+          ${(it.voice || []).map((v) => (media[v.file] ? `<audio controls src="${media[v.file]}"></audio>` : `<div class="meta">🎤 Голос: ${escH(v.file)}</div>`)).join('')}
+          ${img}</div>`;
+      }
+      if (it.kind === 'error') {
+        return `<div class="card item errcard">${head}${img}
+          ${it.jsErrors.length ? `<h3>Ошибка JavaScript</h3>${it.jsErrors.map((j) => `<pre>${escH(j.text)}${j.loc ? '\n@ ' + escH(j.loc) : ''}</pre>`).join('')}` : ''}
+          ${it.requests.length ? `<h3>Запрос с ошибкой</h3>${it.requests.map(reqDetails).join('')}` : ''}
+          ${it.before.length ? `<h3>Что делал пользователь перед ошибкой</h3><ol>${it.before.map((a) => `<li>${escH(a.text)} <span class="meta">${fmtRel(a.rel)}</span></li>`).join('')}</ol>` : ''}
+          ${it.eventsNear.length ? `<h3>Что происходило на странице</h3>${tbl(['Время', 'Событие'], it.eventsNear.map((e) => `<tr class="${lvlCls(e.level)}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.text)}</td></tr>`))}` : ''}
+          ${it.consoleNear.length ? `<h3>Консоль рядом</h3>${tbl(['Время', 'Уровень', 'Сообщение'], it.consoleNear.map((c) => `<tr class="${lvlCls(c.level)}"><td class="mono">${fmtRel(c.rel)}</td><td>${LEVEL_RU[c.level] || c.level}</td><td class="mono pre">${escH(short(c.text, 1500))}</td></tr>`))}` : ''}
+          ${it.requestsNear.length ? `<h3>Запросы рядом</h3>${tbl(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], it.requestsNear.map((e) => `<tr class="${isErr(e) ? 'err' : ''}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.method)}</td><td>${escH(statusLabel(e))}</td><td class="u mono">${escH(short(e.url, 200))}</td><td>${fmtDur(e.duration)}</td></tr>`))}` : ''}
+        </div>`;
+      }
+      return `<div class="card item">${head}
+        ${media[it.file] ? `<video controls preload="metadata" src="${media[it.file]}"></video>` : `<p class="meta">Видео: файл <b>${escH(it.file)}</b> (${fmtSize(it.size)}) прикладывается отдельно.</p>`}
+        ${it.timeline.length ? `<h3>Что происходило во время записи</h3>${tbl(['Время', 'Тип', 'Событие'], it.timeline.map((e) => `<tr class="${lvlCls(e.level)}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.cat)}</td><td>${escH(e.text)}</td></tr>`))}` : ''}
+        ${it.requests.length ? `<h3>Запросы</h3>${tbl(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], it.requests.map((e) => `<tr class="${isErr(e) ? 'err' : ''}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.method)}</td><td>${escH(statusLabel(e))}</td><td class="u mono">${escH(short(e.url, 200))}</td><td>${fmtDur(e.duration)}</td></tr>`))}${it.requests.filter((e) => isErr(e) && (e.body || e.postData || hasH(e.reqHeaders))).map(reqDetails).join('')}` : ''}
+        ${it.console.length ? `<h3>Консоль</h3>${tbl(['Время', 'Уровень', 'Сообщение'], it.console.map((c) => `<tr class="${lvlCls(c.level)}"><td class="mono">${fmtRel(c.rel)}</td><td>${LEVEL_RU[c.level] || c.level}</td><td class="mono pre">${escH(short(c.text, 1500))}</td></tr>`))}` : ''}
+        ${it.perf.length ? `<h3>Производительность</h3><ul>${it.perf.map((p) => `<li>${fmtRel(p.rel)} — ${escH(p.text)}</li>`).join('')}</ul>` : ''}
+      </div>`;
+    }).join('');
+    return `<h2>Пункты (${m.items.length})</h2>${body}`;
+  }
+
+  function itemsMD(m) {
+    if (!m.items || !m.items.length) return '';
+    let md = `## Пункты (${m.items.length})\n\n`;
+    const reqMD = (e) => {
+      let s = `**${reqLine(e)}**\n\n`;
+      if (hasH(e.reqHeaders)) s += 'Заголовки запроса:\n\n' + fence(hdrText(e.reqHeaders), 'http');
+      if (e.postData) s += '\nТело запроса:\n\n' + fence(e.postData);
+      if (hasH(e.resHeaders)) s += '\nЗаголовки ответа:\n\n' + fence(hdrText(e.resHeaders), 'http');
+      if (e.body) s += '\nОтвет сервера:\n\n' + fence(e.body);
+      return s + '\n';
+    };
+    m.items.forEach((it) => {
+      md += `### ${itemTitle(it)}\n\n_${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}${it.url ? ` · ${it.url}` : ''}_\n\n`;
+      if (it.kind === 'remark') {
+        if (it.comment && it.comment.includes('\n')) md += it.comment + '\n\n';
+        if (it.element) md += `Элемент: \`${it.element.selector}\` — <${it.element.tag}>, ${Math.round(it.element.rect.w)}×${Math.round(it.element.rect.h)}\n\n`;
+        (it.voice || []).forEach((v) => (md += `🎤 [Голосовой комментарий](${v.file})\n\n`));
+        if (it.file) md += `![Замечание ${it.n}](${it.file})\n\n`;
+      } else if (it.kind === 'error') {
+        if (it.file) md += `![Ошибка ${it.n}](${it.file})\n\n`;
+        if (it.jsErrors.length) md += '**Ошибка JavaScript**\n\n' + it.jsErrors.map((j) => fence(j.text + (j.loc ? '\n@ ' + j.loc : ''))).join('\n') + '\n';
+        if (it.requests.length) md += '**Запрос с ошибкой**\n\n' + it.requests.map(reqMD).join('');
+        if (it.before.length) md += '**Что делал пользователь перед ошибкой**\n\n' + it.before.map((a, i) => `${i + 1}. ${a.text}`).join('\n') + '\n\n';
+        if (it.eventsNear.length) md += '**Что происходило на странице**\n\n' + mdTable(['Время', 'Событие'], it.eventsNear.map((e) => [fmtRel(e.rel), mdCell(e.text, 300)])) + '\n';
+        if (it.consoleNear.length) md += '**Консоль рядом**\n\n' + mdTable(['Время', 'Уровень', 'Сообщение'], it.consoleNear.map((c) => [fmtRel(c.rel), LEVEL_RU[c.level] || c.level, mdCell(c.text, 500)])) + '\n';
+        if (it.requestsNear.length) md += '**Запросы рядом**\n\n' + mdTable(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], it.requestsNear.map((e) => [fmtRel(e.rel), e.method, (isErr(e) ? '🔴 ' : '') + statusLabel(e), mdCell(e.url, 200), fmtDur(e.duration)])) + '\n';
+      } else {
+        md += `🎬 [Видео](${it.file}) — ${fmtDur(it.durationMs)}, ${fmtSize(it.size)}\n\n`;
+        if (it.timeline.length) md += '**Что происходило во время записи**\n\n' + mdTable(['Время', 'Тип', 'Событие'], it.timeline.map((e) => [fmtRel(e.rel), e.cat, (e.level === 'error' ? '🔴 ' : e.level === 'warn' ? '🟡 ' : '') + mdCell(e.text, 300)])) + '\n';
+        if (it.requests.length) md += '**Запросы**\n\n' + mdTable(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], it.requests.map((e) => [fmtRel(e.rel), e.method, (isErr(e) ? '🔴 ' : '') + statusLabel(e), mdCell(e.url, 200), fmtDur(e.duration)])) + '\n' + it.requests.filter((e) => isErr(e) && (e.body || e.postData)).map(reqMD).join('');
+        if (it.console.length) md += '**Консоль**\n\n' + mdTable(['Время', 'Уровень', 'Сообщение'], it.console.map((c) => [fmtRel(c.rel), LEVEL_RU[c.level] || c.level, mdCell(c.text, 500)])) + '\n';
+        if (it.perf.length) md += '**Производительность**\n\n' + it.perf.map((p) => `- ${fmtRel(p.rel)} — ${p.text}`).join('\n') + '\n\n';
+      }
+      md += '---\n\n';
+    });
+    return md;
+  }
+
+  function itemsDOCX(d, m) {
+    if (!m.items || !m.items.length) return;
+    const W = g.DOCX_TEXT_WIDTH;
+    d.h(`Пункты (${m.items.length})`, 1);
+    const reqDoc = (e) => {
+      d.p(reqLine(e), { run: { bold: true, mono: true, size: 18, color: isErr(e) ? 'B91C1C' : undefined } });
+      if (hasH(e.reqHeaders)) { d.p('Заголовки запроса:', { run: { bold: true, size: 18 } }); d.code(hdrText(e.reqHeaders)); }
+      if (e.postData) { d.p('Тело запроса:', { run: { bold: true, size: 18 } }); d.code(short(e.postData, 5000)); }
+      if (hasH(e.resHeaders)) { d.p('Заголовки ответа:', { run: { bold: true, size: 18 } }); d.code(hdrText(e.resHeaders)); }
+      if (e.body) { d.p('Ответ сервера:', { run: { bold: true, size: 18 } }); d.code(short(e.body, 5000)); }
+    };
+    const lvlFill = (l) => (l === 'error' ? 'FEF2F2' : l === 'warn' ? 'FFFBEB' : undefined);
+    m.items.forEach((it) => {
+      d.h(itemTitle(it), 2);
+      d.p([d.run(`${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}`, { color: '6B7280', size: 18 }), it.url ? d.run(' · ' + it.url, { color: '6B7280', size: 18 }) : '']);
+      if (it.kind === 'remark') {
+        if (it.comment && it.comment.includes('\n')) d.p(it.comment);
+        if (it.element) d.p([d.run('Элемент: ', { bold: true, size: 18 }), d.run(`${it.element.selector} · <${it.element.tag}> ${Math.round(it.element.rect.w)}×${Math.round(it.element.rect.h)}`, { mono: true, size: 18 })]);
+        (it.voice || []).forEach((v) => d.p(`🎤 Голосовой комментарий: файл «${v.file.split('/').pop()}», прикладывается отдельно.`, { run: { size: 18 } }));
+        if (it.bytes && it.w) d.image(it.bytes, it.w, it.h);
+      } else if (it.kind === 'error') {
+        if (it.bytes && it.w) d.image(it.bytes, it.w, it.h);
+        if (it.jsErrors.length) { d.h('Ошибка JavaScript', 3); it.jsErrors.forEach((j) => d.code(short(j.text, 3000) + (j.loc ? '\n@ ' + j.loc : ''))); }
+        if (it.requests.length) { d.h('Запрос с ошибкой', 3); it.requests.forEach(reqDoc); }
+        if (it.before.length) { d.h('Что делал пользователь перед ошибкой', 3); it.before.forEach((a, i) => d.p(`${i + 1}. ${a.text}`)); }
+        if (it.eventsNear.length) { d.h('Что происходило на странице', 3); d.table([['Время', 'Событие'], ...it.eventsNear.map((e) => [{ text: fmtRel(e.rel), fill: lvlFill(e.level) }, { text: e.text, fill: lvlFill(e.level) }])], { widths: [1000, W - 1000] }); }
+        if (it.consoleNear.length) { d.h('Консоль рядом', 3); d.table([['Время', 'Уровень', 'Сообщение'], ...it.consoleNear.map((c) => [{ text: fmtRel(c.rel), fill: lvlFill(c.level) }, { text: LEVEL_RU[c.level] || c.level, fill: lvlFill(c.level) }, { text: short(c.text, 1500), mono: true, fill: lvlFill(c.level) }])], { widths: [1000, 1300, W - 2300] }); }
+        if (it.requestsNear.length) { d.h('Запросы рядом', 3); d.table([['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], ...it.requestsNear.map((e) => { const f = isErr(e) ? 'FEF2F2' : undefined; return [{ text: fmtRel(e.rel), fill: f }, { text: e.method, fill: f }, { text: statusLabel(e), fill: f, bold: isErr(e) }, { text: short(e.url, 250), mono: true, fill: f }, { text: fmtDur(e.duration), fill: f }]; })], { widths: [950, 800, 850, W - 3500, 900] }); }
+      } else {
+        d.p(`🎬 Видео: файл «${it.file.split('/').pop()}», ${fmtDur(it.durationMs)}, ${fmtSize(it.size)}. Прикладывается отдельным файлом.`);
+        if (it.timeline.length) { d.h('Что происходило во время записи', 3); d.table([['Время', 'Тип', 'Событие'], ...it.timeline.map((e) => [{ text: fmtRel(e.rel), fill: lvlFill(e.level) }, { text: e.cat, fill: lvlFill(e.level) }, { text: e.text, fill: lvlFill(e.level) }])], { widths: [1000, 1500, W - 2500] }); }
+        if (it.requests.length) { d.h('Запросы', 3); d.table([['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], ...it.requests.map((e) => { const f = isErr(e) ? 'FEF2F2' : undefined; return [{ text: fmtRel(e.rel), fill: f }, { text: e.method, fill: f }, { text: statusLabel(e), fill: f, bold: isErr(e) }, { text: short(e.url, 250), mono: true, fill: f }, { text: fmtDur(e.duration), fill: f }]; })], { widths: [950, 800, 850, W - 3500, 900] }); it.requests.filter((e) => isErr(e) && (e.body || e.postData)).forEach(reqDoc); }
+        if (it.console.length) { d.h('Консоль', 3); d.table([['Время', 'Уровень', 'Сообщение'], ...it.console.map((c) => [{ text: fmtRel(c.rel), fill: lvlFill(c.level) }, { text: LEVEL_RU[c.level] || c.level, fill: lvlFill(c.level) }, { text: short(c.text, 1500), mono: true, fill: lvlFill(c.level) }])], { widths: [1000, 1300, W - 2300] }); }
+        if (it.perf.length) { d.h('Производительность', 3); it.perf.forEach((p) => d.p(`${fmtRel(p.rel)} — ${p.text}`)); }
+      }
+    });
   }
 
   // ---------------- DOCX ----------------
@@ -280,7 +393,7 @@ ${htmlStorage(m.storage)}
     section('Фактический результат', m.actual);
     section('Дополнительно', m.notes);
 
-    if (m.findings && m.findings.length) {
+    if (false && m.findings && m.findings.length) {
       d.h('Что найдено автоматически', 1);
       d.table([['', 'Находка', 'Подробности'], ...m.findings.map((f) => {
         const fill = f.level === 'error' ? 'FEF2F2' : f.level === 'warn' ? 'FFFBEB' : 'EFF6FF';
@@ -290,36 +403,20 @@ ${htmlStorage(m.storage)}
     d.h('Окружение', 1);
     d.table([['Параметр', 'Значение'], ...m.env.map(([k, v]) => [{ text: k, bold: true }, String(v)])], { widths: [2700, W - 2700], size: 18 });
 
-    if (m.videos.length || m.voice.length) {
-      d.h('Видео и голос', 1);
-      m.videos.forEach((v) => d.p(`🎬 Видео ${v.n}: файл «${v.file.split('/').pop()}», начато в ${fmtRel(v.rel)}, длительность ${fmtDur(v.durationMs)}, ${fmtSize(v.size)}. Прикладывается отдельным файлом.`));
-      m.voice.forEach((v) => d.p(`🎤 Голосовой комментарий ${v.n}: файл «${v.file.split('/').pop()}», ${fmtRel(v.rel)}, ${fmtDur(v.durationMs)}.`));
+    itemsDOCX(d, m);
+    if (m.voice.length) { d.h('Голос', 1); m.voice.forEach((v) => d.p(`🎤 Голосовой комментарий ${v.n}: файл «${v.file.split('/').pop()}», ${fmtRel(v.rel)}, ${fmtDur(v.durationMs)}.`)); }
+    if (m.appendix) {
+    d.pageBreak();
+    d.title('Приложение: все данные сессии');
+    if (m.findings && m.findings.length) {
+      d.h('Что найдено автоматически', 1);
+      d.table([['', 'Находка', 'Подробности'], ...m.findings.map((f) => {
+        const fill = f.level === 'error' ? 'FEF2F2' : f.level === 'warn' ? 'FFFBEB' : 'EFF6FF';
+        return [{ text: f.level === 'error' ? '●' : f.level === 'warn' ? '▲' : 'i', fill, color: f.level === 'error' ? 'B91C1C' : f.level === 'warn' ? 'B45309' : '1D4ED8', bold: true }, { text: f.title, fill, bold: true }, { text: f.text, fill }];
+      })], { widths: [400, 3800, W - 4200], size: 18 });
     }
-
-    if (m.annotations.length) {
-      d.h(`Пометки (${m.annotations.length})`, 1);
-      m.annotations.forEach((a) => {
-        d.h(`${a.n}. ${a.comment ? short(a.comment.split('\n')[0], 90) : '(без комментария)'}`, 2);
-        d.p([d.run(`${KIND_RU[a.kind] || a.kind} · ${fmtRel(a.rel)} · `, { color: '6B7280', size: 18 }), d.run(a.url, { color: '6B7280', size: 18 })]);
-        if (a.comment && a.comment.includes('\n')) d.p(a.comment);
-        if (a.element) {
-          d.table(
-            [
-              ['Свойство', 'Значение'],
-              ['Селектор', { text: a.element.selector, mono: true }],
-              ['Тег / размер', `<${a.element.tag}>  ${Math.round(a.element.rect.w)}×${Math.round(a.element.rect.h)} px`],
-              ['Текст', short(a.element.text, 300)],
-              ['Стили', { text: Object.entries(a.element.styles || {}).map(([k, v]) => `${k}: ${v}`).join('\n'), mono: true }],
-            ],
-            { widths: [2000, W - 2000], size: 16 }
-          );
-        }
-        if (a.bytes && a.w) d.image(a.bytes, a.w, a.h);
-      });
-    }
-
     d.h(`Действия пользователя (${m.actions.length})`, 1);
-    d.p('Время отсчитывается от нажатия «Нашёл баг»; «−» — действия до нажатия.', { run: { color: '6B7280', size: 18 } });
+    d.p('Время отсчитывается от начала проверки; «−» — действия до начала.', { run: { color: '6B7280', size: 18 } });
     if (m.actions.length) d.table([['Время', 'Действие', 'Страница'], ...m.actions.map((a) => [fmtRel(a.rel), a.text, short(a.page, 100)])], { widths: [1000, 5422, 3500] });
 
     d.h(`Консоль (${m.console.length})`, 1);
@@ -351,7 +448,8 @@ ${htmlStorage(m.storage)}
       if (m.network.length > LIM) d.p(`… и ещё ${m.network.length - LIM} запросов (см. HAR).`);
     } else d.p('Запросов нет.');
 
-    if (m.details) {
+    }
+    if (m.appendix && m.details) {
       const det = m.network.filter((e) => isErr(e) || ['XHR', 'Fetch'].includes(e.type)).filter((e) => hasH(e.reqHeaders) || e.body || e.postData).slice(0, 150);
       if (det.length) {
         d.h('Детали запросов (API и ошибки)', 1);
@@ -390,7 +488,7 @@ ${htmlStorage(m.storage)}
     if (m.storage) {
       const st = m.storage;
       d.h('Cookies и хранилище', 1);
-      d.p('Снимок в момент нажатия «Нашёл баг».', { run: { color: '6B7280', size: 18 } });
+      d.p('Снимок в момент начала проверки.', { run: { color: '6B7280', size: 18 } });
       const t = (title, rows, head) => { d.h(`${title} (${rows.length})`, 2); if (rows.length) d.table([head, ...rows.map((r) => r.map((c, i) => ({ text: short(c, 400), mono: i !== 1 })))], { widths: [2800, 1000, W - 3800] }); else d.p('Пусто'); };
       t('Cookies', st.cookies, ['Имя', 'Размер', 'Значение']);
       t('localStorage', st.local, ['Ключ', 'Размер', 'Значение']);

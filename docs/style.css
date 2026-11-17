@@ -242,3 +242,15 @@ details p{margin:0;padding:0 22px 20px;color:#3b4050}
 .bt.auto span{color:#b7bdca}
 @media (max-width:1000px){.bt-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:600px){.bt-grid{grid-template-columns:1fr}}
+
+/* ---------- пункты отчёта ---------- */
+.items-sec{background:#fff}
+.it-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:18px;margin-top:36px;align-items:start}
+.itc{border:1.5px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px;border-top:5px solid var(--red)}
+.itc.err{border-top-color:#ea580c}
+.itc.rec{border-top-color:var(--ink)}
+.itl{font:700 18px var(--display);letter-spacing:-.01em;display:flex;gap:8px;align-items:center}
+.itl span{font-size:22px}
+.itc p{margin:0;color:var(--muted);font-size:14.5px}
+.itc img{border-radius:10px;border:1px solid var(--line);box-shadow:0 10px 30px -15px rgba(11,13,18,.3)}
+@media (max-width:1000px){.it-grid{grid-template-columns:1fr}}

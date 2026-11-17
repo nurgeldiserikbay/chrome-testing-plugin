@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const DEF = { bufferMin: 5, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true };
+const DEF = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true };
 let st = null;
 
 const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
@@ -9,7 +9,7 @@ function showErr(t) { $('err').textContent = t; $('err').hidden = !t; }
 async function loadSettings() {
   const { qa_settings } = await chrome.storage.local.get('qa_settings');
   const s = Object.assign({}, DEF, qa_settings);
-  ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders'].forEach((k) => {
+  ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders', 'autoErrors'].forEach((k) => {
     $('s-' + k).checked = !!s[k];
     $('s-' + k).onchange = save;
   });
@@ -23,6 +23,7 @@ async function save() {
       tabAudio: $('s-tabAudio').checked,
       cdp: $('s-cdp').checked,
       reactRenders: $('s-reactRenders').checked,
+      autoErrors: $('s-autoErrors').checked,
       bufferMin: +$('s-bufferMin').value,
     },
   });
@@ -37,7 +38,7 @@ async function refresh() {
     $('c-ann').textContent = st.annotations;
     $('c-act').textContent = st.actions;
     $('c-net').textContent = st.network;
-    $('c-err').textContent = st.errors;
+    $('c-err').textContent = st.autoErrors;
     $('voice').classList.toggle('rec', st.voice);
     $('voice').textContent = st.voice ? '■ Голос ' + fmt(Date.now() - st.voiceStart) : '🎤 Голос';
     $('video').classList.toggle('rec', st.video);
@@ -104,7 +105,7 @@ async function showShortcut() {
   try {
     const c = (await chrome.commands.getAll()).find((x) => x.name === 'found-bug');
     const k = $('keys');
-    if (c && c.shortcut) { k.textContent = `${c.shortcut} — нашёл баг`; k.classList.remove('warn'); }
+    if (c && c.shortcut) { k.textContent = `${c.shortcut} — начать проверку`; k.classList.remove('warn'); }
     else { k.textContent = '⚠ Горячая клавиша не назначена — настроить'; k.classList.add('warn'); }
   } catch (_) {}
 }

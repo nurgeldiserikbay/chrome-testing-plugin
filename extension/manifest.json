@@ -3,7 +3,7 @@
   "name": "QA Bug Recorder",
   "short_name": "QA Bug",
   "description": "Фиксация багов: пометки и выбор элемента на странице, видео, голос, логи консоли, запросы и действия. Экспорт в Word, Markdown, HTML, HAR.",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "tabs",
@@ -65,13 +65,13 @@
         "default": "Ctrl+Shift+Q",
         "mac": "MacCtrl+Shift+Q"
       },
-      "description": "Нашёл баг: открыть панель фиксации"
+      "description": "Начать проверку / открыть панель"
     },
     "pick-element": {
       "suggested_key": {
         "default": "Alt+Shift+E"
       },
-      "description": "Выбрать элемент с багом"
+      "description": "Выбрать элемент для замечания"
     },
     "annotate": {
       "suggested_key": {
@@ -83,7 +83,7 @@
       "suggested_key": {
         "default": "Alt+Shift+S"
       },
-      "description": "Готово: открыть отчёт"
+      "description": "Завершить проверку и открыть отчёт"
     }
   }
 }

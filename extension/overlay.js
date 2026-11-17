@@ -1,4 +1,4 @@
-// Панель «Нашёл баг» поверх страницы: выбор элемента, стрелка, область, заметка, голос, видео.
+// Панель проверки поверх страницы: выбор элемента, стрелка, область, заметка, голос, видео.
 // Пометки привязаны к элементам страницы, в покое полупрозрачные, их можно изменить и удалить.
 (() => {
   if (globalThis.__qaOverlay) { globalThis.__qaOverlay.ping(); return; }
@@ -29,6 +29,9 @@
   .bar .x.warn{background:#7f1d1d;color:#fff}
   .bar .cnt{background:#374151;font-size:12px;padding:6px 9px}
   .bar .cnt.open{background:${BLUE};color:#fff}
+  .bar .errs{background:#7c2d12;color:#fed7aa}
+  .li .n.e{background:#c2410c}
+  .li h5{margin:0;padding:10px 14px 4px;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
   .bar .type{background:#1f2937;border:1px solid #374151}
   .bar .type.open{background:${BLUE};border-color:${BLUE};color:#fff}
   .types{position:fixed;right:16px;bottom:72px;width:400px;max-height:70vh;overflow:auto;background:#fff;color:#111827;border-radius:12px;
@@ -105,8 +108,7 @@
 </div>
 <div class="bar">
   <span class="grip" title="Перетащить панель">⋮⋮</span>
-  <span class="title" title="Фиксация бага: пометки, логи и запросы. Видео пишется, только если нажать «Записать видео»"><i>🐞</i>Баг <b class="t">00:00</b><span class="vrec">● REC</span></span>
-  <button data-act="type" class="type" title="Тип бага: от него зависит, какие данные попадут в отчёт">✨ Тип: авто</button>
+  <span class="title" title="Идёт проверка. Ошибки консоли и запросов сохраняются автоматически. Видео пишется, только если нажать «Записать видео»"><i>🐞</i>Проверка <b class="t">00:00</b><span class="vrec">● REC</span></span>
   <span class="sep"></span>
   <button data-tool="element" title="Выбрать элемент с багом">🎯 Элемент</button>
   <button data-tool="arrow" title="Нарисовать стрелку">➚ Стрелка</button>
@@ -117,7 +119,8 @@
   <button data-act="video" title="Начать или остановить запись видео вкладки"><span class="vdt">⏺ Записать видео</span></button>
   <span class="sep"></span>
   <button data-act="eye" title="Скрыть пометки на странице">👁</button>
-  <button data-act="list" class="cnt" title="Список пометок: показать, изменить, удалить">📋 <span class="cn">0</span></button>
+  <button data-act="list" class="cnt" title="Список замечаний: показать, изменить, удалить">📋 <span class="cn">0</span></button>
+  <button data-act="errs" class="cnt errs" title="Автоматически пойманные ошибки консоли и запросов" hidden>⚠ <span class="en">0</span></button>
   <button class="done" data-act="finish" title="Завершить и открыть отчёт">✓ Готово</button>
   <button class="x" data-act="cancel" title="Отменить и удалить этот баг">✕</button>
 </div>`;
@@ -547,9 +550,10 @@
     closeTypes();
     const r = await send({ type: 'annotations-list' });
     const items = (r && r.items) || [];
+    const errs = (r && r.errors) || [];
     $('[data-act=list]').classList.add('open');
     listEl.hidden = false;
-    listEl.innerHTML = `<h4>Пометки (${items.length}) <small>наведите на пометку на странице — она станет яркой</small></h4>` +
+    listEl.innerHTML = `<h4>Замечания (${items.length}) <small>наведите на пометку на странице — она станет яркой</small></h4>` +
       (items.length
         ? items.map((a) => {
             const here = shapes.find((s) => s.n === a.n);
@@ -558,8 +562,17 @@
               `<small>${other ? 'на другой странице' : here ? 'на этой странице' : 'нарисована до перезагрузки'}</small></div><div class="bt">` +
               `${here ? '<button data-a="show" title="Показать на странице">👁</button>' : ''}<button data-a="edit" title="Изменить текст">✎</button><button data-a="del" title="Удалить">🗑</button></div></div>`;
           }).join('')
-        : '<div class="empty">Пока нет пометок. Используйте 🎯 Элемент, ➚ Стрелка, ▭ Область или 💬 Заметка.</div>');
-    listEl.querySelectorAll('.li').forEach((row) => {
+        : '<div class="empty">Пока нет замечаний. Используйте 🎯 Элемент, ➚ Стрелка, ▭ Область или 💬 Заметка.</div>') +
+      (errs.length
+        ? `<h5>⚠ Пойманные ошибки (${errs.length})</h5>` + errs.map((x) => `<div class="li" data-e="${x.n}"><span class="n e">!</span><div class="tx"><b>${escH(x.title)}</b><small>${x.count > 1 ? 'повторялась ' + x.count + ' раз · ' : ''}сохранена со скриншотом и контекстом</small></div><div class="bt"><button data-a="edel" title="Удалить">🗑</button></div></div>`).join('')
+        : '');
+    listEl.querySelectorAll('[data-a=edel]').forEach((b) => (b.onclick = async () => {
+      if (!b.classList.contains('yes')) { b.classList.add('yes'); b.textContent = 'Удалить?'; return; }
+      const n = +b.closest('.li').dataset.e;
+      const rr = await send({ type: 'error-delete', n });
+      if (rr && rr.ok) { showToast('Пункт с ошибкой удалён', 'ok'); openList(); }
+    }));
+    listEl.querySelectorAll('.li[data-n]').forEach((row) => {
       const n = +row.dataset.n;
       const a = items.find((x) => x.n === n);
       row.querySelectorAll('button').forEach((b) => (b.onclick = async () => {
@@ -583,6 +596,23 @@
     });
   }
   function closeList() { listEl.hidden = true; $('[data-act=list]').classList.remove('open'); }
+
+  // скрыть панель на время автоматического скриншота ошибки
+  let prepSaved = null;
+  async function capturePrep() {
+    if (prepSaved) return true;
+    prepSaved = { bar: bar.hidden, note: note.hidden, list: listEl.hidden, marks: marksHidden };
+    bar.hidden = true; toastEl.hidden = true; note.hidden = true; listEl.hidden = true; typesEl.hidden = true; hint.hidden = true;
+    marksHidden = true; redraw();
+    await raf(); await raf();
+    return true;
+  }
+  function captureDone() {
+    if (!prepSaved) return;
+    bar.hidden = prepSaved.bar; note.hidden = prepSaved.note; listEl.hidden = prepSaved.list; marksHidden = prepSaved.marks;
+    if (mode) hint.hidden = false;
+    prepSaved = null; redraw();
+  }
 
   // ================= тип бага =================
   function showType() {
@@ -663,7 +693,7 @@
       redraw();
     } else if (act === 'type') {
       if (typesEl.hidden) openTypes(); else closeTypes();
-    } else if (act === 'list') {
+    } else if (act === 'list' || act === 'errs') {
       if (listEl.hidden) openList(); else closeList();
     } else if (act === 'voice' || act === 'video') {
       b.disabled = true;
@@ -691,7 +721,9 @@
   function applyState(st) {
     state = Object.assign(state, st);
     setCount(state.annotations || 0);
-    showType();
+    const ec = state.autoErrors || 0;
+    $('.en').textContent = ec;
+    $('[data-act=errs]').hidden = !ec;
     root.querySelector('[data-act=voice]').classList.toggle('rec', !!state.voice);
     root.querySelector('[data-act=video]').classList.toggle('rec', !!state.video);
     tick();
@@ -722,8 +754,10 @@
     host.remove();
     globalThis.__qaOverlay = null;
   }
-  function onMsg(m) {
+  function onMsg(m, _sender, sendResponse) {
     if (!m || !m.type) return;
+    if (m.type === 'qa-capture-prep') { capturePrep().then(() => sendResponse(true)); return true; }
+    if (m.type === 'qa-capture-done') { captureDone(); return; }
     if (m.type === 'qa-overlay-remove') destroy();
     else if (m.type === 'qa-overlay-state') applyState(m.state);
     else if (m.type === 'qa-overlay-toast') showToast(m.text, m.kind);

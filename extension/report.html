@@ -12,8 +12,8 @@
   <div id="empty" hidden>
     <div class="empty">
       <div style="font-size:48px">🐞</div>
-      <h2>Баг-репортов пока нет</h2>
-      <p>Откройте тестируемый сайт и нажмите иконку расширения → <b>«Нашёл баг»</b> или <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>.</p>
+      <h2>Отчётов пока нет</h2>
+      <p>Откройте тестируемый сайт и нажмите иконку расширения → <b>«Начать проверку»</b> или <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>.</p>
     </div>
   </div>
 
@@ -21,16 +21,15 @@
     <div id="banner" class="banner" hidden></div>
 
     <header class="rhead">
-      <input id="f-title" class="title" placeholder="Краткое название бага, например: «Кнопка „Оплатить“ не реагирует»">
+      <input id="f-title" class="title" placeholder="Название, например: «Оформление заказа — проверка 17.11»">
       <div class="hrow">
-        <label>Тип бага <select id="f-type" class="ftype"></select></label>
         <label>Серьёзность <select id="f-severity">
           <option>Блокирующий</option><option>Критический</option><option selected>Значительный</option><option>Незначительный</option><option>Тривиальный</option>
         </select></label>
         <label>Приоритет <select id="f-priority"><option value="">—</option><option>Высокий</option><option>Средний</option><option>Низкий</option></select></label>
         <span id="created" class="muted"></span>
       </div>
-      <div id="type-info" class="type-info"></div>
+      <div id="counts" class="counts"></div>
     </header>
 
     <section class="export card">
@@ -43,12 +42,23 @@
       </div>
       <details class="ex-more"><summary>⚙ Что включать в отчёт</summary>
       <div class="ex-opts">
+        <b class="eh">Пункты:</b>
+        <label><input type="checkbox" id="o-remarks" checked> 💬 замечания</label>
+        <label><input type="checkbox" id="o-errors" checked> ⚠ ошибки</label>
+        <label><input type="checkbox" id="o-recordings" checked> 🎬 записи</label>
+      </div>
+      <div class="ex-opts">
+        <label><input type="checkbox" id="o-appendix"> <b>Приложение: все данные сессии</b> (полные консоль, сеть, действия, производительность)</label>
+      </div>
+      <div class="ex-opts" id="apx-opts">
         <label>Консоль <select id="o-console"><option value="all">все записи</option><option value="warn" selected>предупреждения и ошибки</option><option value="error">только ошибки</option><option value="none">не включать</option></select></label>
         <label>Сеть <select id="o-network"><option value="all">все запросы</option><option value="api" selected>API (XHR/Fetch) и ошибки</option><option value="errors">только ошибки</option><option value="none">не включать</option></select></label>
-        <label>События страницы <select id="o-events"><option value="important" selected>важные</option><option value="all">все</option><option value="none">не включать</option></select></label>
+        <label>События <select id="o-events"><option value="important" selected>важные</option><option value="all">все</option><option value="none">не включать</option></select></label>
         <label><input type="checkbox" id="o-perf" checked> производительность</label>
-        <label><input type="checkbox" id="o-storage" checked> cookies и storage</label>
-        <label><input type="checkbox" id="o-before" checked> данные до нажатия «Нашёл баг»</label>
+        <label><input type="checkbox" id="o-storage"> cookies и storage</label>
+        <label><input type="checkbox" id="o-before" checked> данные до начала проверки</label>
+      </div>
+      <div class="ex-opts">
         <label><input type="checkbox" id="o-details" checked> заголовки и тела запросов</label>
         <label><input type="checkbox" id="o-mask" checked> скрыть токены, cookie, пароли</label>
         <label><input type="checkbox" id="o-embed" checked> встроить видео/голос в HTML</label>
@@ -57,8 +67,12 @@
       <div id="ex-status" class="muted"></div>
     </section>
 
-    <section id="sum-sec"><h2 style="margin-top:4px">🔎 Что найдено автоматически</h2><div id="summary" class="summary"></div></section>
+    <section id="items-sec">
+      <div class="items-head"><h2>Пункты</h2><div class="ifil" id="ifil"></div></div>
+      <div id="items"></div>
+    </section>
 
+    <details class="desc card" id="desc"><summary>📝 Описание для задачи <span class="muted">— шаги, ожидаемый и фактический результат (необязательно)</span></summary>
     <section class="grid2">
       <div class="card">
         <div class="lbl">Шаги воспроизведения <button id="regen" class="link">↻ собрать из действий</button></div>
@@ -69,12 +83,13 @@
         <div><div class="lbl">Фактический результат</div><textarea id="f-actual" rows="3"></textarea></div>
       </div>
     </section>
-    <section class="card"><div class="lbl">Дополнительно</div><textarea id="f-notes" rows="2" placeholder="Частота воспроизведения, тестовый аккаунт, ссылка на задачу…"></textarea></section>
+    <section class="card" style="margin-top:14px"><div class="lbl">Дополнительно</div><textarea id="f-notes" rows="2" placeholder="Частота воспроизведения, тестовый аккаунт, ссылка на задачу…"></textarea></section>
+    </details>
 
-    <section id="media-sec" hidden><h2>Видео и голос</h2><div id="media"></div></section>
+    <section id="media-sec" hidden><h2>🎤 Голос</h2><div id="media"></div></section>
 
-    <section id="ann-sec"><h2>Пометки <span id="ann-count" class="pill"></span></h2><div id="anns" class="anns"></div></section>
-
+    <details class="appendix" id="appendix"><summary>📂 Все данные сессии <span class="muted">— сводка, таймлайн, консоль, сеть, производительность, хранилище, окружение</span></summary>
+    <section id="sum-sec"><h2 style="margin-top:12px">🔎 Что найдено автоматически</h2><div id="summary" class="summary"></div></section>
     <section>
       <div class="tabs">
         <button data-tab="timeline" class="on">Таймлайн <span id="t-timeline" class="pill"></span></button>
@@ -88,6 +103,7 @@
       </div>
       <div class="card tabbody" id="tabbody"></div>
     </section>
+    </details>
   </div>
 </main>
 
@@ -97,6 +113,5 @@
 <script src="zip.js"></script>
 <script src="docx.js"></script>
 <script src="exporters.js"></script>
-<script src="bugtypes.js"></script>
 <script src="report.js"></script>
 </body></html>
