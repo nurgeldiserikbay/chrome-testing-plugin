@@ -41,7 +41,9 @@ async function refresh() {
     $('voice').classList.toggle('rec', st.voice);
     $('voice').textContent = st.voice ? '■ Голос ' + fmt(Date.now() - st.voiceStart) : '🎤 Голос';
     $('video').classList.toggle('rec', st.video);
-    $('video').textContent = st.video ? '■ Видео ' + fmt(Date.now() - st.videoStart) : '⏺ Видео';
+    $('video').textContent = st.video ? '■ Стоп видео ' + fmt(Date.now() - st.videoStart) : '⏺ Записать видео';
+    $('vstate').className = 'vstate' + (st.video ? ' rec' : '');
+    $('vstate').textContent = st.video ? '● Идёт запись видео вкладки' : 'Видео не записывается — включите кнопкой «⏺ Записать видео», если нужно';
   }
 }
 

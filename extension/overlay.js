@@ -27,7 +27,9 @@
   .sep{width:1px;height:22px;background:#374151;margin:0 3px}
   .grip{cursor:move;padding:0 5px;color:#6b7280;font-size:14px;letter-spacing:-3px}
   .title{display:flex;align-items:center;gap:6px;padding:0 8px 0 2px;font-weight:600;font-variant-numeric:tabular-nums}
-  .title i{width:8px;height:8px;border-radius:50%;background:${RED};box-shadow:0 0 0 3px rgba(255,45,85,.25)}
+  .title i{font-style:normal;font-size:14px}
+  .vrec{display:none;color:#fff;background:${RED};border-radius:6px;padding:2px 6px;font-size:11px;font-weight:700;animation:pl 1.4s infinite}
+  .vrec.on{display:inline-block}
   .cnt{min-width:20px;text-align:center;background:#374151;border-radius:10px;padding:3px 7px;font-size:12px;margin:0 2px}
   @keyframes pl{50%{background:#be123c}}
   .hint{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:9px 16px;border-radius:10px;
@@ -61,7 +63,7 @@
 </div>
 <div class="bar">
   <span class="grip" title="Перетащить панель">⋮⋮</span>
-  <span class="title" title="Фиксация бага идёт"><i></i>Баг <b class="t">00:00</b></span>
+  <span class="title" title="Фиксация бага: пометки, логи и запросы. Видео пишется, только если нажать «Записать видео»"><i>🐞</i>Баг <b class="t">00:00</b><span class="vrec">● REC</span></span>
   <span class="sep"></span>
   <button data-tool="element" title="Выбрать элемент с багом (Alt+Shift+E)">🎯 Элемент</button>
   <button data-tool="arrow" title="Нарисовать стрелку (Alt+Shift+A)">➚ Стрелка</button>
@@ -69,7 +71,7 @@
   <button data-tool="note" title="Комментарий со скриншотом без выделения">💬 Заметка</button>
   <span class="sep"></span>
   <button data-act="voice" title="Голосовой комментарий с микрофона">🎤 <span class="vt">Голос</span></button>
-  <button data-act="video" title="Запись видео вкладки">⏺ <span class="vdt">Видео</span></button>
+  <button data-act="video" title="Начать или остановить запись видео вкладки"><span class="vdt">⏺ Записать видео</span></button>
   <span class="sep"></span>
   <span class="cnt" title="Сделано пометок">0</span>
   <button class="done" data-act="finish" title="Завершить и открыть отчёт (Alt+Shift+S)">✓ Готово</button>
@@ -441,7 +443,8 @@
   function tick() {
     $('.t').textContent = fmt(Date.now() - state.startTime);
     $('.vt').textContent = state.voice ? fmt(Date.now() - state.voiceStart) : 'Голос';
-    $('.vdt').textContent = state.video ? fmt(Date.now() - state.videoStart) : 'Видео';
+    $('.vdt').textContent = state.video ? '■ Стоп видео ' + fmt(Date.now() - state.videoStart) : '⏺ Записать видео';
+    $('.vrec').classList.toggle('on', !!state.video);
   }
   const timer = setInterval(tick, 500);
 

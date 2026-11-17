@@ -212,7 +212,8 @@ async function cancelBug() {
 }
 
 function setBadge(on) {
-  chrome.action.setBadgeText({ text: on ? 'BUG' : '' });
+  const rec = on && S && S.videos.some((v) => v.recording);
+  chrome.action.setBadgeText({ text: on ? (rec ? 'REC' : 'BUG') : '' });
   chrome.action.setBadgeBackgroundColor({ color: '#ff2d55' });
 }
 
@@ -284,6 +285,7 @@ async function startVideo(streamId) {
     throw new Error('Не удалось начать запись видео: ' + ((r && r.error) || 'неизвестная ошибка'));
   }
   S.videos.push({ n, key, start: Date.now(), recording: true });
+  setBadge(true);
   await saveSessionNow();
   pushOverlayState();
   return status();
@@ -299,6 +301,7 @@ async function stopVideo() {
   v.size = r && r.size;
   v.mime = r && r.mime;
   if (!v.saved) v.error = r && r.error;
+  if (S.active) setBadge(true);
   await saveSessionNow();
   await maybeCloseOffscreen();
   pushOverlayState();
