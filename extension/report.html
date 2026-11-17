@@ -39,16 +39,23 @@
         <button data-ex="har">🔌 HAR</button>
         <button data-ex="all">📦 Всё одним архивом</button>
       </div>
+      <details class="ex-more"><summary>⚙ Что включать в отчёт</summary>
       <div class="ex-opts">
         <label>Консоль <select id="o-console"><option value="all">все записи</option><option value="warn" selected>предупреждения и ошибки</option><option value="error">только ошибки</option><option value="none">не включать</option></select></label>
         <label>Сеть <select id="o-network"><option value="all">все запросы</option><option value="api" selected>API (XHR/Fetch) и ошибки</option><option value="errors">только ошибки</option><option value="none">не включать</option></select></label>
+        <label>События страницы <select id="o-events"><option value="important" selected>важные</option><option value="all">все</option><option value="none">не включать</option></select></label>
+        <label><input type="checkbox" id="o-perf" checked> производительность</label>
+        <label><input type="checkbox" id="o-storage" checked> cookies и storage</label>
         <label><input type="checkbox" id="o-before" checked> данные до нажатия «Нашёл баг»</label>
         <label><input type="checkbox" id="o-details" checked> заголовки и тела запросов</label>
         <label><input type="checkbox" id="o-mask" checked> скрыть токены, cookie, пароли</label>
         <label><input type="checkbox" id="o-embed" checked> встроить видео/голос в HTML</label>
       </div>
+      </details>
       <div id="ex-status" class="muted"></div>
     </section>
+
+    <section id="sum-sec"><h2 style="margin-top:4px">🔎 Что найдено автоматически</h2><div id="summary" class="summary"></div></section>
 
     <section class="grid2">
       <div class="card">
@@ -68,9 +75,12 @@
 
     <section>
       <div class="tabs">
-        <button data-tab="actions" class="on">Действия <span id="t-actions" class="pill"></span></button>
+        <button data-tab="timeline" class="on">Таймлайн <span id="t-timeline" class="pill"></span></button>
+        <button data-tab="actions">Действия <span id="t-actions" class="pill"></span></button>
         <button data-tab="console">Консоль <span id="t-console" class="pill"></span></button>
         <button data-tab="network">Сеть <span id="t-network" class="pill"></span></button>
+        <button data-tab="perf">Производительность <span id="t-perf" class="pill"></span></button>
+        <button data-tab="storage">Хранилище</button>
         <button data-tab="env">Окружение</button>
         <input id="search" placeholder="Поиск…">
       </div>

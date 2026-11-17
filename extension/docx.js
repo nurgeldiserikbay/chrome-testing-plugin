@@ -53,7 +53,8 @@
     title(text) { return this.p(text, { style: 'Title' }); }
     h(text, level = 1) { return this.p(text, { style: 'Heading' + level }); }
     code(text) {
-      return this.p(this.run(text, { mono: true, size: 16 }), { fill: 'F3F4F6', after: 80 });
+      this.body.push(this.pXml(this.run(text, { mono: true, size: 16 }), { fill: 'F3F4F6', after: 80 }));
+      return this;
     }
     pageBreak() { this.body.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>'); return this; }
 

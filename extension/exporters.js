@@ -26,6 +26,7 @@
   const KIND_RU = { element: 'Элемент', arrow: 'Стрелка', rect: 'Область', note: 'Заметка' };
   const isErr = (e) => !!(e.failed || e.status >= 400);
   const statusLabel = (e) => (e.failed ? (e.canceled ? 'отменён' : e.blocked ? 'блок.' : 'ошибка') : e.status == null ? '…' : String(e.status));
+  const hasH = (h) => !!h && Object.keys(h).length > 0;
   const hdrText = (h) => Object.entries(h || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
   const short = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) + '…' : s; };
 
@@ -41,6 +42,29 @@
       case 'nav': return `Переход: ${a.url}`;
       default: return a.kind;
     }
+  }
+
+  function htmlPerf(p) {
+    if (!p) return '';
+    const t = (head, rows) => `<table><tr>${head.map((h) => `<th>${escH(h)}</th>`).join('')}</tr>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
+    const evT = (list) => t(['Время', 'Событие'], list.map((e) => [`<span class="mono">${fmtRel(e.rel)}</span>`, escH(e.text) + (e.sub ? `<span class="sub2">${escH(e.sub)}</span>` : '')]));
+    let h = '<h2>Производительность</h2>';
+    if (p.vitals.length) h += `<div class="vit">${p.vitals.map((v) => `<div class="${v.level}"><small>${v.name} · ${escH(v.title)}</small><b>${escH(v.value)}</b><small>${escH(v.rating)}</small></div>`).join('')}</div>`;
+    const facts = [['Загрузка', p.navigation], ['Память JS', p.memory], ['DOM-узлы', p.nodes], ['FPS (минимум)', p.fps]].filter((x) => x[1]);
+    if (facts.length) h += t(['Показатель', 'Значение'], facts.map(([a, b]) => [escH(a), escH(b)]));
+    if (p.renders.length) h += '<h3>Перерисовки React</h3>' + t(['Компонент', 'Перерисовок', 'Монтирований'], p.renders.map((r) => [`<span class="mono">${escH(r[0])}</span>`, r[1], r[2]]));
+    if (p.longFrames.length) h += '<h3>Долгие кадры (зависания)</h3>' + evT(p.longFrames);
+    if (p.slow.length) h += '<h3>Медленные отклики</h3>' + evT(p.slow);
+    if (p.shifts.length) h += '<h3>Сдвиги макета</h3>' + evT(p.shifts);
+    if (p.cdp.length) h += '<h3>Метрики DevTools</h3>' + t(['Метрика', 'Начало', 'Конец', 'Разница'], p.cdp.map((r) => r.map(escH)));
+    return h;
+  }
+  function htmlStorage(st) {
+    if (!st) return '';
+    const t = (title, rows, head) => `<h3>${title} (${rows.length})</h3>` + (rows.length ? `<table><tr>${head.map((x) => `<th>${x}</th>`).join('')}</tr>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${i ? 'mono u' : 'mono'}">${escH(c)}</td>`).join('')}</tr>`).join('')}</table>` : '<p class="meta">Пусто</p>');
+    return '<h2>Cookies и хранилище</h2><p class="meta">Снимок в момент нажатия «Нашёл баг».</p>' +
+      t('Cookies', st.cookies, ['Имя', 'Размер', 'Значение']) + t('localStorage', st.local, ['Ключ', 'Размер', 'Значение']) +
+      t('sessionStorage', st.session, ['Ключ', 'Размер', 'Значение']) + t('Изменения во время теста', st.changes, ['Время', 'Операция']);
   }
 
   // ---------------- HTML ----------------
@@ -65,6 +89,14 @@
       details{background:#fff;border:1px solid var(--line);border-radius:8px;margin:6px 0;padding:8px 12px} summary{cursor:pointer;font-weight:600;word-break:break-all}
       pre{background:#f9fafb;border-radius:6px;padding:10px;overflow:auto;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:400px}
       video,audio{width:100%;border-radius:8px;background:#000} audio{background:none}
+      .finds{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+      .find{background:#fff;border-radius:10px;padding:10px 14px;border-left:4px solid #9ca3af;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+      .find.error{border-left-color:#e11d48}.find.warn{border-left-color:#f59e0b}.find.info{border-left-color:#2563eb}
+      .find b{display:block}.find span{font-size:12.5px;color:var(--muted);word-break:break-word}
+      .vit{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px} .vit div{background:#fff;border-radius:10px;padding:10px 12px;border:1px solid var(--line)}
+      .vit .good{background:#ecfdf5;border-color:#a7f3d0}.vit .ni{background:#fffbeb;border-color:#fde68a}.vit .poor{background:#fef2f2;border-color:#fecaca}
+      .vit b{display:block;font-size:20px} .vit small{color:var(--muted)}
+      h3{font-size:15px;margin:20px 0 8px} .sub2{display:block;color:var(--muted);font-family:ui-monospace,Consolas,monospace;font-size:11.5px;white-space:pre-wrap}
       ol{padding-left:22px} .foot{color:var(--muted);font-size:12px;margin-top:40px;text-align:center}`;
     const tblEnv = `<table>${m.env.map(([k, v]) => `<tr><th style="width:220px">${escH(k)}</th><td class="u">${escH(v)}</td></tr>`).join('')}</table>`;
 
@@ -111,11 +143,11 @@
 
     const details = m.details
       ? m.network
-          .filter((e) => e.reqHeaders || e.resHeaders || e.postData || e.body)
+          .filter((e) => hasH(e.reqHeaders) || hasH(e.resHeaders) || e.postData || e.body)
           .map((e) => `<details><summary>${escH(e.method)} ${escH(statusLabel(e))} ${escH(short(e.url, 200))}</summary>
-            ${e.reqHeaders ? `<div class="label">Заголовки запроса</div><pre>${escH(hdrText(e.reqHeaders))}</pre>` : ''}
+            ${hasH(e.reqHeaders) ? `<div class="label">Заголовки запроса</div><pre>${escH(hdrText(e.reqHeaders))}</pre>` : ''}
             ${e.postData ? `<div class="label">Тело запроса</div><pre>${escH(e.postData)}</pre>` : ''}
-            ${e.resHeaders ? `<div class="label">Заголовки ответа</div><pre>${escH(hdrText(e.resHeaders))}</pre>` : ''}
+            ${hasH(e.resHeaders) ? `<div class="label">Заголовки ответа</div><pre>${escH(hdrText(e.resHeaders))}</pre>` : ''}
             ${e.body ? `<div class="label">Ответ</div><pre>${escH(e.body)}</pre>` : ''}</details>`)
           .join('')
       : '';
@@ -128,6 +160,7 @@
 ${block('Шаги воспроизведения', m.steps)}
 <div class="grid">${block('Ожидаемый результат', m.expected) || '<div></div>'}${block('Фактический результат', m.actual) || '<div></div>'}</div>
 ${block('Дополнительно', m.notes)}
+${m.findings && m.findings.length ? `<h2>Что найдено автоматически</h2><div class="finds">${m.findings.map((f) => `<div class="find ${f.level}"><b>${escH(f.title)}</b><span>${escH(f.text)}</span></div>`).join('')}</div>` : ''}
 <h2>Окружение</h2>${tblEnv}
 ${m.videos.length || m.voice.length ? `<h2>Видео и голос</h2>${videos}${voices}` : ''}
 ${m.annotations.length ? `<h2>Пометки (${m.annotations.length})</h2><div class="ann">${anns}</div>` : ''}
@@ -135,6 +168,9 @@ ${m.annotations.length ? `<h2>Пометки (${m.annotations.length})</h2><div 
 <h2>Консоль (${m.console.length})</h2>${consoleT}
 <h2>Сетевые запросы (${m.network.length})</h2>${netT}
 ${details ? `<h2>Детали запросов</h2>${details}` : ''}
+${htmlPerf(m.perf)}
+${m.events && m.events.length ? `<h2>События страницы (${m.events.length})</h2><table><tr><th style="width:80px">Время</th><th style="width:110px">Тип</th><th>Событие</th></tr>${m.events.map((e) => `<tr class="${e.level === 'error' ? 'err' : e.level === 'warn' ? 'warn' : ''}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.cat)}</td><td>${escH(e.text)}</td></tr>`).join('')}</table>` : ''}
+${htmlStorage(m.storage)}
 <p class="foot">Сформировано расширением QA Bug Recorder · ${escH(m.generatedAt)}</p>
 </div></body></html>`;
   }
@@ -156,6 +192,9 @@ ${details ? `<h2>Детали запросов</h2>${details}` : ''}
     if (m.expected) md += `## Ожидаемый результат\n\n${m.expected}\n\n`;
     if (m.actual) md += `## Фактический результат\n\n${m.actual}\n\n`;
     if (m.notes) md += `## Дополнительно\n\n${m.notes}\n\n`;
+    if (m.findings && m.findings.length) {
+      md += `## Что найдено автоматически\n\n` + m.findings.map((f) => `- ${f.level === 'error' ? '🔴' : f.level === 'warn' ? '🟡' : 'ℹ️'} **${f.title}** — ${f.text}`).join('\n') + '\n\n';
+    }
     md += `## Окружение\n\n` + mdTable(['Параметр', 'Значение'], m.env.map(([k, v]) => [mdCell(k), mdCell(v, 1000)])) + '\n';
     if (m.videos.length || m.voice.length) {
       md += `## Видео и голос\n\n`;
@@ -187,18 +226,39 @@ ${details ? `<h2>Детали запросов</h2>${details}` : ''}
       ? mdTable(['Время', 'Метод', 'Статус', 'Тип', 'URL', 'Время отв.', 'Размер'], m.network.map((e) => [fmtRel(e.rel), e.method, (isErr(e) ? '🔴 ' : '') + statusLabel(e), e.type || '', mdCell(e.url + (e.error ? ` — ${e.error}` : ''), 250), fmtDur(e.duration), fmtSize(e.size)]))
       : '_Нет запросов._\n';
     if (m.details) {
-      const det = m.network.filter((e) => e.reqHeaders || e.resHeaders || e.postData || e.body);
+      const det = m.network.filter((e) => hasH(e.reqHeaders) || hasH(e.resHeaders) || e.postData || e.body);
       if (det.length) {
         md += `\n## Детали запросов\n\n`;
         det.forEach((e) => {
           md += `<details><summary>${e.method} ${statusLabel(e)} ${short(e.url, 150).replace(/</g, '&lt;')}</summary>\n\n`;
-          if (e.reqHeaders) md += '**Заголовки запроса**\n\n' + fence(hdrText(e.reqHeaders), 'http');
+          if (hasH(e.reqHeaders)) md += '**Заголовки запроса**\n\n' + fence(hdrText(e.reqHeaders), 'http');
           if (e.postData) md += '\n**Тело запроса**\n\n' + fence(e.postData);
-          if (e.resHeaders) md += '\n**Заголовки ответа**\n\n' + fence(hdrText(e.resHeaders), 'http');
+          if (hasH(e.resHeaders)) md += '\n**Заголовки ответа**\n\n' + fence(hdrText(e.resHeaders), 'http');
           if (e.body) md += '\n**Ответ**\n\n' + fence(e.body);
           md += '\n</details>\n\n';
         });
       }
+    }
+    const p = m.perf;
+    if (p) {
+      md += `\n## Производительность\n\n`;
+      if (p.vitals.length) md += mdTable(['Метрика', 'Значение', 'Оценка'], p.vitals.map((v) => [`${v.name} — ${v.title}`, v.value, (v.level === 'good' ? '🟢 ' : v.level === 'ni' ? '🟡 ' : '🔴 ') + v.rating])) + '\n';
+      const facts = [['Загрузка', p.navigation], ['Память JS', p.memory], ['DOM-узлы', p.nodes], ['FPS (минимум)', p.fps]].filter((x) => x[1]);
+      if (facts.length) md += facts.map(([a, b]) => `- **${a}:** ${b}`).join('\n') + '\n\n';
+      const evT = (list) => mdTable(['Время', 'Событие'], list.map((e) => [fmtRel(e.rel), mdCell(e.text + (e.sub ? '\n' + e.sub : ''), 500)]));
+      if (p.renders.length) md += `### Перерисовки React\n\n` + mdTable(['Компонент', 'Перерисовок', 'Монтирований'], p.renders.map((r) => ['`' + r[0] + '`', r[1], r[2]])) + '\n';
+      if (p.longFrames.length) md += `### Долгие кадры (зависания)\n\n` + evT(p.longFrames) + '\n';
+      if (p.slow.length) md += `### Медленные отклики\n\n` + evT(p.slow) + '\n';
+      if (p.shifts.length) md += `### Сдвиги макета\n\n` + evT(p.shifts) + '\n';
+      if (p.cdp.length) md += `### Метрики DevTools\n\n` + mdTable(['Метрика', 'Начало', 'Конец', 'Разница'], p.cdp) + '\n';
+    }
+    if (m.events && m.events.length) {
+      md += `\n## События страницы\n\n` + mdTable(['Время', 'Тип', 'Событие'], m.events.map((e) => [fmtRel(e.rel), e.cat, (e.level === 'error' ? '🔴 ' : e.level === 'warn' ? '🟡 ' : '') + mdCell(e.text, 400)]));
+    }
+    if (m.storage) {
+      const st = m.storage;
+      const t = (title, rows, head) => `\n### ${title} (${rows.length})\n\n` + (rows.length ? mdTable(head, rows.map((r) => r.map((c) => mdCell(c, 300)))) : '_Пусто._\n');
+      md += `\n## Cookies и хранилище\n\n_Снимок в момент нажатия «Нашёл баг»._\n` + t('Cookies', st.cookies, ['Имя', 'Размер', 'Значение']) + t('localStorage', st.local, ['Ключ', 'Размер', 'Значение']) + t('sessionStorage', st.session, ['Ключ', 'Размер', 'Значение']) + t('Изменения во время теста', st.changes, ['Время', 'Операция']);
     }
     md += `\n---\n_Сформировано QA Bug Recorder · ${m.generatedAt}_\n`;
     return md;
@@ -219,6 +279,13 @@ ${details ? `<h2>Детали запросов</h2>${details}` : ''}
     section('Фактический результат', m.actual);
     section('Дополнительно', m.notes);
 
+    if (m.findings && m.findings.length) {
+      d.h('Что найдено автоматически', 1);
+      d.table([['', 'Находка', 'Подробности'], ...m.findings.map((f) => {
+        const fill = f.level === 'error' ? 'FEF2F2' : f.level === 'warn' ? 'FFFBEB' : 'EFF6FF';
+        return [{ text: f.level === 'error' ? '●' : f.level === 'warn' ? '▲' : 'i', fill, color: f.level === 'error' ? 'B91C1C' : f.level === 'warn' ? 'B45309' : '1D4ED8', bold: true }, { text: f.title, fill, bold: true }, { text: f.text, fill }];
+      })], { widths: [400, 3800, W - 4200], size: 18 });
+    }
     d.h('Окружение', 1);
     d.table([['Параметр', 'Значение'], ...m.env.map(([k, v]) => [{ text: k, bold: true }, String(v)])], { widths: [2700, W - 2700], size: 18 });
 
@@ -284,17 +351,50 @@ ${details ? `<h2>Детали запросов</h2>${details}` : ''}
     } else d.p('Запросов нет.');
 
     if (m.details) {
-      const det = m.network.filter((e) => isErr(e) || ['XHR', 'Fetch'].includes(e.type)).filter((e) => e.reqHeaders || e.body || e.postData).slice(0, 150);
+      const det = m.network.filter((e) => isErr(e) || ['XHR', 'Fetch'].includes(e.type)).filter((e) => hasH(e.reqHeaders) || e.body || e.postData).slice(0, 150);
       if (det.length) {
         d.h('Детали запросов (API и ошибки)', 1);
         det.forEach((e) => {
           d.h(`${e.method} ${statusLabel(e)} ${short(e.url, 110)}`, 3);
-          if (e.reqHeaders) { d.p('Заголовки запроса:', { run: { bold: true, size: 18 } }); d.code(hdrText(e.reqHeaders)); }
+          if (hasH(e.reqHeaders)) { d.p('Заголовки запроса:', { run: { bold: true, size: 18 } }); d.code(hdrText(e.reqHeaders)); }
           if (e.postData) { d.p('Тело запроса:', { run: { bold: true, size: 18 } }); d.code(short(e.postData, 5000)); }
-          if (e.resHeaders) { d.p('Заголовки ответа:', { run: { bold: true, size: 18 } }); d.code(hdrText(e.resHeaders)); }
+          if (hasH(e.resHeaders)) { d.p('Заголовки ответа:', { run: { bold: true, size: 18 } }); d.code(hdrText(e.resHeaders)); }
           if (e.body) { d.p('Ответ:', { run: { bold: true, size: 18 } }); d.code(short(e.body, 5000)); }
         });
       }
+    }
+    const p = m.perf;
+    if (p) {
+      d.h('Производительность', 1);
+      if (p.vitals.length) d.table([['Метрика', 'Значение', 'Оценка'], ...p.vitals.map((v) => {
+        const fill = v.level === 'good' ? 'ECFDF5' : v.level === 'ni' ? 'FFFBEB' : 'FEF2F2';
+        return [{ text: `${v.name} — ${v.title}`, fill }, { text: v.value, fill, bold: true }, { text: v.rating, fill }];
+      })], { widths: [5000, 2200, W - 7200], size: 18 });
+      const facts = [['Загрузка', p.navigation], ['Память JS', p.memory], ['DOM-узлы', p.nodes], ['FPS (минимум)', p.fps]].filter((x) => x[1]);
+      facts.forEach(([a, b]) => d.p([d.run(a + ': ', { bold: true }), d.run(b)]));
+      const evT = (title, list) => { if (!list.length) return; d.h(title, 2); d.table([['Время', 'Событие'], ...list.map((e) => [fmtRel(e.rel), { text: e.text + (e.sub ? '\n' + e.sub : '') }])], { widths: [1000, W - 1000] }); };
+      if (p.renders.length) { d.h('Перерисовки React', 2); d.table([['Компонент', 'Перерисовок', 'Монтирований'], ...p.renders.map((r) => [{ text: r[0], mono: true }, String(r[1]), String(r[2])])], { widths: [5922, 2000, 2000] }); }
+      evT('Долгие кадры (зависания)', p.longFrames);
+      evT('Медленные отклики', p.slow);
+      evT('Сдвиги макета', p.shifts);
+      if (p.cdp.length) { d.h('Метрики DevTools', 2); d.table([['Метрика', 'Начало', 'Конец', 'Разница'], ...p.cdp], { widths: [4422, 1800, 1800, 1900] }); }
+    }
+    if (m.events && m.events.length) {
+      d.h(`События страницы (${m.events.length})`, 1);
+      d.table([['Время', 'Тип', 'Событие'], ...m.events.slice(0, 1500).map((e) => {
+        const fill = e.level === 'error' ? 'FEF2F2' : e.level === 'warn' ? 'FFFBEB' : undefined;
+        return [{ text: fmtRel(e.rel), fill }, { text: e.cat, fill }, { text: e.text, fill }];
+      })], { widths: [1000, 1500, W - 2500] });
+    }
+    if (m.storage) {
+      const st = m.storage;
+      d.h('Cookies и хранилище', 1);
+      d.p('Снимок в момент нажатия «Нашёл баг».', { run: { color: '6B7280', size: 18 } });
+      const t = (title, rows, head) => { d.h(`${title} (${rows.length})`, 2); if (rows.length) d.table([head, ...rows.map((r) => r.map((c, i) => ({ text: short(c, 400), mono: i !== 1 })))], { widths: [2800, 1000, W - 3800] }); else d.p('Пусто'); };
+      t('Cookies', st.cookies, ['Имя', 'Размер', 'Значение']);
+      t('localStorage', st.local, ['Ключ', 'Размер', 'Значение']);
+      t('sessionStorage', st.session, ['Ключ', 'Размер', 'Значение']);
+      if (st.changes.length) { d.h('Изменения во время теста', 2); d.table([['Время', 'Операция'], ...st.changes.map((r) => [r[0], { text: r[1], mono: true }])], { widths: [1000, W - 1000] }); }
     }
     d.p(`Сформировано QA Bug Recorder · ${m.generatedAt}`, { run: { color: '9CA3AF', size: 16 }, before: 400 });
     return d.build();

@@ -216,3 +216,16 @@ details p{margin:0;padding:0 22px 20px;color:#3b4050}
   .priv-in{grid-template-columns:1fr}
   .lead{font-size:17px}
 }
+
+/* ---------- DevTools-данные ---------- */
+.devtools{background:var(--paper)}
+.dt-grid{display:grid;grid-template-columns:.9fr 1.4fr;gap:40px;align-items:start;margin-top:40px}
+.dt-list{display:flex;flex-direction:column;gap:10px}
+.dt-item{display:flex;gap:14px;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;transition:border-color .15s,transform .15s;font-size:14.5px;color:var(--muted);line-height:1.45}
+.dt-item:hover{border-color:var(--red);transform:translateX(3px)}
+.dt-item span{font-size:22px;line-height:1.2}
+.dt-item b{display:block;color:var(--text);font-size:16px;margin-bottom:2px}
+.switch.dt{position:sticky;top:84px}
+.switch.dt img{max-height:640px;object-fit:cover;object-position:top}
+@media (max-width:1000px){.dt-grid{grid-template-columns:1fr}.switch.dt{position:static}}
+.dt-item.on{border-color:var(--red);box-shadow:0 6px 18px -8px rgba(255,45,85,.35)}

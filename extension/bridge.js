@@ -135,8 +135,62 @@
   document.addEventListener(TAG, (e) => {
     try {
       const { kind, data } = JSON.parse(e.detail);
-      if (kind === 'console' || kind === 'net') q(kind, data);
+      if (['console', 'net', 'event', 'sample', 'res'].includes(kind)) q(kind, data);
     } catch (_) {}
+  });
+
+  // ---------- снимок состояния страницы в момент бага ----------
+  const SECRET = /pass|pwd|secret|token|auth|session|sid|card|cvv|jwt|key|csrf|xsrf/i;
+  const storageDump = (st) => {
+    const out = [];
+    try {
+      for (let i = 0; i < st.length && i < 200; i++) {
+        const k = st.key(i);
+        const v = st.getItem(k) || '';
+        out.push({ key: k, size: v.length, value: SECRET.test(k) ? '•••' : v.length > 300 ? v.slice(0, 300) + '…' : v });
+      }
+    } catch (_) {}
+    return out;
+  };
+  const snapshot = () => {
+    const c = navigator.connection || {};
+    const mem = performance.memory;
+    const mq = (q) => { try { return matchMedia(q).matches; } catch (_) { return false; } };
+    return {
+      url: location.href,
+      title: document.title,
+      referrer: document.referrer,
+      lang: document.documentElement.lang || '',
+      readyState: document.readyState,
+      domNodes: document.getElementsByTagName('*').length,
+      heapMB: mem ? +(mem.usedJSHeapSize / 1048576).toFixed(1) : null,
+      heapLimitMB: mem ? Math.round(mem.jsHeapSizeLimit / 1048576) : null,
+      viewport: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio },
+      screen: { w: screen.width, h: screen.height },
+      scroll: { x: Math.round(scrollX), y: Math.round(scrollY), height: document.documentElement.scrollHeight },
+      colorScheme: mq('(prefers-color-scheme: dark)') ? 'тёмная' : 'светлая',
+      reducedMotion: mq('(prefers-reduced-motion: reduce)'),
+      zoomHint: Math.round((outerWidth / innerWidth) * 100) || null,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      locale: navigator.language,
+      online: navigator.onLine,
+      connection: c.effectiveType ? { type: c.effectiveType, downlink: c.downlink, rtt: c.rtt, saveData: !!c.saveData } : null,
+      cpu: navigator.hardwareConcurrency || null,
+      deviceMemory: navigator.deviceMemory || null,
+      touch: navigator.maxTouchPoints || 0,
+      serviceWorker: !!(navigator.serviceWorker && navigator.serviceWorker.controller),
+      cookies: (document.cookie || '').split(';').map((x) => x.trim()).filter(Boolean).map((x) => {
+        const i = x.indexOf('=');
+        const name = i > 0 ? x.slice(0, i) : x;
+        const val = i > 0 ? x.slice(i + 1) : '';
+        return { name, size: val.length, value: SECRET.test(name) ? '•••' : val.length > 120 ? val.slice(0, 120) + '…' : val };
+      }),
+      localStorage: storageDump(window.localStorage),
+      sessionStorage: storageDump(window.sessionStorage),
+    };
+  };
+  chrome.runtime.onMessage.addListener((m, _s, send) => {
+    if (m && m.type === 'qa-snapshot' && isTop) { try { send(snapshot()); } catch (e) { send(null); } }
   });
 
   if (!isTop) return; // действия пользователя пишем только в основном фрейме

@@ -6,8 +6,8 @@ const short = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? 
 let R = null; // текущий отчёт
 let shots = {}; // n -> dataURL
 let mediaBlobs = {}; // key -> Blob
-let tab = 'actions';
-let filters = { console: 'all', network: 'all' };
+let tab = 'timeline';
+let filters = { console: 'all', network: 'all', timeline: 'important' };
 
 // ================= загрузка =================
 async function init() {
@@ -17,6 +17,8 @@ async function init() {
   if (!id) { $('#empty').hidden = false; return; }
   R = await QADB.get('reports', id);
   if (!R) { $('#empty').hidden = false; return; }
+  for (const k of ['events', 'samples', 'resources', 'nav', 'actions', 'console', 'network']) R[k] = R[k] || [];
+  R.resources.forEach((r, i) => (r.id = r.id || 'res' + i));
   for (const a of R.annotations) shots[a.n] = await QADB.get('blobs', a.shotKey);
   for (const v of [...R.videos, ...R.voice]) {
     const b = await QADB.get('blobs', v.key);
@@ -78,10 +80,12 @@ function autoSteps() {
   const firstUrl = (start && start.url) || R.meta.startUrl;
   lines.push(`Открыть ${firstUrl}`);
   lastUrl = firstUrl;
-  const items = [...ev.map((e) => ({ ts: e.ts, e })), ...R.annotations.map((a) => ({ ts: a.ts, a }))].sort((x, y) => x.ts - y.ts);
+  const seen = R.events.filter((e) => ['dialog', 'invalid', 'appeared'].includes(e.kind) && e.level !== 'info');
+  const items = [...ev.map((e) => ({ ts: e.ts, e })), ...R.annotations.map((a) => ({ ts: a.ts, a })), ...seen.map((o) => ({ ts: o.ts, o }))].sort((x, y) => x.ts - y.ts);
   for (const it of items) {
     let s;
     if (it.a) s = `Наблюдаем: ${it.a.comment || 'см. пометку'} (пометка #${it.a.n})`;
+    else if (it.o) s = `Наблюдаем: ${it.o.text}`;
     else if (it.e.kind === 'nav') {
       if (it.e.url === lastUrl) continue;
       lastUrl = it.e.url;
@@ -130,6 +134,22 @@ function env() {
     ['Длительность фиксации', X.fmtDur((R.endTime || Date.now()) - R.startTime)],
     ['User-Agent', R.meta.userAgent || '']
   );
+  const sn = R.snapshot;
+  if (sn) {
+    rows.push(
+      ['Экран', `${sn.screen.w}×${sn.screen.h}` + (sn.zoomHint && sn.zoomHint !== 100 ? `, масштаб страницы ≈${sn.zoomHint}%` : '')],
+      ['Тема системы', sn.colorScheme + (sn.reducedMotion ? ', уменьшение анимации' : '')],
+      ['Часовой пояс', sn.timezone],
+      ['Сеть', (sn.online ? 'онлайн' : 'офлайн') + (sn.connection ? `, ${sn.connection.type}, ~${sn.connection.downlink} Мбит/с, задержка ${sn.connection.rtt} мс` : '')],
+      ['Процессор / память устройства', `${sn.cpu || '?'} ядер` + (sn.deviceMemory ? `, ${sn.deviceMemory} ГБ` : '')],
+      ['Сенсорный экран', sn.touch ? `да (${sn.touch} касаний)` : 'нет'],
+      ['DOM-узлов на странице', String(sn.domNodes)],
+      ['Память JS', sn.heapMB != null ? `${sn.heapMB} МБ из ${sn.heapLimitMB} МБ` : '—'],
+      ['Прокрутка в момент бага', `${sn.scroll.y} px из ${sn.scroll.height} px`],
+      ['Service Worker', sn.serviceWorker ? 'активен' : 'нет'],
+      ['Откуда пришли (referrer)', sn.referrer || '—']
+    );
+  }
   return rows;
 }
 
@@ -150,6 +170,9 @@ function opts() {
     details: $('#o-details').checked,
     mask: $('#o-mask').checked,
     embed: $('#o-embed').checked,
+    events: $('#o-events').value,
+    perf: $('#o-perf').checked,
+    storage: $('#o-storage').checked,
   };
 }
 const netErr = (e) => e.failed || e.status >= 400;
@@ -183,7 +206,7 @@ async function buildModel(o) {
     if (dataUrl) { item.bytes = b64bytes(dataUrl); Object.assign(item, await imgSize(dataUrl)); }
     anns.push(item);
   }
-  const net = filterNet(R.network.filter(keep), o.network).map((e) => {
+  const net = filterNet(allNet().filter(keep), o.network).map((e) => {
     const x = { ...e, rel: e.ts - st };
     if (o.mask) { x.reqHeaders = maskH(e.reqHeaders); x.resHeaders = maskH(e.resHeaders); x.url = maskS(e.url); x.postData = maskS(e.postData); x.body = maskS(e.body); }
     if (!o.details) { delete x.reqHeaders; delete x.resHeaders; delete x.postData; delete x.body; }
@@ -204,6 +227,10 @@ async function buildModel(o) {
     videos: media(R.videos, 'video'),
     voice: media(R.voice, 'voice'),
     details: o.details,
+    findings: findings().filter((f) => f.level !== 'ok').map((f) => ({ level: f.level, title: f.title, text: f.plain || stripTags(f.text) })),
+    events: o.events === 'none' ? [] : timelineItems(o.events === 'all' ? 'all-events' : 'important-events').filter(keep).map((x) => ({ rel: x.ts - st, cat: CAT_RU[x.cat] || x.cat, level: x.level, text: o.mask ? maskS(x.text) : x.text })),
+    perf: o.perf ? perfModel() : null,
+    storage: o.storage && R.snapshot ? storageModel(o.mask) : null,
   };
 }
 
@@ -312,10 +339,15 @@ function renderAll() {
 
   renderMedia();
   renderAnns();
+  renderSummary();
   renderTab();
+  $('#t-timeline').textContent = timelineItems('important').length;
+  const pf = findings().filter((f) => f.tab === 'perf' && f.level !== 'ok').length;
+  $('#t-perf').textContent = pf ? pf + ' пробл.' : '✓';
+  $('#t-perf').className = 'pill' + (pf ? ' bad' : '');
   ['actions', 'console', 'network'].forEach((k) => {
-    const n = k === 'actions' ? timeline().length : R[k].length;
-    const bad = k === 'console' ? R.console.filter((c) => c.level === 'error').length : k === 'network' ? R.network.filter(netErr).length : 0;
+    const n = k === 'actions' ? timeline().length : k === 'network' ? allNet().length : R[k].length;
+    const bad = k === 'console' ? R.console.filter((c) => c.level === 'error').length : k === 'network' ? allNet().filter(netErr).length : 0;
     $('#t-' + k).textContent = bad ? `${n} · ${bad} ош.` : n;
     $('#t-' + k).className = 'pill' + (bad ? ' bad' : '');
   });
@@ -430,9 +462,9 @@ function renderTab() {
     body.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { filters.console = b.dataset.f; renderTab(); }));
   } else if (tab === 'network') {
     const fm = filters.network;
-    const list = R.network.filter((e) => (fm === 'all' || (fm === 'api' ? ['XHR', 'Fetch'].includes(e.type) : netErr(e))) && match(e.url, e.method, e.status, e.body));
+    const list = allNet().filter((e) => (fm === 'all' || (fm === 'api' ? ['XHR', 'Fetch'].includes(e.type) : fm === 'res' ? e.source === 'perf' : netErr(e))) && match(e.url, e.method, e.status, e.body));
     body.innerHTML =
-      `<div class="tf">${[['all', 'Все'], ['api', 'XHR / Fetch'], ['errors', 'Ошибки 4xx/5xx/сбои']].map(([k, t]) => `<button data-f="${k}" class="${fm === k ? 'on' : ''}">${t}</button>`).join('')}<span class="muted" style="margin-left:auto">Клик по строке — заголовки и тело</span></div>` +
+      `<div class="tf">${[['all', 'Все'], ['api', 'XHR / Fetch'], ['res', 'Ресурсы (картинки, скрипты, стили)'], ['errors', 'Ошибки 4xx/5xx/сбои']].map(([k, t]) => `<button data-f="${k}" class="${fm === k ? 'on' : ''}">${t}</button>`).join('')}<span class="muted" style="margin-left:auto">Клик по строке — заголовки и тело</span></div>` +
       (list.length
         ? `<table><tr><th style="width:80px">Время</th><th style="width:60px">Метод</th><th style="width:64px">Статус</th><th style="width:60px">Тип</th><th>URL</th><th style="width:80px">Время отв.</th><th style="width:70px">Размер</th></tr>${withDivider(list, 7, (e) =>
             `<tr class="click ${netErr(e) ? 'err' : ''} ${e.ts < R.startTime ? 'before' : ''}" data-id="${esc(e.id)}">${relCell(e.ts)}<td>${esc(e.method)}</td><td><b>${esc(X.statusLabel(e))}</b></td><td>${esc(e.type || '')}</td><td class="u mono">${esc(short(e.url, 260))}${e.error ? '<br>' + esc(e.error) : ''}</td><td>${X.fmtDur(e.duration)}</td><td>${X.fmtSize(e.size)}</td></tr>`)}</table>`
@@ -440,20 +472,306 @@ function renderTab() {
     body.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { filters.network = b.dataset.f; renderTab(); }));
     body.querySelectorAll('tr.click').forEach((tr) => (tr.onclick = () => {
       if (tr.nextElementSibling && tr.nextElementSibling.classList.contains('det')) { tr.nextElementSibling.remove(); return; }
-      const e = R.network.find((x) => x.id === tr.dataset.id);
+      const e = allNet().find((x) => x.id === tr.dataset.id);
       const h = (o) => Object.entries(o || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
       const d = document.createElement('tr');
       d.className = 'det';
       d.innerHTML = `<td colspan="7"><div class="dlbl">URL</div><pre>${esc(e.url)}</pre>
-        ${e.reqHeaders ? `<div class="dlbl">Заголовки запроса</div><pre>${esc(h(e.reqHeaders))}</pre>` : ''}
+        ${e.reqHeaders && Object.keys(e.reqHeaders).length ? `<div class="dlbl">Заголовки запроса</div><pre>${esc(h(e.reqHeaders))}</pre>` : ''}
         ${e.postData ? `<div class="dlbl">Тело запроса</div><pre>${esc(e.postData)}</pre>` : ''}
         ${e.resHeaders ? `<div class="dlbl">Заголовки ответа</div><pre>${esc(h(e.resHeaders))}</pre>` : ''}
         ${e.body ? `<div class="dlbl">Ответ</div><pre>${esc(e.body)}</pre>` : ''}</td>`;
       tr.after(d);
     }));
+  } else if (tab === 'timeline') {
+    renderTimeline(body, match);
+  } else if (tab === 'perf') {
+    renderPerf(body);
+  } else if (tab === 'storage') {
+    renderStorage(body, match);
   } else {
     body.innerHTML = `<div class="tf"><span class="muted">Окружение определено автоматически</span></div><table>${env().map(([k, v]) => `<tr><th style="width:230px;position:static">${esc(k)}</th><td class="u">${esc(v)}</td></tr>`).join('')}</table>`;
   }
+}
+
+// ================= аналитика: таймлайн, производительность, находки =================
+const CAT_RU = { action: 'Действие', nav: 'Переход', mark: 'Пометка', console: 'Консоль', net: 'Сеть', dom: 'DOM', render: 'React', perf: 'Производит.', user: 'Страница', ws: 'WebSocket', storage: 'Хранилище' };
+const stripTags = (h) => String(h).replace(/<[^>]+>/g, '');
+const allNet = () => [...R.network, ...R.resources].sort((a, b) => a.ts - b.ts);
+const noise = (e) => /\/favicon\.ico(\?|$)/.test(e.url || '');
+const IMPORTANT_KINDS = new Set(['dialog', 'invalid', 'appeared', 'navigation', 'open', 'close', 'clear', 'network']);
+const isImportantEvent = (e) => e.kind !== 'vital' && (e.level === 'warn' || e.level === 'error' || IMPORTANT_KINDS.has(e.kind));
+
+function eventSub(e) {
+  const d = e.detail || {};
+  if (e.kind === 'long-frame' && d.scripts && d.scripts.length) return d.scripts.map((x) => `${x.duration} мс · ${x.src}${x.invoker ? ' (' + x.invoker + ')' : ''}`).join('\n');
+  if (e.kind === 'slow-interaction' && d.processing != null) return `худший случай: задержка ввода ${d.input} мс · обработчик ${d.processing} мс · отрисовка ${d.presentation} мс`;
+  if (e.kind === 'messages' && (d.lastIn || d.lastOut)) return (d.lastIn ? '↓ ' + d.lastIn : '') + (d.lastIn && d.lastOut ? '\n' : '') + (d.lastOut ? '↑ ' + d.lastOut : '');
+  if (e.kind === 'mutations' && d.top && d.top.length) return d.top.map((t) => `${t.selector} — ${t.count}`).join('\n');
+  if (e.kind === 'react' && d.components) return Object.entries(d.components).slice(0, 8).map(([n, v]) => `${n} ×${v[0] + v[1]}${v[1] ? ` (новых ${v[1]})` : ''}`).join(', ');
+  return '';
+}
+
+/** mode: important | all | <категория> | important-events | all-events */
+function timelineItems(mode) {
+  const out = [];
+  const eventsOnly = mode === 'important-events' || mode === 'all-events';
+  if (!eventsOnly) {
+    R.actions.forEach((a) => out.push({ ts: a.ts, cat: 'action', level: 'info', text: X.describeAction(a), sub: a.selector || '' }));
+    R.nav.filter((n) => /^(https?|file):/.test(n.url)).forEach((n) => out.push({ ts: n.ts, cat: 'nav', level: 'info', text: 'Переход: ' + n.url }));
+    R.annotations.forEach((a) => out.push({ ts: a.ts, cat: 'mark', level: 'mark', text: `Пометка #${a.n}: ${a.comment || '(без комментария)'}`, sub: a.element ? a.element.selector : '' }));
+    R.console.forEach((c) => out.push({ ts: c.ts, cat: 'console', level: c.level === 'error' ? 'error' : c.level === 'warn' ? 'warn' : 'info', text: short(c.text, 400), sub: c.loc || '', imp: c.level === 'error' || c.level === 'warn' }));
+    allNet().forEach((e) => out.push({
+      ts: e.ts, cat: 'net', level: netErr(e) ? 'error' : 'info',
+      text: `${e.method} ${X.statusLabel(e)} ${short(e.url, 160)}${e.duration != null ? ` · ${X.fmtDur(e.duration)}` : ''}`,
+      sub: e.error || '', imp: !noise(e) && (netErr(e) || ['XHR', 'Fetch'].includes(e.type)),
+    }));
+  }
+  R.events.forEach((e) => {
+    if (e.kind === 'vital') return;
+    out.push({ ts: e.ts, cat: e.cat, level: e.level || 'info', text: e.text, sub: eventSub(e), imp: isImportantEvent(e) });
+  });
+  let res = out;
+  if (mode === 'important' || mode === 'important-events') res = out.filter((x) => x.imp || ['action', 'nav', 'mark'].includes(x.cat));
+  else if (CAT_RU[mode]) res = out.filter((x) => x.cat === mode || (mode === 'action' && x.cat === 'nav'));
+  return res.sort((a, b) => a.ts - b.ts);
+}
+
+function renderTimeline(body, match) {
+  const f = filters.timeline;
+  const list = timelineItems(f).filter((x) => match(x.text, x.sub));
+  const btn = (k, t) => `<button data-f="${k}" class="${f === k ? 'on' : ''}">${t}</button>`;
+  body.innerHTML =
+    `<div class="tf">${btn('important', 'Важное')}${btn('all', 'Всё')}<span class="sep"></span>${['action', 'net', 'console', 'dom', 'render', 'perf', 'user', 'ws', 'storage'].map((k) => btn(k, CAT_RU[k])).join('')}</div>` +
+    (list.length
+      ? `<table><tr><th style="width:80px">Время</th><th style="width:105px">Тип</th><th>Что произошло</th></tr>${withDivider(list, 3, (x) =>
+          `<tr class="${x.cat === 'mark' ? 'mark' : x.level === 'error' ? 'ev-err' : x.level === 'warn' ? 'ev-warn' : ''} ${x.ts < R.startTime ? 'before' : ''}">${relCell(x.ts)}<td><span class="cat cat-${x.cat}">${CAT_RU[x.cat] || x.cat}</span></td><td>${x.level === 'error' ? '🔴 ' : x.level === 'warn' ? '🟡 ' : ''}${esc(x.text)}${x.sub ? `<span class="sub">${esc(x.sub)}</span>` : ''}</td></tr>`)}</table>`
+      : '<div class="zero">Событий нет. Обновите страницу после установки или обновления расширения — сбор начинается с загрузки.</div>');
+  body.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { filters.timeline = b.dataset.f; renderTab(); }));
+}
+
+// ---------- Web Vitals ----------
+const VITALS = [
+  ['LCP', 'Отрисовка главного контента', 2500, 4000],
+  ['INP', 'Отклик на действия', 200, 500],
+  ['CLS', 'Сдвиги макета', 0.1, 0.25],
+  ['FCP', 'Первая отрисовка', 1800, 3000],
+  ['TTFB', 'Ответ сервера', 800, 1800],
+];
+function vitalsOf() {
+  const last = {};
+  R.events.filter((e) => e.kind === 'vital').forEach((e) => (last[e.name] = e));
+  return VITALS.map(([name, title, good, poor]) => {
+    const e = last[name];
+    if (!e) return { name, title, value: null };
+    const v = e.value;
+    const rating = v <= good ? 'good' : v <= poor ? 'ni' : 'poor';
+    return { name, title, value: v, fmt: name === 'CLS' ? v.toFixed(3) : v >= 1000 ? (v / 1000).toFixed(2).replace('.', ',') + ' с' : Math.round(v) + ' мс', rating, ratingRu: { good: 'Хорошо', ni: 'Можно лучше', poor: 'Плохо' }[rating], selector: e.selector || '', page: e.page };
+  });
+}
+function rendersAgg() {
+  const map = new Map();
+  let commits = 0, busy = 0;
+  R.events.filter((e) => e.cat === 'render').forEach((e) => {
+    const d = e.detail || {};
+    commits += d.commits || 0;
+    if (e.level === 'warn') busy++;
+    Object.entries(d.components || {}).forEach(([n, v]) => {
+      const s = map.get(n) || [0, 0];
+      s[0] += v[0]; s[1] += v[1];
+      map.set(n, s);
+    });
+  });
+  return { commits, busy, list: [...map.entries()].sort((a, b) => b[1][0] + b[1][1] - (a[1][0] + a[1][1])) };
+}
+const evOf = (kind) => R.events.filter((e) => e.kind === kind);
+
+function findings() {
+  const F = [];
+  const add = (level, title, text, tab, filter, plain) => F.push({ level, title, text, tab, filter, plain });
+  const errs = R.console.filter((c) => c.level === 'error');
+  if (errs.length) add('error', `Ошибки JavaScript: ${errs.length}`, `<code>${esc(short(errs[errs.length - 1].text.split('\n')[0], 140))}</code>`, 'console', 'error', short(errs[errs.length - 1].text.split('\n')[0], 140));
+  const nerr = allNet().filter((e) => netErr(e) && !noise(e));
+  if (nerr.length) {
+    const t = nerr.slice(-3).map((e) => { let p = e.url; try { p = new URL(e.url).pathname; } catch (_) {} return `${e.method} ${X.statusLabel(e)} ${short(p, 50)}`; });
+    add('error', `Ошибки запросов: ${nerr.length}`, t.map((x) => `<code>${esc(x)}</code>`).join('<br>'), 'network', 'errors', t.join('; '));
+  }
+  const appeared = evOf('appeared').filter((e) => e.level === 'error');
+  if (appeared.length) add('error', 'Сообщения об ошибке на странице', esc(short(appeared[appeared.length - 1].text, 160)), 'timeline', 'dom');
+  const dialogs = evOf('dialog');
+  if (dialogs.length) add('warn', `Всплывающие диалоги: ${dialogs.length}`, esc(short(dialogs[dialogs.length - 1].text, 160)), 'timeline', 'user');
+  const invalid = evOf('invalid');
+  if (invalid.length) add('warn', `Ошибки валидации форм: ${invalid.length}`, esc(short(invalid[invalid.length - 1].text, 160)), 'timeline', 'user');
+  const wsBad = R.events.filter((e) => e.cat === 'ws' && e.level === 'error');
+  if (wsBad.length) add('error', `Проблемы WebSocket: ${wsBad.length}`, esc(short(wsBad[wsBad.length - 1].text, 160)), 'timeline', 'ws');
+  if (R.events.some((e) => e.kind === 'network' && e.level === 'error')) add('error', 'Пропадала сеть', 'Браузер переходил в офлайн во время теста', 'timeline', 'user');
+  const slow = evOf('slow-interaction');
+  if (slow.length) {
+    const w = slow.reduce((a, b) => (b.value > a.value ? b : a));
+    add(w.value >= 500 ? 'error' : 'warn', `Медленные отклики интерфейса: ${slow.length}`, `Худший: ${w.value} мс${w.selector ? ` · <code>${esc(short(w.selector, 60))}</code>` : ''}`, 'perf', null, `Худший: ${w.value} мс ${w.selector || ''}`);
+  }
+  const lf = evOf('long-frame');
+  if (lf.length) {
+    const w = lf.reduce((a, b) => (b.value > a.value ? b : a));
+    const src = w.detail && w.detail.scripts && w.detail.scripts[0] ? w.detail.scripts[0].src : '';
+    add(w.value >= 250 ? 'error' : 'warn', `Долгие кадры (зависания): ${lf.length}`, `Худший: ${w.value} мс${src ? ` · <code>${esc(short(src, 70))}</code>` : ''}`, 'perf', null, `Худший: ${w.value} мс ${src}`);
+  }
+  const fps = evOf('fps');
+  if (fps.length) add('warn', `Просадки FPS: ${fps.length}`, `Минимум ${Math.min(...fps.map((e) => e.value))} кадров/с`, 'perf');
+  vitalsOf().filter((v) => v.value != null && v.rating !== 'good').forEach((v) =>
+    add(v.rating === 'poor' ? 'error' : 'warn', `${v.name} — ${v.ratingRu.toLowerCase()}: ${v.fmt}`, `${v.title}${v.selector ? ` · <code>${esc(short(v.selector, 60))}</code>` : ''}`, 'perf', null, `${v.title} ${v.selector || ''}`));
+  const ra = rendersAgg();
+  if (ra.list.length && (ra.busy || ra.list[0][1][0] >= 50)) {
+    const top = ra.list.slice(0, 3).map(([n, v]) => `${n} ×${v[0] + v[1]}`).join(', ');
+    add('warn', 'Частые перерисовки React', esc(top), 'perf', null, top);
+  }
+  if (R.samples.length >= 3) {
+    const h = R.samples.map((x) => x.heap).filter((x) => x != null);
+    if (h.length >= 3 && h[h.length - 1] - h[0] > 20 && h[h.length - 1] > h[0] * 1.3) add('warn', 'Растёт потребление памяти', `${h[0]} → ${h[h.length - 1]} МБ за время записи`, 'perf');
+  }
+  if (R.snapshot && R.snapshot.domNodes > 3000) add('info', `Тяжёлая страница: ${R.snapshot.domNodes} DOM-узлов`, 'Больше 3000 узлов может замедлять отрисовку', 'perf');
+  if (!F.length) add('ok', 'Явных технических ошибок не найдено', 'Консоль и запросы без ошибок. Смотрите пометки, шаги и видео.', null);
+  return F;
+}
+
+function renderSummary() {
+  const F = findings();
+  $('#summary').innerHTML = F.map((f, i) => `<div class="find ${f.level}" data-i="${i}"><b>${esc(f.title)}</b><div class="fd">${f.text}</div></div>`).join('');
+  $('#summary').querySelectorAll('.find').forEach((el) => (el.onclick = () => {
+    const f = F[+el.dataset.i];
+    if (!f.tab) return;
+    tab = f.tab;
+    if (f.filter) filters[f.tab === 'timeline' ? 'timeline' : f.tab] = f.filter;
+    $('#search').value = '';
+    renderTab();
+    document.querySelector('.tabs').scrollIntoView({ behavior: 'smooth' });
+  }));
+}
+
+// ---------- график ----------
+function spark(points, color, unit) {
+  if (points.length < 2) return '<div class="muted" style="padding:16px 0">Мало данных</div>';
+  const W = 300, H = 60;
+  const t0 = points[0][0], t1 = points[points.length - 1][0];
+  const vs = points.map((p) => p[1]);
+  const lo = Math.min(...vs), hi = Math.max(...vs);
+  const x = (t) => ((t - t0) / Math.max(1, t1 - t0)) * W;
+  const y = (v) => H - 4 - ((v - lo) / Math.max(1e-9, hi - lo)) * (H - 8);
+  const d = points.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('');
+  const bx = R.startTime >= t0 && R.startTime <= t1 ? x(R.startTime) : null;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bx != null ? `<line x1="${bx}" x2="${bx}" y1="0" y2="${H}" stroke="#ff2d55" stroke-dasharray="3 3" stroke-width="1"/>` : ''}<path d="${d} L${W},${H} L0,${H} Z" fill="${color}" fill-opacity=".12"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+const CDP_LABELS = [
+  ['Nodes', 'DOM-узлы', 1], ['JSEventListeners', 'Обработчики событий', 1], ['Frames', 'Фреймы', 1],
+  ['LayoutCount', 'Пересчёты макета (layout)', 1], ['RecalcStyleCount', 'Пересчёты стилей', 1],
+  ['LayoutDuration', 'Время layout, мс', 1000], ['RecalcStyleDuration', 'Время пересчёта стилей, мс', 1000],
+  ['ScriptDuration', 'Время выполнения JS, мс', 1000], ['TaskDuration', 'Время всех задач, мс', 1000], ['JSHeapUsedSize', 'Память JS, МБ', 1 / 1048576],
+];
+function cdpRows() {
+  const a = R.meta.cdpMetricsStart, b = R.meta.cdpMetricsEnd;
+  if (!a) return [];
+  return CDP_LABELS.filter(([k]) => k in a).map(([k, label, mul]) => {
+    const f = (v) => (v == null ? '—' : String(Math.round(v * mul * 10) / 10).replace('.', ','));
+    return [label, f(a[k]), b ? f(b[k]) : '—', b ? (b[k] - a[k] >= 0 ? '+' : '') + f(b[k] - a[k]) : '—'];
+  });
+}
+
+function renderPerf(body) {
+  const vit = vitalsOf();
+  const ra = rendersAgg();
+  const maxR = ra.list.length ? ra.list[0][1][0] + ra.list[0][1][1] : 1;
+  const tbl = (head, rows) => `<table><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>`;
+  const evRows = (kind, lim = 30) => evOf(kind).slice().sort((a, b) => (b.value || 0) - (a.value || 0)).slice(0, lim)
+    .map((e) => `<tr class="${e.level === 'error' ? 'err' : e.level === 'warn' ? 'warn' : ''}">${relCell(e.ts)}<td>${esc(e.text)}${eventSub(e) ? `<span class="sub">${esc(eventSub(e))}</span>` : ''}</td></tr>`);
+  const pts = (k) => R.samples.filter((s) => s[k] != null).map((s) => [s.ts, s[k]]);
+  const range = (k, u) => { const v = pts(k).map((p) => p[1]); return v.length ? `${Math.min(...v)}–${Math.max(...v)} ${u}` : ''; };
+  const muts = evOf('mutations');
+  const mutTot = muts.reduce((a, e) => { const d = e.detail || {}; a.add += d.added || 0; a.rem += d.removed || 0; a.attr += d.attrs || 0; return a; }, { add: 0, rem: 0, attr: 0 });
+  const mutTop = new Map();
+  muts.forEach((e) => ((e.detail && e.detail.top) || []).forEach((t) => mutTop.set(t.selector, (mutTop.get(t.selector) || 0) + t.count)));
+  const nav = evOf('navigation').pop();
+  const cdp = cdpRows();
+
+  body.innerHTML = `<div class="perf">
+    <div class="ph">Web Vitals <small>как в Lighthouse / PageSpeed: зелёный — хорошо, жёлтый — можно лучше, красный — плохо</small></div>
+    <div class="vitals">${vit.map((v) => v.value == null
+      ? `<div class="vital"><div class="vn">${v.name}</div><div class="vv">—</div><small>${v.title}: нет данных</small></div>`
+      : `<div class="vital ${v.rating}" title="${esc(v.selector)}"><div class="vn">${v.name}</div><div class="vv">${v.fmt}</div><div class="vr">${v.ratingRu}</div><small>${v.title}</small></div>`).join('')}</div>
+    ${nav ? `<div class="muted" style="margin:-6px 0 14px">${esc(nav.text)}</div>` : ''}
+    <div class="charts">
+      <div class="chart"><div class="ct"><span>Память JS</span><span>${range('heap', 'МБ')}</span></div>${spark(pts('heap'), '#7c3aed')}</div>
+      <div class="chart"><div class="ct"><span>DOM-узлы</span><span>${range('nodes', '')}</span></div>${spark(pts('nodes'), '#0891b2')}</div>
+      <div class="chart"><div class="ct"><span>FPS (минимум за 5 с)</span><span>${range('fps', 'к/с')}</span></div>${spark(pts('fps'), '#16a34a')}</div>
+    </div>
+    <div class="muted" style="margin-top:-8px">Пунктир — момент нажатия «Нашёл баг».</div>
+
+    <div class="ph">Перерисовки React <small>${ra.list.length ? `всего обновлений: ${ra.commits}` : ''}</small></div>
+    ${ra.list.length ? tbl(['Компонент', 'Перерисовок', 'Монтирований', ''], ra.list.slice(0, 25).map(([n, v]) =>
+      `<tr><td class="mono">${esc(n)}</td><td><b>${v[0]}</b></td><td>${v[1]}</td><td style="width:40%"><span class="bar" style="width:${Math.max(2, ((v[0] + v[1]) / maxR) * 100)}%"></span></td></tr>`))
+      : '<div class="muted">Нет данных: страница не на React или подсчёт выключен в настройках расширения.</div>'}
+
+    <div class="ph">Долгие кадры и зависания <small>кадр дольше 100 мс — интерфейс заметно подтормаживает</small></div>
+    ${evOf('long-frame').length ? tbl(['Время', 'Что блокировало'], evRows('long-frame')) : '<div class="muted">Не обнаружено 👍</div>'}
+
+    <div class="ph">Медленные отклики на действия <small>дольше 200 мс от клика до отрисовки</small></div>
+    ${evOf('slow-interaction').length ? tbl(['Время', 'Действие'], evRows('slow-interaction')) : '<div class="muted">Не обнаружено 👍</div>'}
+
+    <div class="ph">Сдвиги макета <small>элементы «прыгают» при загрузке или действиях</small></div>
+    ${evOf('layout-shift').length ? tbl(['Время', 'Сдвиг и элементы'], evRows('layout-shift', 15)) : '<div class="muted">Не обнаружено 👍</div>'}
+
+    <div class="ph">Изменения DOM <small>+${mutTot.add} / −${mutTot.rem} узлов, ${mutTot.attr} изменений атрибутов</small></div>
+    ${mutTop.size ? tbl(['Где чаще всего меняется', 'Изменений'], [...mutTop.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([s2, c]) => `<tr><td class="mono">${esc(s2)}</td><td>${c}</td></tr>`)) : '<div class="muted">Нет данных</div>'}
+
+    ${cdp.length ? `<div class="ph">Метрики DevTools <small>начало → конец фиксации бага</small></div>${tbl(['Метрика', 'Начало', 'Конец', 'Разница'], cdp.map((r) => `<tr>${r.map((c, i) => `<td${i ? ' class="mono"' : ''}>${esc(c)}</td>`).join('')}</tr>`))}`
+      : '<div class="muted" style="margin-top:14px">Подробные метрики DevTools (пересчёты layout и стилей, время JS, обработчики) появятся, если включить «Полный захват сети» в настройках расширения.</div>'}
+  </div>`;
+}
+
+function renderStorage(body, match) {
+  const sn = R.snapshot;
+  if (!sn) { body.innerHTML = '<div class="zero">Снимок не сделан: обновите страницу после установки расширения и зафиксируйте баг заново.</div>'; return; }
+  const t = (rows, head) => rows.length
+    ? `<table><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>`
+    : '<div class="muted" style="padding:0 16px 8px">Пусто</div>';
+  const kv = (arr, keyName) => arr.filter((x) => match(x[keyName], x.value)).map((x) => `<tr><td class="mono" style="width:28%">${esc(x[keyName])}</td><td style="width:70px">${X.fmtSize(x.size)}</td><td class="mono msg u">${esc(x.value)}</td></tr>`);
+  const changes = R.events.filter((e) => e.cat === 'storage' && match(e.text));
+  body.innerHTML = `<div class="tf"><span class="muted">Снимок в момент нажатия «Нашёл баг». Значения с секретными именами (token, session, password…) не сохраняются.</span></div><div class="stor">
+    <h4>Cookies (${sn.cookies.length})</h4>${t(kv(sn.cookies, 'name'), ['Имя', 'Размер', 'Значение'])}
+    <h4>localStorage (${sn.localStorage.length})</h4>${t(kv(sn.localStorage, 'key'), ['Ключ', 'Размер', 'Значение'])}
+    <h4>sessionStorage (${sn.sessionStorage.length})</h4>${t(kv(sn.sessionStorage, 'key'), ['Ключ', 'Размер', 'Значение'])}
+    <h4>Изменения хранилища во время теста (${changes.length})</h4>${t(changes.map((e) => `<tr>${relCell(e.ts)}<td class="mono">${esc(e.text)}</td></tr>`), ['Время', 'Операция'])}
+  </div>`;
+}
+
+// ---------- для экспорта ----------
+function perfModel() {
+  const st = R.startTime;
+  const ra = rendersAgg();
+  const top = (kind, n) => evOf(kind).slice().sort((a, b) => (b.value || 0) - (a.value || 0)).slice(0, n).map((e) => ({ rel: e.ts - st, text: e.text, sub: eventSub(e) }));
+  const rng = (k, u) => { const v = R.samples.map((s) => s[k]).filter((x) => x != null); return v.length ? `${Math.min(...v)}–${Math.max(...v)} ${u}`.trim() : ''; };
+  const nav = evOf('navigation').pop();
+  return {
+    vitals: vitalsOf().filter((v) => v.value != null).map((v) => ({ name: v.name, title: v.title, value: v.fmt, rating: v.ratingRu, level: v.rating })),
+    navigation: nav ? nav.text : '',
+    memory: rng('heap', 'МБ'), nodes: rng('nodes', ''), fps: rng('fps', 'кадров/с'),
+    renders: ra.list.slice(0, 20).map(([n, v]) => [n, v[0], v[1]]),
+    longFrames: top('long-frame', 15),
+    slow: top('slow-interaction', 15),
+    shifts: top('layout-shift', 10),
+    cdp: cdpRows(),
+  };
+}
+const JWT = /eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]*/g;
+function storageModel(mask) {
+  const sn = R.snapshot;
+  const v = (x) => (mask ? maskS(String(x.value)).replace(JWT, '•••') : x.value);
+  return {
+    cookies: sn.cookies.map((c) => [c.name, X.fmtSize(c.size), mask ? '•••' : c.value]),
+    local: sn.localStorage.map((x) => [x.key, X.fmtSize(x.size), v(x)]),
+    session: sn.sessionStorage.map((x) => [x.key, X.fmtSize(x.size), v(x)]),
+    changes: R.events.filter((e) => e.cat === 'storage').map((e) => [X.fmtRel(e.ts - R.startTime), e.text]),
+  };
 }
 
 // ================= события =================
@@ -481,7 +799,7 @@ $('#lightbox').onclick = () => ($('#lightbox').hidden = true);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#lightbox').hidden = true; });
 
 // сохраняем выбор опций экспорта
-const OPT_IDS = ['o-console', 'o-network', 'o-before', 'o-details', 'o-mask', 'o-embed'];
+const OPT_IDS = ['o-console', 'o-network', 'o-events', 'o-perf', 'o-storage', 'o-before', 'o-details', 'o-mask', 'o-embed'];
 chrome.storage.local.get('qa_export_opts').then(({ qa_export_opts: s }) => {
   if (s) OPT_IDS.forEach((id) => { const el = document.getElementById(id); if (id in s) el.type === 'checkbox' ? (el.checked = s[id]) : (el.value = s[id]); });
 });

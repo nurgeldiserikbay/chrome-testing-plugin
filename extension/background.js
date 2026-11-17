@@ -1,9 +1,9 @@
 importScripts('db.js');
 
 // ================= настройки и лимиты =================
-const DEFAULT_SETTINGS = { bufferMin: 5, videoOnStart: false, tabAudio: false, cdp: false };
-const BUF_LIM = { console: 800, network: 500, actions: 300, nav: 100 };
-const SES_LIM = { console: 5000, network: 3000, actions: 2000, nav: 500 };
+const DEFAULT_SETTINGS = { bufferMin: 5, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true };
+const BUF_LIM = { console: 800, network: 500, actions: 300, nav: 100, events: 1500, samples: 60, resources: 400 };
+const SES_LIM = { console: 5000, network: 3000, actions: 2000, nav: 500, events: 10000, samples: 2000, resources: 3000 };
 const BUF_BODY = 4000;
 
 let buffers = {}; // tabId -> {console, network, actions, nav}
@@ -41,8 +41,11 @@ const saveSession = throttle(() => { if (S) QADB.put('reports', S.id, S).catch((
 const saveSessionNow = async () => { if (S) await QADB.put('reports', S.id, S); };
 
 // ================= фоновый буфер =================
+const KINDS = ['console', 'network', 'actions', 'nav', 'events', 'samples', 'resources'];
 function getBuf(tabId) {
-  return (buffers[tabId] ||= { console: [], network: [], actions: [], nav: [] });
+  const b = (buffers[tabId] ||= {});
+  for (const k of KINDS) b[k] ||= [];
+  return b;
 }
 function pushBuf(tabId, kind, e) {
   const arr = getBuf(tabId)[kind];
@@ -55,8 +58,9 @@ function ingest(tabId, kind, e) {
   e.ts = e.ts || Date.now();
   const inSession = S && S.active && S.tabId === tabId;
   if (inSession) {
-    const skipHookNet = kind === 'network' && S.meta.cdp && e.source !== 'cdp';
+    const skipHookNet = (kind === 'network' || kind === 'resources') && S.meta.cdp && e.source !== 'cdp';
     if (!skipHookNet) {
+      S[kind] ||= [];
       if (S[kind].length < SES_LIM[kind]) S[kind].push(e);
       else S.meta.truncated = true;
       saveSession();
@@ -79,6 +83,7 @@ const status = () => ({
   console: S ? S.console.length : 0,
   errors: S ? S.console.filter((c) => c.level === 'error').length + S.network.filter((n) => n.failed || n.status >= 400).length : 0,
   actions: S ? S.actions.length : 0,
+  events: S ? (S.events || []).length : 0,
   video: !!(S && S.videos.some((v) => v.recording)),
   videoStart: S && (S.videos.find((v) => v.recording) || {}).start,
   voice: !!(S && S.voice.some((v) => v.recording)),
@@ -136,6 +141,10 @@ async function startBug(tabId) {
     network: within(b.network),
     actions: within(b.actions),
     nav: within(b.nav),
+    events: within(b.events),
+    samples: within(b.samples),
+    resources: within(b.resources),
+    snapshot: null,
     annotations: [],
     videos: [],
     voice: [],
@@ -144,6 +153,8 @@ async function startBug(tabId) {
   if (!S.nav.length || S.nav[S.nav.length - 1].url !== tab.url) S.nav.push({ ts: now, url: tab.url, title: tab.title });
   await chrome.storage.local.set({ qa_active: S.id });
   if (st.cdp) await attachCdp(tabId);
+  S.snapshot = await takeSnapshot(tabId);
+  if (S.meta.cdp) S.meta.cdpMetricsStart = await cdpMetrics(tabId);
   await saveSessionNow();
   setBadge(true);
   await injectOverlay(tabId);
@@ -163,7 +174,9 @@ async function doFinish({ open = true } = {}) {
   if (!S || !S.active) return { ok: false, error: 'Нет активного бага' };
   try { await stopVoice(); } catch (_) {}
   try { await stopVideo(); } catch (_) {}
+  S.snapshotEnd = await takeSnapshot(S.tabId);
   if (S.meta.cdp) {
+    S.meta.cdpMetricsEnd = await cdpMetrics(S.tabId);
     try { await chrome.debugger.detach({ tabId: S.tabId }); } catch (_) {}
     S.meta.cdp = false;
   }
@@ -336,12 +349,48 @@ async function attachCdp(tabId) {
     await chrome.debugger.attach({ tabId }, '1.3');
     await cdp(tabId, 'Network.enable', { maxPostDataSize: 20000 });
     await cdp(tabId, 'Log.enable');
+    await cdp(tabId, 'Performance.enable').catch(() => {});
     S.meta.cdp = true;
     S.meta.cdpUsed = true;
   } catch (e) {
     S.meta.cdpError = e.message;
   }
 }
+async function cdpMetrics(tabId) {
+  try {
+    const r = await cdp(tabId, 'Performance.getMetrics');
+    return Object.fromEntries(r.metrics.map((m) => [m.name, m.value]));
+  } catch (_) {
+    return null;
+  }
+}
+async function takeSnapshot(tabId) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, { type: 'qa-snapshot' }, { frameId: 0 });
+  } catch (_) {
+    return null;
+  }
+}
+
+// ================= подключение счётчика перерисовок React =================
+async function syncReactProbe() {
+  try {
+    const st = await getSettings();
+    const ex = await chrome.scripting.getRegisteredContentScripts({ ids: ['qa-react'] });
+    if (st.reactRenders && !ex.length) {
+      await chrome.scripting.registerContentScripts([
+        { id: 'qa-react', js: ['react-probe.js'], matches: ['<all_urls>'], runAt: 'document_start', world: 'MAIN', persistAcrossSessions: true },
+      ]);
+    } else if (!st.reactRenders && ex.length) {
+      await chrome.scripting.unregisterContentScripts({ ids: ['qa-react'] });
+    }
+  } catch (e) {
+    console.warn('[QA Bug Recorder] react probe', e);
+  }
+}
+syncReactProbe();
+chrome.storage.onChanged.addListener((ch) => { if (ch.qa_settings) syncReactProbe(); });
+
 const trunc = (s, n) => (s == null ? s : s.length > n ? s.slice(0, n) + `\n… [обрезано, всего ${s.length} символов]` : s);
 function applyResp(e, r) {
   e.status = r.status;
@@ -474,7 +523,7 @@ const handlers = {
     const tabId = sender.tab && sender.tab.id;
     if (tabId == null) return {};
     for (const it of m.items || []) {
-      const kind = { console: 'console', net: 'network', action: 'actions' }[it.kind];
+      const kind = { console: 'console', net: 'network', action: 'actions', event: 'events', sample: 'samples', res: 'resources' }[it.kind];
       if (kind) ingest(tabId, kind, it.data);
     }
     return {};
