@@ -73,6 +73,7 @@
   <button data-act="voice" title="Голосовой комментарий с микрофона">🎤 <span class="vt">Голос</span></button>
   <button data-act="video" title="Начать или остановить запись видео вкладки"><span class="vdt">⏺ Записать видео</span></button>
   <span class="sep"></span>
+  <button data-act="marks" class="eye" title="Скрыть или показать пометки на странице">👁</button>
   <span class="cnt" title="Сделано пометок">0</span>
   <button class="done" data-act="finish" title="Завершить и открыть отчёт (Alt+Shift+S)">✓ Готово</button>
   <button class="x" data-act="cancel" title="Отменить и удалить этот баг">✕</button>
@@ -84,7 +85,7 @@
 
   let state = { startTime: Date.now(), annotations: 0 };
   let dpr = 1, mode = null, drawing = null, hover = null, pending = null, shapes = [], busy = false;
-  let toastTimer = null, cancelArmed = null;
+  let toastTimer = null, cancelArmed = null, marksHidden = false;
 
   const send = (msg) => chrome.runtime.sendMessage(msg).catch((e) => ({ ok: false, error: e.message }));
   const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
@@ -147,14 +148,15 @@
       x = s.x2 > s.x1 ? s.x1 - w - 10 : s.x1 + 10;
       y = s.y1 - h / 2;
     } else if (s.kind === 'note') {
-      x = 24; y = 24;
+      x = s.ax + 24; y = s.ay + 24;
     } else {
       const r = norm(s);
       x = r.x; y = r.y + r.h + 10;
-      if (y + h > innerHeight - 8) y = r.y - h - 10;
+      if (y + h > scrollY + innerHeight - 8) y = r.y - h - 10;
     }
-    x = Math.max(8, Math.min(innerWidth - w - 8, x));
-    y = Math.max(8, Math.min(innerHeight - h - 8, y));
+    // подпись не уходит за края видимой области
+    x = Math.max(scrollX + 8, Math.min(scrollX + innerWidth - w - 8, x));
+    y = Math.max(8, y);
     ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
     ctx.fillStyle = RED;
     ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
@@ -184,7 +186,7 @@
       ctx.setLineDash([]);
       if (s.n) badge(r.x, r.y, s.n, color);
     } else if (s.kind === 'note' && s.n) {
-      badge(18, 18, s.n, color);
+      badge(s.ax + 18, s.ay + 18, s.n, color);
     }
     label(s);
     ctx.restore();
@@ -196,18 +198,27 @@
     ctx.font = '12px ui-monospace,Consolas,monospace';
     const txt = t.length > 90 ? t.slice(0, 90) + '…' : t;
     const w = ctx.measureText(txt).width + 14;
-    let x = Math.max(4, Math.min(innerWidth - w - 4, r.x));
+    let x = Math.max(scrollX + 4, Math.min(scrollX + innerWidth - w - 4, r.x));
     let y = r.y - 28;
-    if (y < 4) y = r.y + r.h + 6;
-    if (y > innerHeight - 26) y = innerHeight - 30;
+    if (y < scrollY + 4) y = r.y + r.h + 6;
+    if (y > scrollY + innerHeight - 26) y = scrollY + innerHeight - 30;
     ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.roundRect(x, y, w, 22, 5); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.fillText(txt, x + 7, y + 15);
   }
 
+  // пометки хранятся в координатах страницы, а не окна: при прокрутке они едут вместе с контентом
+  function syncEl(s) {
+    if (!s.el || !s.el.isConnected) return;
+    const r = s.el.getBoundingClientRect();
+    if (!r.width && !r.height) return;
+    s.x1 = r.left + scrollX; s.y1 = r.top + scrollY; s.x2 = r.right + scrollX; s.y2 = r.bottom + scrollY;
+  }
   function redraw() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, innerWidth, innerHeight);
-    for (const s of shapes) drawShape(s);
+    ctx.translate(-scrollX, -scrollY);
+    [...shapes, hover, pending].forEach((s) => s && syncEl(s));
+    if (!marksHidden) for (const s of shapes) drawShape(s);
     if (hover && !pending) { drawShape(hover, BLUE); drawHoverTip(hover); }
     if (drawing) drawShape(drawing);
     if (pending) drawShape(pending);
@@ -251,7 +262,7 @@
     e.preventDefault(); e.stopPropagation();
     if (mode === 'element') return;
     cv.setPointerCapture(e.pointerId);
-    drawing = { kind: mode, x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY };
+    drawing = { kind: mode, x1: e.clientX + scrollX, y1: e.clientY + scrollY, x2: e.clientX + scrollX, y2: e.clientY + scrollY };
   });
   cv.addEventListener('pointermove', (e) => {
     if (mode === 'element') {
@@ -259,12 +270,12 @@
       if (!el) { hover = null; redraw(); return; }
       if (!hover || hover.el !== el) {
         const r = el.getBoundingClientRect();
-        hover = { kind: 'element', el, info: { tag: el.tagName.toLowerCase(), selector: U.cssPath(el) }, x1: r.x, y1: r.y, x2: r.x + r.width, y2: r.y + r.height };
+        hover = { kind: 'element', el, info: { tag: el.tagName.toLowerCase(), selector: U.cssPath(el) }, x1: r.x + scrollX, y1: r.y + scrollY, x2: r.right + scrollX, y2: r.bottom + scrollY };
         redraw();
       }
       return;
     }
-    if (drawing) { drawing.x2 = e.clientX; drawing.y2 = e.clientY; redraw(); }
+    if (drawing) { drawing.x2 = e.clientX + scrollX; drawing.y2 = e.clientY + scrollY; redraw(); }
   });
   cv.addEventListener('pointerup', (e) => {
     if (mode === 'element') {
@@ -274,7 +285,7 @@
       const info = U.describe(el);
       const r = info.rect;
       exitMode();
-      openNote({ kind: 'element', element: info, x1: r.x, y1: r.y, x2: r.x + r.w, y2: r.y + r.h });
+      openNote({ kind: 'element', el, element: info, x1: r.x + scrollX, y1: r.y + scrollY, x2: r.x + r.w + scrollX, y2: r.y + r.h + scrollY });
       return;
     }
     if (!drawing) return;
@@ -298,9 +309,10 @@
     note.hidden = false;
     const nw = 340, nh = note.offsetHeight || 190;
     let x, y;
-    if (shape.kind === 'note') { x = (innerWidth - nw) / 2; y = innerHeight - nh - 90; }
+    if (shape.kind === 'note') { shape.ax = scrollX; shape.ay = scrollY; x = (innerWidth - nw) / 2; y = innerHeight - nh - 90; }
     else {
-      const r = norm(shape);
+      const rp = norm(shape);
+      const r = { x: rp.x - scrollX, y: rp.y - scrollY, w: rp.w, h: rp.h };
       x = r.x + r.w + 16; y = r.y;
       if (x + nw > innerWidth - 8) x = r.x - nw - 16;
       if (x < 8) { x = Math.min(innerWidth - nw - 8, Math.max(8, r.x)); y = r.y + r.h + 16; }
@@ -333,38 +345,24 @@
       kind: s.kind,
       comment: text,
       element: s.element || null,
-      shape: s.kind === 'note' ? null : { x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2 },
+      shape: s.kind === 'note' ? null : { x1: s.x1 - scrollX, y1: s.y1 - scrollY, x2: s.x2 - scrollX, y2: s.y2 - scrollY },
       viewport: { w: innerWidth, h: innerHeight, dpr: window.devicePixelRatio || 1, scrollX: Math.round(scrollX), scrollY: Math.round(scrollY) },
     });
     bar.hidden = false;
     busy = false;
     pending = null;
-    shapes = others.filter((x) => x.alpha !== 0);
+    shapes = others;
     if (r && r.ok) {
       s.n = r.n;
       state.annotations = r.n;
       $('.cnt').textContent = r.n;
       shapes.push(s);
-      fade(s);
       showToast(`Пометка #${r.n} сохранена со скриншотом`, 'ok');
     } else {
       showToast((r && r.error) || 'Не удалось сохранить пометку', 'error');
     }
     redraw();
   }
-  function fade(s) {
-    setTimeout(() => {
-      const t0 = performance.now();
-      const step = (t) => {
-        s.alpha = Math.max(0, 1 - (t - t0) / 600);
-        redraw();
-        if (s.alpha > 0) requestAnimationFrame(step);
-        else { shapes = shapes.filter((x) => x !== s); redraw(); }
-      };
-      requestAnimationFrame(step);
-    }, 3500);
-  }
-
   $('.save').addEventListener('click', saveNote);
   $('.cancel').addEventListener('click', cancelNote);
   const stopKeys = (e) => e.stopPropagation();
@@ -407,6 +405,11 @@
         clearTimeout(cancelArmed);
         await send({ type: 'cancel' });
       }
+    } else if (act === 'marks') {
+      marksHidden = !marksHidden;
+      b.textContent = marksHidden ? '🙈' : '👁';
+      b.title = marksHidden ? 'Показать пометки' : 'Скрыть пометки';
+      redraw();
     } else if (act === 'voice' || act === 'video') {
       b.disabled = true;
       const r = await send({ type: act + '-toggle' });
@@ -452,6 +455,7 @@
   function destroy() {
     clearInterval(timer);
     window.removeEventListener('resize', resize);
+    window.removeEventListener('scroll', onScroll, true);
     window.removeEventListener('keydown', onKey, true);
     chrome.runtime.onMessage.removeListener(onMsg);
     host.remove();
@@ -466,6 +470,9 @@
   }
   chrome.runtime.onMessage.addListener(onMsg);
   window.addEventListener('resize', resize);
+  let rafScroll = 0;
+  const onScroll = () => { if (!rafScroll) rafScroll = requestAnimationFrame(() => { rafScroll = 0; redraw(); }); };
+  window.addEventListener('scroll', onScroll, { passive: true, capture: true });
   resize();
 
   globalThis.__qaOverlay = {
