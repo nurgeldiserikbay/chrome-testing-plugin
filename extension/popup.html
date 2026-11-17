@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
+<body>
+<header><img src="icons/32.png" alt=""><span>QA Bug Recorder</span></header>
+
+<section id="idle" hidden>
+  <button id="found" class="big">🐞 Нашёл баг</button>
+  <p class="sub">Логи консоли, запросы и ваши действия за последние минуты уже собраны — они попадут в отчёт.</p>
+  <div class="buf" id="buf"></div>
+
+  <details id="settings">
+    <summary>Настройки</summary>
+    <label><input type="checkbox" id="s-videoOnStart"> Сразу включать запись видео</label>
+    <label><input type="checkbox" id="s-tabAudio"> Записывать звук вкладки в видео</label>
+    <label><input type="checkbox" id="s-cdp"> Полный захват сети (DevTools-протокол)<small>Все ресурсы, CORS-ошибки, предупреждения браузера. Chrome покажет полосу «отлаживается».</small></label>
+    <label class="row">Брать из буфера последние
+      <select id="s-bufferMin"><option value="1">1 мин</option><option value="2">2 мин</option><option value="5">5 мин</option><option value="10">10 мин</option><option value="15">15 мин</option></select>
+    </label>
+    <button id="shortcuts" class="link">Настроить горячие клавиши</button>
+  </details>
+</section>
+
+<section id="active" hidden>
+  <div class="live"><i></i>Идёт фиксация бага <b id="timer">00:00</b></div>
+  <div class="stats">
+    <div><b id="c-ann">0</b><span>пометок</span></div>
+    <div><b id="c-act">0</b><span>действий</span></div>
+    <div><b id="c-net">0</b><span>запросов</span></div>
+    <div><b id="c-err">0</b><span>ошибок</span></div>
+  </div>
+  <div class="tools">
+    <button data-tool="element">🎯 Элемент</button>
+    <button data-tool="arrow">➚ Стрелка</button>
+    <button data-tool="rect">▭ Область</button>
+    <button data-tool="note">💬 Заметка</button>
+  </div>
+  <div class="tools two">
+    <button id="voice">🎤 Голос</button>
+    <button id="video">⏺ Видео</button>
+  </div>
+  <button id="finish" class="big green">✓ Готово — открыть отчёт</button>
+  <button id="cancel" class="link danger">Отменить и удалить этот баг</button>
+</section>
+
+<div id="err" class="err" hidden></div>
+
+<footer>
+  <button id="reports" class="link">📁 Мои баг-репорты</button>
+  <span class="keys">Alt+Shift+B — нашёл баг</span>
+</footer>
+<script src="popup.js"></script>
+</body></html>

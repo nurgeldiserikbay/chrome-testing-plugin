@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Баг-репорт — QA Bug Recorder</title>
+<link rel="icon" href="icons/32.png"><link rel="stylesheet" href="report.css"></head>
+<body>
+<aside>
+  <div class="brand"><img src="icons/32.png" alt=""> QA Bug Recorder</div>
+  <div class="side-h">Мои баг-репорты</div>
+  <div id="list"></div>
+</aside>
+
+<main>
+  <div id="empty" hidden>
+    <div class="empty">
+      <div style="font-size:48px">🐞</div>
+      <h2>Баг-репортов пока нет</h2>
+      <p>Откройте тестируемый сайт и нажмите иконку расширения → <b>«Нашёл баг»</b> или <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>.</p>
+    </div>
+  </div>
+
+  <div id="report" hidden>
+    <div id="banner" class="banner" hidden></div>
+
+    <header class="rhead">
+      <input id="f-title" class="title" placeholder="Краткое название бага, например: «Кнопка „Оплатить“ не реагирует»">
+      <div class="hrow">
+        <label>Серьёзность <select id="f-severity">
+          <option>Блокирующий</option><option>Критический</option><option selected>Значительный</option><option>Незначительный</option><option>Тривиальный</option>
+        </select></label>
+        <label>Приоритет <select id="f-priority"><option value="">—</option><option>Высокий</option><option>Средний</option><option>Низкий</option></select></label>
+        <span id="created" class="muted"></span>
+      </div>
+    </header>
+
+    <section class="export card">
+      <div class="ex-btns">
+        <button data-ex="docx" class="primary">📄 Word (.docx)</button>
+        <button data-ex="md">📝 Markdown (.zip)</button>
+        <button data-ex="html">🌐 HTML</button>
+        <button data-ex="har">🔌 HAR</button>
+        <button data-ex="all">📦 Всё одним архивом</button>
+      </div>
+      <div class="ex-opts">
+        <label>Консоль <select id="o-console"><option value="all">все записи</option><option value="warn" selected>предупреждения и ошибки</option><option value="error">только ошибки</option><option value="none">не включать</option></select></label>
+        <label>Сеть <select id="o-network"><option value="all">все запросы</option><option value="api" selected>API (XHR/Fetch) и ошибки</option><option value="errors">только ошибки</option><option value="none">не включать</option></select></label>
+        <label><input type="checkbox" id="o-before" checked> данные до нажатия «Нашёл баг»</label>
+        <label><input type="checkbox" id="o-details" checked> заголовки и тела запросов</label>
+        <label><input type="checkbox" id="o-mask" checked> скрыть токены, cookie, пароли</label>
+        <label><input type="checkbox" id="o-embed" checked> встроить видео/голос в HTML</label>
+      </div>
+      <div id="ex-status" class="muted"></div>
+    </section>
+
+    <section class="grid2">
+      <div class="card">
+        <div class="lbl">Шаги воспроизведения <button id="regen" class="link">↻ собрать из действий</button></div>
+        <textarea id="f-steps" rows="8" placeholder="1. Открыть …&#10;2. Нажать …"></textarea>
+      </div>
+      <div class="card stack">
+        <div><div class="lbl">Ожидаемый результат</div><textarea id="f-expected" rows="3"></textarea></div>
+        <div><div class="lbl">Фактический результат</div><textarea id="f-actual" rows="3"></textarea></div>
+      </div>
+    </section>
+    <section class="card"><div class="lbl">Дополнительно</div><textarea id="f-notes" rows="2" placeholder="Частота воспроизведения, тестовый аккаунт, ссылка на задачу…"></textarea></section>
+
+    <section id="media-sec" hidden><h2>Видео и голос</h2><div id="media"></div></section>
+
+    <section id="ann-sec"><h2>Пометки <span id="ann-count" class="pill"></span></h2><div id="anns" class="anns"></div></section>
+
+    <section>
+      <div class="tabs">
+        <button data-tab="actions" class="on">Действия <span id="t-actions" class="pill"></span></button>
+        <button data-tab="console">Консоль <span id="t-console" class="pill"></span></button>
+        <button data-tab="network">Сеть <span id="t-network" class="pill"></span></button>
+        <button data-tab="env">Окружение</button>
+        <input id="search" placeholder="Поиск…">
+      </div>
+      <div class="card tabbody" id="tabbody"></div>
+    </section>
+  </div>
+</main>
+
+<div id="lightbox" hidden><img alt=""></div>
+
+<script src="db.js"></script>
+<script src="zip.js"></script>
+<script src="docx.js"></script>
+<script src="exporters.js"></script>
+<script src="report.js"></script>
+</body></html>

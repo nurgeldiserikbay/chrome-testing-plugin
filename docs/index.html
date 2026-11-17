@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QA Bug Recorder — баг-репорт за 10 секунд прямо в Chrome</title>
+<meta name="description" content="Бесплатное расширение Chrome для тестировщиков: отметьте элемент, нарисуйте стрелку, наговорите голосом. Логи консоли, запросы и шаги воспроизведения собираются сами. Экспорт в Word, Markdown, HTML и HAR.">
+<meta property="og:title" content="QA Bug Recorder — баг-репорт за 10 секунд">
+<meta property="og:description" content="Пометки на странице, видео, голос, консоль, сеть и автошаги. Экспорт в Word, Markdown, HTML.">
+<meta property="og:image" content="img/report.webp">
+<link rel="icon" href="img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="#" class="brand"><img src="img/logo.png" alt=""><span>QA Bug Recorder</span></a>
+    <nav>
+      <a href="#how">Как работает</a>
+      <a href="#features">Возможности</a>
+      <a href="#report">Отчёт</a>
+      <a href="#install">Установка</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-ghost sm" href="https://github.com/nurgeldiserikbay/chrome-testing-plugin" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="grid-bg" aria-hidden="true"></div>
+  <div class="wrap hero-in">
+    <div class="hero-copy">
+      <div class="eyebrow"><span class="dot"></span> Расширение для Chrome · бесплатно · открытый код</div>
+      <h1>Нашли баг —<br>зафиксируйте его<br><em>за 10 секунд</em></h1>
+      <p class="lead">Ткните в сломанный элемент, нарисуйте стрелку или просто наговорите голосом. Логи консоли, сетевые запросы и ваши шаги расширение уже собрало. Готовый отчёт выгружается в Word, Markdown или HTML.</p>
+      <div class="cta">
+        <a class="btn btn-red" href="qa-bug-recorder.zip" download>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+          Скачать расширение
+        </a>
+        <a class="btn btn-ghost" href="#how">Посмотреть, как работает</a>
+      </div>
+      <div class="hero-meta">
+        <span>Chrome · Edge · Яндекс Браузер</span><span>Данные не покидают браузер</span><span>Без регистрации</span>
+      </div>
+    </div>
+    <div class="hero-shot">
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
+        <img src="img/panel-element.webp" alt="Панель фиксации бага поверх сайта: выбран элемент «Оплатить», открыт комментарий" width="1800" height="1125">
+      </div>
+      <div class="chip c1"><b>console.error</b> TypeError: Cannot read properties of null</div>
+      <div class="chip c2"><b class="red">POST 501</b> /api/orders</div>
+      <div class="chip c3"><b>Шаг 9</b> Клик: «Оплатить 38 980 ₸»</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROBLEM ============ -->
+<section class="pain">
+  <div class="wrap">
+    <h2 class="h2">«Не воспроизводится» — самая дорогая фраза в разработке</h2>
+    <p class="sub">Тестировщик видит баг за секунду, а потом тратит 15 минут на скриншоты, копирование логов и вспоминание шагов. Разработчик получает отчёт без контекста и тратит ещё час.</p>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <div class="pc-before">Было</div>
+        <h3>«Что я нажимал перед этим?»</h3>
+        <p>Шаги восстанавливаются по памяти, половина теряется.</p>
+        <div class="pc-after">Стало</div>
+        <p class="ok">Клики, ввод и переходы пишутся сами. Шаги воспроизведения собираются автоматически.</p>
+      </div>
+      <div class="pain-card">
+        <div class="pc-before">Было</div>
+        <h3>Скриншот без контекста</h3>
+        <p>Непонятно, на что смотреть и какая это кнопка в коде.</p>
+        <div class="pc-after">Стало</div>
+        <p class="ok">Стрелка, рамка и комментарий прямо на скриншоте плюс CSS-селектор, HTML и стили элемента.</p>
+      </div>
+      <div class="pain-card">
+        <div class="pc-before">Было</div>
+        <h3>«Открой DevTools и пришли логи»</h3>
+        <p>Ошибка уже случилась, консоль очищена, запрос не повторить.</p>
+        <div class="pc-after">Стало</div>
+        <p class="ok">Консоль и сеть за последние 5 минут уже в буфере, включая то, что произошло до нажатия кнопки.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW ============ -->
+<section id="how" class="how">
+  <div class="wrap">
+    <div class="kicker">Как это работает</div>
+    <h2 class="h2">Три шага от бага до отчёта</h2>
+
+    <div class="step">
+      <div class="step-text">
+        <div class="num">01</div>
+        <h3>Тестируете как обычно</h3>
+        <p>Расширение тихо держит в памяти последние минуты работы: <b>логи консоли и ошибки JS</b>, <b>запросы fetch/XHR</b> с телами ответов, <b>клики, ввод и переходы</b>. Ничего нажимать не нужно, ничего никуда не отправляется.</p>
+        <ul class="ticks">
+          <li>Пароли, номера карт и CVV не записываются</li>
+          <li>Счётчик ошибок виден в окне расширения</li>
+        </ul>
+      </div>
+      <div class="step-img popup-pair">
+        <img src="img/popup-idle.webp" alt="Окно расширения: кнопка «Нашёл баг» и собранный буфер" loading="lazy" width="680" height="665">
+      </div>
+    </div>
+
+    <div class="step rev">
+      <div class="step-text">
+        <div class="num">02</div>
+        <h3>Нашли баг — показываете, где</h3>
+        <p>Нажмите <b>«🐞 Нашёл баг»</b> или <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>. Поверх сайта появится панель:</p>
+        <div class="tools">
+          <div><span>🎯</span><b>Элемент</b>наведите и кликните, в отчёт попадёт селектор, текст, размеры, стили</div>
+          <div><span>➚</span><b>Стрелка</b>тяните от свободного места к проблеме</div>
+          <div><span>▭</span><b>Область</b>обведите кусок интерфейса</div>
+          <div><span>💬</span><b>Заметка</b>комментарий со скриншотом всего экрана</div>
+          <div><span>🎤</span><b>Голос</b>наговорите, если печатать долго</div>
+          <div><span>⏺</span><b>Видео</b>запись вкладки с вашим голосом</div>
+        </div>
+      </div>
+      <div class="step-img">
+        <div class="switch" data-switch>
+          <div class="sw-tabs"><button class="on" data-i="0">Элемент</button><button data-i="1">Стрелка</button><button data-i="2">Область</button></div>
+          <div class="browser small">
+            <div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
+            <img src="img/element-hover.webp" data-src="img/element-hover.webp|img/arrow.webp|img/area.webp" alt="Выбор элемента, стрелка и область на странице" loading="lazy" width="1800" height="1125">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-text">
+        <div class="num">03</div>
+        <h3>Выгружаете готовый отчёт</h3>
+        <p>Нажмите <b>«✓ Готово»</b>. Откроется отчёт: шаги воспроизведения уже собраны, остаётся вписать название и ожидаемый результат. Дальше одна кнопка: <b>Word</b>, <b>Markdown</b>, <b>HTML</b>, <b>HAR</b> или всё одним архивом.</p>
+        <ul class="ticks">
+          <li>Токены, cookie и пароли скрываются при экспорте</li>
+          <li>Можно выбрать, какие логи и запросы включать</li>
+        </ul>
+      </div>
+      <div class="step-img">
+        <div class="browser small">
+          <div class="browser-bar"><i></i><i></i><i></i><span>Баг-репорт</span></div>
+          <img src="img/report.webp" alt="Страница отчёта с полями, кнопками экспорта и пометками" loading="lazy" width="1800" height="1250">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section id="features" class="features">
+  <div class="wrap">
+    <div class="kicker light">Возможности</div>
+    <h2 class="h2 light">Всё, что нужно разработчику, чтобы починить с первого раза</h2>
+    <div class="fgrid">
+      <article><div class="fi">⏪</div><h3>Буфер «задним числом»</h3><p>До 15 минут логов, запросов и действий до нажатия кнопки. Баг уже случился, но данные есть.</p></article>
+      <article><div class="fi">🎯</div><h3>Выбор элемента</h3><p>CSS-селектор с приоритетом <code>data-testid</code>, текст, размеры, вычисленные стили и фрагмент HTML.</p></article>
+      <article><div class="fi">✍️</div><h3>Пометки на скриншоте</h3><p>Стрелка, рамка, нумерация и комментарий нарисованы прямо на картинке.</p></article>
+      <article><div class="fi">🎤</div><h3>Голосовой комментарий</h3><p>Запись с микрофона параллельно с остальным: отдельным файлом и в звуковой дорожке видео.</p></article>
+      <article><div class="fi">🎬</div><h3>Видео вкладки</h3><p>Включается в любой момент. Клик по времени пометки перематывает видео к этому моменту.</p></article>
+      <article><div class="fi">🧭</div><h3>Автошаги</h3><p>«Ввод в поле Email», «Клик: Оплатить», «Переход на /checkout»: шаги собираются из реальных действий.</p></article>
+      <article><div class="fi">🖥️</div><h3>Консоль и ошибки JS</h3><p><code>console.*</code>, необработанные исключения, отклонённые промисы, незагруженные ресурсы.</p></article>
+      <article><div class="fi">🔌</div><h3>Сеть и HAR</h3><p>Метод, статус, время, заголовки, тела запроса и ответа. HAR открывается в DevTools → Network → Import.</p></article>
+      <article><div class="fi">🔒</div><h3>Защита данных</h3><p>Пароли не пишутся вовсе. <code>Authorization</code>, cookie, токены в URL и JSON скрываются при экспорте.</p></article>
+      <article><div class="fi">🗂️</div><h3>История баг-репортов</h3><p>Все отчёты хранятся локально. К любому можно вернуться, дописать и выгрузить заново.</p></article>
+      <article><div class="fi">⌨️</div><h3>Горячие клавиши</h3><p>Нашёл баг, выбрать элемент, стрелка, готово: без мыши и без лишних кликов.</p></article>
+      <article><div class="fi">🧪</div><h3>Режим DevTools</h3><p>По желанию: полный захват сети с картинками, скриптами, CORS-ошибками и предупреждениями браузера.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REPORT SHOWCASE ============ -->
+<section id="report" class="showcase">
+  <div class="wrap">
+    <div class="kicker">Отчёт</div>
+    <h2 class="h2">Один экран: что сломалось, где и почему</h2>
+    <p class="sub">Это настоящие скриншоты отчёта, снятые на тестовом магазине. Переключайте вкладки.</p>
+    <div class="switch big" data-switch>
+      <div class="sw-tabs">
+        <button class="on" data-i="0">Отчёт</button>
+        <button data-i="1">Пометки</button>
+        <button data-i="2">Сеть</button>
+        <button data-i="3">Консоль</button>
+        <button data-i="4">Word</button>
+      </div>
+      <div class="browser">
+        <div class="browser-bar"><i></i><i></i><i></i><span>QA Bug Recorder · отчёт</span></div>
+        <img src="img/report.webp" data-src="img/report.webp|img/report-annotations.webp|img/report-network.webp|img/report-console.webp|img/word-1.webp" alt="Отчёт QA Bug Recorder" loading="lazy" width="1800" height="1250">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FORMATS ============ -->
+<section class="formats">
+  <div class="wrap">
+    <div class="kicker">Экспорт</div>
+    <h2 class="h2">Формат, который примет ваш трекер</h2>
+    <div class="fmt-grid">
+      <div class="fmt"><div class="ext">.docx</div><h3>Word</h3><p>Для заказчика и документации. Заголовки, таблицы окружения, консоли и сети, скриншоты.</p></div>
+      <div class="fmt"><div class="ext">.md</div><h3>Markdown</h3><p>Для GitLab, GitHub, Jira, Notion. Архив: <code>report.md</code>, папка со скриншотами, медиа, HAR.</p></div>
+      <div class="fmt"><div class="ext">.html</div><h3>HTML</h3><p>Один файл, открывается в любом браузере. Видео и голос встраиваются внутрь.</p></div>
+      <div class="fmt"><div class="ext">.har</div><h3>HAR</h3><p>Для разработчика: импорт в DevTools, Charles, Fiddler или Postman.</p></div>
+      <div class="fmt wide"><div class="ext">.zip</div><h3>Всё одним архивом</h3><p>Word + HTML + Markdown + скриншоты + видео + голос + HAR + <code>console.log</code>. Прикрепил к задаче, и готово.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AUDIENCE ============ -->
+<section class="who">
+  <div class="wrap who-grid">
+    <div><div class="who-i">🧪</div><h3>Тестировщикам</h3><p>Меньше рутины, больше найденных багов. Отчёт без «а что ты нажимал?».</p></div>
+    <div><div class="who-i">👩‍💻</div><h3>Разработчикам</h3><p>Селектор, стек ошибки, тело ответа сервера и HAR сразу в задаче.</p></div>
+    <div><div class="who-i">📋</div><h3>Менеджерам и заказчикам</h3><p>Приёмочное тестирование: даже не-технический человек отправит понятный отчёт голосом и стрелкой.</p></div>
+  </div>
+</section>
+
+<!-- ============ PRIVACY ============ -->
+<section class="privacy">
+  <div class="wrap priv-in">
+    <div class="lock">🔒</div>
+    <div>
+      <h2 class="h2 light">Ваши данные остаются у вас</h2>
+      <p>Расширение не имеет сервера и ничего не отправляет в интернет. Всё хранится локально в браузере (IndexedDB) и покидает его, только когда вы сами скачиваете отчёт. Значения полей паролей, карт и токенов не записываются вовсе, а заголовки авторизации и cookie по умолчанию скрываются при экспорте.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INSTALL ============ -->
+<section id="install" class="install">
+  <div class="wrap">
+    <div class="kicker">Установка</div>
+    <h2 class="h2">Две минуты, без магазина расширений</h2>
+    <div class="inst-grid">
+      <ol class="inst">
+        <li><b>Скачайте архив</b> и распакуйте в постоянную папку.<br><a class="btn btn-red sm" href="qa-bug-recorder.zip" download>Скачать qa-bug-recorder.zip</a></li>
+        <li>Откройте <code>chrome://extensions</code> и справа вверху включите <b>«Режим разработчика»</b>.</li>
+        <li>Нажмите <b>«Загрузить распакованное расширение»</b> и выберите папку <code>qa-bug-recorder</code>.</li>
+        <li>Закрепите иконку 🐞 на панели браузера и <b>обновите вкладки</b> тестируемого сайта.</li>
+      </ol>
+      <div class="keys">
+        <h3>Горячие клавиши</h3>
+        <table>
+          <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd></td><td>Нашёл баг</td></tr>
+          <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Выбрать элемент</td></tr>
+          <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Стрелка</td></tr>
+          <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>Готово, открыть отчёт</td></tr>
+          <tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Сохранить пометку</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Отменить инструмент</td></tr>
+        </table>
+        <p class="muted">Переназначить: <code>chrome://extensions/shortcuts</code></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq" class="faq">
+  <div class="wrap narrow">
+    <div class="kicker">FAQ</div>
+    <h2 class="h2">Частые вопросы</h2>
+    <details><summary>Замедляет ли расширение сайт?</summary><p>Нет. Перехват консоли и запросов — это лёгкие обёртки над стандартными функциями, данные отправляются пачками раз в секунду. Видео пишется только когда вы его включили.</p></details>
+    <details><summary>Почему в буфере пусто?</summary><p>Сбор начинается с загрузки страницы. После установки расширения обновите вкладку сайта (F5). На служебных страницах <code>chrome://</code> и в магазине расширений Chrome запрещает работу расширений.</p></details>
+    <details><summary>Почему Chrome просит подтверждение для видео?</summary><p>Chrome разрешает записывать вкладку только после явного действия пользователя. Если вы начали баг через иконку или горячую клавишу, видео включается с панели на странице. Если после этого был переход на другую страницу, нажмите иконку → «⏺ Видео».</p></details>
+    <details><summary>Как работает голосовой комментарий?</summary><p>При первом нажатии 🎤 откроется вкладка с запросом доступа к микрофону: это нужно один раз. Голос записывается отдельным файлом и подмешивается в видео, если оно включено.</p></details>
+    <details><summary>Что такое «Полный захват сети»?</summary><p>Режим через DevTools-протокол: записывает все ресурсы (картинки, скрипты, стили), CORS-ошибки и предупреждения браузера. Chrome при этом показывает полосу «Расширение отлаживает этот браузер», это нормально. Включается в настройках расширения.</p></details>
+    <details><summary>В каком формате видео?</summary><p>WebM (VP9/VP8 + Opus). Открывается в Chrome, Firefox, VLC, плеерах Windows 10+ и macOS 13+. В Word видео не встраивается: используйте HTML или архив.</p></details>
+    <details><summary>Можно ли использовать в Edge, Яндекс Браузере, Opera?</summary><p>Да, в любом браузере на Chromium версии 116 и новее. Установка такая же, через страницу расширений и режим разработчика.</p></details>
+  </div>
+</section>
+
+<!-- ============ ROADMAP ============ -->
+<section class="roadmap">
+  <div class="wrap">
+    <div class="kicker">Дальше</div>
+    <h2 class="h2">В планах</h2>
+    <div class="rm-grid">
+      <div class="rm"><span>Скоро</span>Отправка в Jira, YouTrack, GitLab, Linear и Telegram в один клик</div>
+      <div class="rm"><span>Скоро</span>Голос → текст: диктовка комментария с распознаванием речи</div>
+      <div class="rm"><span>Идея</span>Видео «последние 30 секунд» и запись DOM (rrweb) задним числом</div>
+      <div class="rm"><span>Идея</span>Размытие персональных данных на скриншоте</div>
+      <div class="rm"><span>Идея</span>Шаблоны отчётов под проект и экспорт в PDF</div>
+      <div class="rm"><span>Идея</span>Метрики производительности (Web Vitals) в отчёте</div>
+    </div>
+    <p class="sub center">Есть идея или нашли баг в самом расширении? <a href="https://github.com/nurgeldiserikbay/chrome-testing-plugin/issues" target="_blank" rel="noopener">Создайте issue на GitHub</a>.</p>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap final-in">
+    <h2>Следующий баг зафиксируйте за 10 секунд</h2>
+    <div class="cta center">
+      <a class="btn btn-red" href="qa-bug-recorder.zip" download>Скачать расширение</a>
+      <a class="btn btn-ghost" href="https://github.com/nurgeldiserikbay/chrome-testing-plugin" target="_blank" rel="noopener">Исходный код на GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <span><img src="img/logo.png" alt=""> QA Bug Recorder</span>
+    <span>Работает локально · Manifest V3 · Chrome 116+</span>
+  </div>
+</footer>
+
+<script>
+  // переключатели скриншотов
+  document.querySelectorAll('[data-switch]').forEach(function (sw) {
+    var img = sw.querySelector('img[data-src]');
+    var srcs = img.dataset.src.split('|');
+    srcs.forEach(function (s) { var i = new Image(); i.src = s; }); // предзагрузка
+    sw.querySelectorAll('.sw-tabs button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        sw.querySelectorAll('.sw-tabs button').forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        img.classList.add('fade');
+        setTimeout(function () {
+          img.src = srcs[+b.dataset.i];
+          img.classList.toggle('portrait', /word/.test(img.src));
+          img.classList.remove('fade');
+        }, 150);
+      });
+    });
+  });
+</script>
+</body>
+</html>
