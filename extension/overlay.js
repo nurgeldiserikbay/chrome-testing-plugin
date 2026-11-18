@@ -26,6 +26,12 @@
   .bar .done{background:#059669;color:#fff;font-weight:600}
   .bar .done:hover{background:#047857}
   .bar .x{color:#9ca3af}
+  .bar .done.warn{background:#b45309}
+  .mini{position:fixed;right:16px;bottom:16px;display:flex;align-items:center;gap:6px;padding:8px 12px;background:#111827;color:#f9fafb;border-radius:999px;
+        box-shadow:0 8px 24px rgba(0,0,0,.35);font:600 13px/1 ${FONT};pointer-events:auto;cursor:pointer;user-select:none;opacity:.85}
+  .mini:hover{opacity:1}
+  .mini .me{background:#7c2d12;color:#fed7aa;border-radius:8px;padding:2px 6px;font-size:11px}
+  .mini .mr{background:${RED};border-radius:6px;padding:2px 6px;font-size:11px;animation:pl 1.4s infinite}
   .bar .x.warn{background:#7f1d1d;color:#fff}
   .bar .cnt{background:#374151;font-size:12px;padding:6px 9px}
   .bar .cnt.open{background:${BLUE};color:#fff}
@@ -106,6 +112,7 @@
   <div class="vo" hidden>🎤 Идёт запись голоса — можно просто рассказать</div>
   <div class="row"><button class="save">Сохранить</button><button class="cancel">Отмена</button><span class="k">Ctrl+Enter · Esc</span></div>
 </div>
+<div class="mini" hidden title="Развернуть панель проверки">🐞 <span class="mt2">00:00</span><span class="me" hidden></span><span class="mr" hidden>● REC</span></div>
 <div class="bar">
   <span class="grip" title="Перетащить панель">⋮⋮</span>
   <span class="title" title="Идёт проверка. Ошибки консоли и запросов сохраняются автоматически. Видео пишется, только если нажать «Записать видео»"><i>🐞</i>Проверка <b class="t">00:00</b><span class="vrec">● REC</span></span>
@@ -122,7 +129,8 @@
   <button data-act="list" class="cnt" title="Список замечаний: показать, изменить, удалить">📋 <span class="cn">0</span></button>
   <button data-act="errs" class="cnt errs" title="Автоматически пойманные ошибки консоли и запросов" hidden>⚠ <span class="en">0</span></button>
   <button class="done" data-act="finish" title="Завершить и открыть отчёт">✓ Готово</button>
-  <button class="x" data-act="cancel" title="Отменить и удалить этот баг">✕</button>
+  <button data-act="min" title="Свернуть панель — не будет мешать кликать по сайту">▁</button>
+  <button class="x" data-act="cancel" title="Отменить проверку и удалить данные">✕</button>
 </div>`;
   document.documentElement.appendChild(host);
 
@@ -134,8 +142,13 @@
   let state = { startTime: Date.now(), annotations: 0 };
   let dpr = 1, mode = null, drawing = null, hover = null, pending = null, editing = null, busy = false;
   let shapes = []; // пометки, нарисованные на этой странице
+  // одностраничные приложения (React, Vue…) меняют адрес без перезагрузки:
+  // пометка принадлежит адресу, на котором её сделали, и видна только там
+  const pageKey = (u) => String(u).replace(/\/+(?=$|[?#])/, '');
+  let curPage = pageKey(location.href);
+  const visible = () => shapes.filter((x) => x.page === curPage);
   let hot = null; // пометка под курсором
-  let toastTimer = null, cancelArmed = null, marksHidden = false, capturing = false;
+  let toastTimer = null, cancelArmed = null, finishArmed = null, marksHidden = false, capturing = false;
 
   const send = (msg) => chrome.runtime.sendMessage(msg).catch((e) => ({ ok: false, error: e.message }));
   const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
@@ -289,7 +302,7 @@
     ctx.clearRect(0, 0, innerWidth, innerHeight);
     ctx.translate(-scrollX, -scrollY);
     [...shapes, hover, pending].forEach((s) => s && sync(s));
-    if (!marksHidden) for (const s of shapes) drawShape(s, RED, alphaOf(s));
+    if (!marksHidden) for (const s of visible()) drawShape(s, RED, alphaOf(s));
     if (hover && !pending) { drawShape(hover, BLUE); drawHoverTip(hover); }
     if (drawing) drawShape(drawing);
     if (pending && !shapes.includes(pending)) drawShape(pending);
@@ -300,7 +313,7 @@
   function placeChips() {
     if (marksHidden || capturing) { chipsEl.innerHTML = ''; return; }
     const have = new Map([...chipsEl.children].map((c) => [+c.dataset.n, c]));
-    for (const s of shapes) {
+    for (const s of visible()) {
       const b = badgePos(s);
       let c = have.get(s.n);
       if (!c) {
@@ -331,8 +344,9 @@
   // подсветка пометки под курсором
   const inBox = (x, y, b, pad = 6) => b && x >= b.x - pad && x <= b.x + b.w + pad && y >= b.y - pad && y <= b.y + b.h + pad;
   function hitTest(px, py) {
-    for (let i = shapes.length - 1; i >= 0; i--) {
-      const s = shapes[i];
+    const vis = visible();
+    for (let i = vis.length - 1; i >= 0; i--) {
+      const s = vis[i];
       if (inBox(px, py, s.lb)) return s;
       if (s.kind === 'rect' || s.kind === 'element') { if (inBox(px, py, norm(s), 4)) return s; }
       else if (s.kind === 'arrow') {
@@ -345,7 +359,7 @@
   }
   let moveRaf = 0;
   const onMove = (e) => {
-    if (mode || moveRaf || marksHidden || !shapes.length) return;
+    if (mode || moveRaf || marksHidden || !visible().length) return;
     const x = e.clientX + scrollX, y = e.clientY + scrollY;
     moveRaf = requestAnimationFrame(() => {
       moveRaf = 0;
@@ -465,7 +479,7 @@
   // скриншот: на нём только одна пометка, без панели и прочих пометок
   async function withCapture(s, fn) {
     capturing = true;
-    note.hidden = true; bar.hidden = true; hint.hidden = true; toastEl.hidden = true; listEl.hidden = true; typesEl.hidden = true;
+    note.hidden = true; bar.hidden = true; miniEl.hidden = true; hint.hidden = true; toastEl.hidden = true; listEl.hidden = true; typesEl.hidden = true;
     const others = shapes;
     shapes = [];
     pending = s;
@@ -477,7 +491,8 @@
       capturing = false;
       shapes = others;
       pending = null;
-      bar.hidden = false;
+      bar.hidden = isMini;
+      miniEl.hidden = !isMini;
     }
     return res;
   }
@@ -505,7 +520,7 @@
     );
     busy = false;
     if (r && r.ok) {
-      if (!isEdit) { s.n = r.n; shapes.push(s); }
+      if (!isEdit) { s.n = r.n; s.page = curPage; shapes.push(s); }
       flash(s);
       showToast(isEdit ? `Пометка #${s.n} изменена, скриншот обновлён` : `Пометка #${s.n} сохранена со скриншотом`, 'ok');
       if (r.count != null) setCount(r.count);
@@ -556,7 +571,7 @@
     listEl.innerHTML = `<h4>Замечания (${items.length}) <small>наведите на пометку на странице — она станет яркой</small></h4>` +
       (items.length
         ? items.map((a) => {
-            const here = shapes.find((s) => s.n === a.n);
+            const here = visible().find((s) => s.n === a.n);
             const other = !here && a.url !== location.href;
             return `<div class="li" data-n="${a.n}"><span class="n">${a.n}</span><div class="tx"><b>${KIND[a.kind] || ''} ${escH(a.comment || '(без комментария)')}</b>` +
               `<small>${other ? 'на другой странице' : here ? 'на этой странице' : 'нарисована до перезагрузки'}</small></div><div class="bt">` +
@@ -582,7 +597,7 @@
       const n = +row.dataset.n;
       const a = items.find((x) => x.n === n);
       row.querySelectorAll('button').forEach((b) => (b.onclick = async () => {
-        const s = shapes.find((x) => x.n === n);
+        const s = visible().find((x) => x.n === n);
         if (b.dataset.a === 'show' && s) {
           const r2 = norm(s);
           if (s.kind === 'note') window.scrollTo({ top: s.ay, behavior: 'smooth' });
@@ -607,15 +622,15 @@
   let prepSaved = null;
   async function capturePrep() {
     if (prepSaved) return true;
-    prepSaved = { bar: bar.hidden, note: note.hidden, list: listEl.hidden, marks: marksHidden };
-    bar.hidden = true; toastEl.hidden = true; note.hidden = true; listEl.hidden = true; typesEl.hidden = true; hint.hidden = true;
+    prepSaved = { bar: bar.hidden, note: note.hidden, list: listEl.hidden, marks: marksHidden, mini: miniEl.hidden };
+    bar.hidden = true; miniEl.hidden = true; toastEl.hidden = true; note.hidden = true; listEl.hidden = true; typesEl.hidden = true; hint.hidden = true;
     marksHidden = true; redraw();
     await raf(); await raf();
     return true;
   }
   function captureDone() {
     if (!prepSaved) return;
-    bar.hidden = prepSaved.bar; note.hidden = prepSaved.note; listEl.hidden = prepSaved.list; marksHidden = prepSaved.marks;
+    bar.hidden = prepSaved.bar; miniEl.hidden = prepSaved.mini; note.hidden = prepSaved.note; listEl.hidden = prepSaved.list; marksHidden = prepSaved.marks;
     if (mode) hint.hidden = false;
     prepSaved = null; redraw();
   }
@@ -680,9 +695,18 @@
     if (b.dataset.tool) { setMode(b.dataset.tool); return; }
     const act = b.dataset.act;
     if (act === 'finish') {
+      // защита от случайного клика: завершить можно только вторым нажатием
+      if (!finishArmed) {
+        b.classList.add('warn'); b.textContent = 'Завершить проверку?';
+        finishArmed = setTimeout(() => { finishArmed = null; b.classList.remove('warn'); b.textContent = '✓ Готово'; }, 3000);
+        return;
+      }
+      clearTimeout(finishArmed); finishArmed = null;
       b.textContent = '…';
       const r = await send({ type: 'finish' });
-      if (!r || !r.ok) { b.textContent = '✓ Готово'; showToast((r && r.error) || 'Ошибка', 'error'); }
+      if (!r || !r.ok) { b.classList.remove('warn'); b.textContent = '✓ Готово'; showToast((r && r.error) || 'Ошибка', 'error'); }
+    } else if (act === 'min') {
+      setMini(true);
     } else if (act === 'cancel') {
       if (!cancelArmed) {
         b.classList.add('warn'); b.textContent = 'Удалить баг?';
@@ -719,10 +743,44 @@
       bar.style.top = Math.max(0, Math.min(innerHeight - rect.height, ev.clientY - dy)) + 'px';
       bar.style.right = 'auto'; bar.style.bottom = 'auto';
     };
-    const up = () => { window.removeEventListener('pointermove', move, true); window.removeEventListener('pointerup', up, true); };
+    const up = () => {
+      window.removeEventListener('pointermove', move, true); window.removeEventListener('pointerup', up, true);
+      savePos();
+    };
     window.addEventListener('pointermove', move, true);
     window.addEventListener('pointerup', up, true);
   });
+
+  // ---------- свёрнутая панель и запоминание положения ----------
+  const miniEl = $('.mini');
+  let barPos = null, isMini = false;
+  function savePos() {
+    const r = bar.getBoundingClientRect();
+    barPos = bar.style.left ? { left: r.left, top: r.top } : null;
+    chrome.storage.local.set({ qa_bar: { pos: barPos, mini: isMini } }).catch(() => {});
+  }
+  function applyPos() {
+    if (!barPos) return;
+    const r = bar.getBoundingClientRect();
+    bar.style.left = Math.max(0, Math.min(innerWidth - r.width, barPos.left)) + 'px';
+    bar.style.top = Math.max(0, Math.min(innerHeight - r.height, barPos.top)) + 'px';
+    bar.style.right = 'auto'; bar.style.bottom = 'auto';
+  }
+  function setMini(on) {
+    isMini = on;
+    bar.hidden = on || !!prepSaved;
+    miniEl.hidden = !on || !!prepSaved;
+    if (on) { closeList(); typesEl.hidden = true; if (mode) exitMode(); }
+    if (!on) applyPos();
+    savePos();
+  }
+  miniEl.addEventListener('click', () => setMini(false));
+  chrome.storage.local.get('qa_bar').then(({ qa_bar }) => {
+    if (!qa_bar) return;
+    barPos = qa_bar.pos || null;
+    applyPos();
+    if (qa_bar.mini) setMini(true);
+  }).catch(() => {});
 
   function applyState(st) {
     state = Object.assign(state, st);
@@ -739,8 +797,24 @@
     $('.vt').textContent = state.voice ? fmt(Date.now() - state.voiceStart) : 'Голос';
     $('.vdt').textContent = state.video ? '■ Стоп видео ' + fmt(Date.now() - state.videoStart) : '⏺ Записать видео';
     $('.vrec').classList.toggle('on', !!state.video);
+    $('.mt2').textContent = fmt(Date.now() - state.startTime);
+    const me = $('.me'); me.hidden = !state.autoErrors; me.textContent = '⚠ ' + (state.autoErrors || 0);
+    $('.mr').hidden = !state.video;
   }
-  const timer = setInterval(tick, 500);
+  const timer = setInterval(() => { tick(); checkUrl(); }, 400);
+  function checkUrl() {
+    const k = pageKey(location.href);
+    if (k === curPage) return;
+    curPage = k;
+    hot = null;
+    if (pending && !editing) cancelNote(); // недописанная пометка относилась к прошлой странице
+    if (mode) exitMode();
+    redraw();
+    const n = visible().length;
+    if (n) showToast(`На этой странице ваших пометок: ${n}`, 'info');
+  }
+  window.addEventListener('popstate', () => setTimeout(checkUrl, 0));
+  window.addEventListener('hashchange', checkUrl);
 
   // ================= связь с service worker =================
   let rafScroll = 0;
@@ -767,7 +841,7 @@
     if (m.type === 'qa-overlay-remove') destroy();
     else if (m.type === 'qa-overlay-state') applyState(m.state);
     else if (m.type === 'qa-overlay-toast') showToast(m.text, m.kind);
-    else if (m.type === 'qa-overlay-tool') setMode(m.tool);
+    else if (m.type === 'qa-overlay-tool') { if (isMini) setMini(false); setMode(m.tool); }
   }
   chrome.runtime.onMessage.addListener(onMsg);
   window.addEventListener('resize', resize);
