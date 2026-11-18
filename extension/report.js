@@ -175,6 +175,7 @@ function opts() {
     events: $('#o-events').value,
     perf: $('#o-perf').checked,
     storage: $('#o-storage').checked,
+    audit: $('#o-audit').checked,
     remarks: $('#o-remarks').checked,
     errors: $('#o-errors').checked,
     recordings: $('#o-recordings').checked,
@@ -207,10 +208,12 @@ async function buildModel(o, only) {
   const keep = (e) => o.before || e.ts >= st;
   const items = [];
   for (const i of itemList()) {
+    if (only === 'audit') continue;
     if (only ? i.key !== only : !((i.kind === 'remark' && o.remarks) || (i.kind === 'error' && o.errors) || (i.kind === 'recording' && o.recordings))) continue;
     items.push(await itemModel(i, o));
   }
   const apx = !only && o.appendix;
+  if (itemSort === 'sev') items.sort((a, b) => sevOf(b.sev).rank - sevOf(a.sev).rank);
   const net = filterNet(allNet().filter(keep), o.network).map((e) => {
     const x = { ...e, rel: e.ts - st };
     if (o.mask) { x.reqHeaders = maskH(e.reqHeaders); x.resHeaders = maskH(e.resHeaders); x.url = maskS(e.url); x.postData = maskS(e.postData); x.body = maskS(e.body); }
@@ -220,14 +223,16 @@ async function buildModel(o, only) {
   const media = (arr, kind) => arr.filter((v) => mediaBlobs[v.key]).map((v) => ({ ...v, rel: v.start - st, durationMs: (v.end || Date.now()) - v.start, size: mediaBlobs[v.key].size, file: `media/${kind}-${v.n}.webm` }));
   const f = R.fields;
   const usedVoice = new Set(items.flatMap((it) => (it.voice || []).map((v) => v.key)));
-  const one = only && items[0];
+  const one = only && only !== 'audit' && items[0];
   return {
-    title: one ? (one.kind === 'remark' ? one.comment || 'Замечание' : one.kind === 'error' ? one.title : 'Запись видео') : f.title || 'Отчёт о проверке',
-    severity: f.severity, priority: f.priority, steps: one ? '' : f.steps, expected: one ? '' : f.expected, actual: one ? '' : f.actual, notes: one ? '' : f.notes,
+    title: one ? (one.kind === 'remark' ? one.comment || 'Замечание' : one.kind === 'error' ? one.title : 'Запись видео') : only === 'audit' ? 'Автопроверка: ' + (R.meta.title || R.meta.startUrl) : f.title || 'Отчёт о проверке',
+    severity: one ? one.sevLabel : '', priority: f.priority, steps: one ? '' : f.steps, expected: one ? '' : f.expected, actual: one ? '' : f.actual, notes: one ? '' : f.notes,
     createdAt: new Date(st).toLocaleString('ru-RU'),
     generatedAt: new Date().toLocaleString('ru-RU'),
     env: one ? env().filter(([k]) => ['Страница', 'Браузер', 'ОС', 'Размер окна', 'Экран', 'Язык браузера'].includes(k)) : env(),
     items,
+    audit: (only === 'audit' || (!only && o.audit)) ? auditModel() : [],
+    sevSummary: SEV.map((x) => [x, items.filter((it) => it.sev === x.id).length]).filter(([, n]) => n).map(([x, n]) => `${x.icon} ${x.name}: ${n}`).join(' · '),
     appendix: apx,
     annotations: [],
     actions: !apx ? [] : timeline().filter(keep).map((a) => ({ rel: a.ts - st, text: a.kind === 'nav' ? 'Переход: ' + (o.mask ? maskS(a.url) : a.url) : X.describeAction(a), page: a.page || a.url || '' })),
@@ -245,6 +250,8 @@ async function buildModel(o, only) {
 
 // ================= пункты: замечания, ошибки, записи =================
 let itemFilter = 'all';
+let sevFilter = 'all';
+let itemSort = 'time';
 const ITEM_ICON = { remark: '💬', error: '⚠', recording: '🎬' };
 function itemList() {
   const list = [];
@@ -290,18 +297,27 @@ function renderItems() {
   const cnt = { remark: 0, error: 0, recording: 0 };
   all.forEach((i) => cnt[i.kind]++);
   const errRepeats = (R.errors || []).reduce((s, x) => s + (x.count > 1 ? x.count - 1 : 0), 0);
-  $('#counts').innerHTML = `<span>💬 Замечаний: ${cnt.remark}</span><span class="${cnt.error ? 'e' : ''}">⚠ Ошибок поймано: ${cnt.error}${errRepeats ? ` (+${errRepeats} повторов)` : ''}</span><span>🎬 Записей: ${cnt.recording}</span>`;
+  const sc = {};
+  all.forEach((i) => { const v = itemSev(i); sc[v] = (sc[v] || 0) + 1; });
+  $('#counts').innerHTML = `<span>💬 Замечаний: ${cnt.remark}</span><span class="${cnt.error ? 'e' : ''}">⚠ Ошибок поймано: ${cnt.error}${errRepeats ? ` (+${errRepeats} повторов)` : ''}</span><span>🎬 Записей: ${cnt.recording}</span>` +
+    SEV.filter((x) => sc[x.id]).map((x) => `<span class="sevb s-${x.id}">${x.icon} ${x.name}: ${sc[x.id]}</span>`).join('');
   const fb = (k, t) => `<button data-f="${k}" class="${itemFilter === k ? 'on' : ''}">${t}</button>`;
   $('#ifil').innerHTML = fb('all', `Все (${all.length})`) + fb('remark', `💬 Замечания (${cnt.remark})`) + fb('error', `⚠ Ошибки (${cnt.error})`) + fb('recording', `🎬 Записи (${cnt.recording})`);
+  $('#ifil').innerHTML += `<span class="sep2"></span><select id="sevf" title="Фильтр по серьёзности"><option value="all">Любая серьёзность</option>${SEV.map((x) => `<option value="${x.id}" ${sevFilter === x.id ? 'selected' : ''}>${x.icon} ${x.name}</option>`).join('')}</select>` +
+    `<select id="isort" title="Порядок"><option value="time">По времени</option><option value="sev" ${itemSort === 'sev' ? 'selected' : ''}>Сначала серьёзные</option></select>`;
   $('#ifil').querySelectorAll('button').forEach((b) => (b.onclick = () => { itemFilter = b.dataset.f; renderItems(); }));
-  const list = all.filter((i) => itemFilter === 'all' || i.kind === itemFilter);
+  $('#sevf').onchange = () => { sevFilter = $('#sevf').value; renderItems(); };
+  $('#isort').onchange = () => { itemSort = $('#isort').value; renderItems(); };
+  const list = all.filter((i) => (itemFilter === 'all' || i.kind === itemFilter) && (sevFilter === 'all' || itemSev(i) === sevFilter));
+  if (itemSort === 'sev') list.sort((a, b) => sevOf(itemSev(b)).rank - sevOf(itemSev(a)).rank || a.ts - b.ts);
   if (!list.length) {
     $('#items').innerHTML = `<div class="card muted">${all.length ? 'Нет пунктов этого вида.' : 'Пунктов нет. На странице используйте 🎯 Элемент, ➚ Стрелка, ▭ Область, 💬 Заметка или ⏺ Записать видео. Ошибки консоли и запросов сохраняются автоматически.'}</div>`;
     return;
   }
   const dl = (key) => `<details class="dl"><summary>⬇ Скачать пункт</summary><div class="menu"><button data-dl="${key}" data-f="docx">📄 Word</button><button data-dl="${key}" data-f="md">📝 Markdown (.zip)</button><button data-dl="${key}" data-f="html">🌐 HTML</button></div></details>`;
   const cp = (i) => `<details class="dl"><summary>📋 Копировать</summary><div class="menu"><button data-cp="${i.key}" data-w="text">📝 Текст для задачи</button>${i.kind !== 'recording' ? `<button data-cp="${i.key}" data-w="img">🖼 Скриншот</button><button data-cp="${i.key}" data-w="both">📄 Текст + скриншот<br><small>для Google Docs, Word, Notion</small></button>` : ''}</div></details>`;
-  const head = (i, num, title, extra = '') => `<div class="it-h"><span class="ic">${ITEM_ICON[i.kind]} ${num}</span><b>${esc(title)}</b><span class="chip time" data-ts="${i.ts}" title="Перейти к моменту в видео">${X.fmtRel(i.ts - R.startTime)}</span>${extra}<span class="acts">${cp(i)}${dl(i.key)}${i.kind === 'error' ? `<button data-ign="${i.key}" title="Удалить и больше не сохранять такие ошибки">🙈</button>` : ''}<button data-del="${i.key}" title="Удалить пункт">🗑</button></span></div>`;
+  const sevSel = (i) => { const v = itemSev(i); return `<select class="isev s-${v}" data-sev="${i.key}" title="Серьёзность${i.kind === 'error' && !i.x.severity ? ' (подобрана автоматически)' : ''}">${SEV.map((x) => `<option value="${x.id}" ${x.id === v ? 'selected' : ''}>${x.icon} ${x.name}</option>`).join('')}</select>`; };
+  const head = (i, num, title, extra = '') => `<div class="it-h"><span class="ic">${ITEM_ICON[i.kind]} ${num}</span>${sevSel(i)}<b>${esc(title)}</b><span class="chip time" data-ts="${i.ts}" title="Перейти к моменту в видео">${X.fmtRel(i.ts - R.startTime)}</span>${extra}<span class="acts">${cp(i)}${dl(i.key)}${i.kind === 'error' ? `<button data-ign="${i.key}" title="Удалить и больше не сохранять такие ошибки">🙈</button>` : ''}<button data-del="${i.key}" title="Удалить пункт">🗑</button></span></div>`;
   const tbl = (head2, rows) => (rows.length ? `<table><tr>${head2.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>` : '<div class="zero">Нет данных</div>');
   const cls = (l) => (l === 'error' ? 'err' : l === 'warn' ? 'warn' : '');
   const reqRows = (arr) => arr.map((e) => `<tr class="${netErr(e) ? 'err' : ''}">${relCell(e.ts)}<td>${esc(e.method)}</td><td><b>${esc(X.statusLabel(e))}</b></td><td class="u mono">${esc(short(e.url, 180))}</td><td>${X.fmtDur(e.duration)}</td></tr>`);
@@ -390,6 +406,11 @@ function renderItems() {
     $('#items').querySelectorAll(`.mb[data-k="${k}"]`).forEach((m) => (m.hidden = m.dataset.i !== b.dataset.i));
   }));
   $('#items').querySelectorAll('[data-dl]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; doExport(b.dataset.f, b.dataset.dl); }));
+  $('#items').querySelectorAll('[data-sev]').forEach((sel) => (sel.onchange = () => {
+    const i = itemList().find((x) => x.key === sel.dataset.sev);
+    setItemSev(i, sel.value);
+    renderItems();
+  }));
   $('#items').querySelectorAll('[data-cp]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; copyItem(b.dataset.cp, b.dataset.w); }));
   // только одно открытое меню
   $('#items').querySelectorAll('details.dl').forEach((d) => d.addEventListener('toggle', () => { if (d.open) $('#items').querySelectorAll('details.dl[open]').forEach((x) => x !== d && (x.open = false)); }));
@@ -476,7 +497,7 @@ async function itemModel(i, o) {
   };
   if (i.kind === 'remark') {
     const a = i.a;
-    const it = { kind: 'remark', key: i.key, n: a.n, rel: a.ts - st, url: a.url, comment: a.comment, element: a.element,
+    const it = { kind: 'remark', key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: a.n, rel: a.ts - st, url: a.url, comment: a.comment, element: a.element,
       voice: voiceFor(a).map((v) => ({ key: v.key, file: `media/voice-${v.n}.webm` })) };
     await shot(shots[a.n], `screenshots/zamechanie-${String(a.n).padStart(2, '0')}.png`, it);
     return it;
@@ -485,7 +506,7 @@ async function itemModel(i, o) {
     const x = i.x;
     const c = errorCtx(x);
     const it = {
-      kind: 'error', key: i.key, n: x.n, rel: x.ts - st, url: o.mask ? maskS(x.url) : x.url, title: o.mask ? maskS(x.title) : x.title, count: x.count,
+      kind: 'error', key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: x.n, rel: x.ts - st, url: o.mask ? maskS(x.url) : x.url, title: o.mask ? maskS(x.title) : x.title, count: x.count,
       jsErrors: c.jsErrors.map((j) => ({ text: o.mask ? maskS(j.text) : j.text, loc: j.loc })),
       requests: c.requests.map(m),
       before: c.before.map((b) => ({ rel: b.ts - st, text: o.mask ? maskS(b.text) : b.text })),
@@ -499,13 +520,214 @@ async function itemModel(i, o) {
   const v = i.v;
   const c = recCtx(v);
   return {
-    kind: 'recording', key: i.key, n: v.n, rel: v.start - st, durationMs: (v.end || Date.now()) - v.start, size: mediaBlobs[v.key].size,
+    kind: 'recording', key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: v.n, rel: v.start - st, durationMs: (v.end || Date.now()) - v.start, size: mediaBlobs[v.key].size,
     file: `media/video-${v.n}.webm`, videoKey: v.key,
     timeline: c.timeline.map((x) => ({ rel: x.ts - st, cat: CAT_RU[x.cat] || x.cat, level: x.level, text: o.mask ? maskS(x.text) : x.text })),
     requests: c.requests.map(m),
     console: c.console.map((cc) => ({ rel: cc.ts - st, level: cc.level, text: o.mask ? maskS(cc.text) : cc.text })),
     perf: c.perf.map((e) => ({ rel: e.ts - st, text: e.text })),
   };
+}
+
+// ================= серьёзность =================
+const SEV = [
+  { id: 'blocker', icon: '🔴', name: 'Блокирующий', rank: 5 },
+  { id: 'critical', icon: '🟠', name: 'Критический', rank: 4 },
+  { id: 'major', icon: '🟡', name: 'Значительный', rank: 3 },
+  { id: 'minor', icon: '🔵', name: 'Незначительный', rank: 2 },
+  { id: 'trivial', icon: '⚪', name: 'Тривиальный', rank: 1 },
+];
+const sevOf = (id) => SEV.find((x) => x.id === id) || SEV[2];
+const sevLabel = (id) => `${sevOf(id).icon} ${sevOf(id).name}`;
+/** подсказка серьёзности для автоматически пойманной ошибки */
+function suggestErrSev(x) {
+  const c = errorCtx(x);
+  const userAct = timeline().some((a) => a.kind !== 'nav' && a.ts <= x.ts && x.ts - a.ts < 4000);
+  const req = c.requests[0];
+  if (req) {
+    const write = /^(POST|PUT|PATCH|DELETE)$/.test(req.method);
+    if (req.failed || req.status >= 500) return write || userAct ? 'blocker' : 'critical';
+    if (req.status === 401 || req.status === 403) return 'major';
+    return 'major';
+  }
+  return userAct ? 'critical' : 'major';
+}
+function itemSev(i) {
+  if (i.kind === 'remark') return i.a.severity || 'minor';
+  if (i.kind === 'error') return i.x.severity || suggestErrSev(i.x);
+  return i.v.severity || 'major';
+}
+function setItemSev(i, v) {
+  (i.kind === 'remark' ? i.a : i.kind === 'error' ? i.x : i.v).severity = v;
+  saveR();
+}
+
+// ================= 🩺 автопроверка: анализ =================
+const AUDIT_CAT = { net: '🌐 Сеть', render: '⚛️ Перерисовки', a11y: '♿ Доступность', img: '🖼 Изображения', console: '⚠️ Предупреждения', perf: '⚡ Производительность', dom: '🧱 DOM' };
+const IMPACT_SEV = { critical: 'critical', serious: 'major', moderate: 'minor', minor: 'trivial' };
+let auditFilter = 'all';
+const normPath = (u) => { try { const x = new URL(u); return x.origin + x.pathname.replace(/\/\d+(?=\/|$)/g, '/#').replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '#'); } catch (_) { return u; } };
+const shortUrl = (u) => { try { const x = new URL(u); return x.pathname + (x.search ? short(x.search, 50) : ''); } catch (_) { return u; } };
+
+function auditIssues() {
+  const I = [];
+  const add = (cat, sev, title, why, fix, examples, count) => I.push({ cat, sev, title, why, fix, examples: examples.slice(0, 8), count: count || examples.length });
+  const api = allNet().filter((e) => !noise(e) && ['XHR', 'Fetch'].includes(e.type)).sort((a, b) => a.ts - b.ts);
+
+  // --- сеть: дубли подряд
+  const dupMap = new Map();
+  for (let k = 1; k < api.length; k++) {
+    const a = api[k], key = `${a.method} ${a.url} ${a.postData || ''}`;
+    const prev = api.slice(Math.max(0, k - 6), k).reverse().find((p) => `${p.method} ${p.url} ${p.postData || ''}` === key);
+    if (prev && a.ts - prev.ts < (a.method === 'GET' ? 1500 : 2500)) {
+      const d = dupMap.get(key) || { method: a.method, url: a.url, n: 0, ts: a.ts };
+      d.n++; dupMap.set(key, d);
+    }
+  }
+  const dups = [...dupMap.values()];
+  const dupWrite = dups.filter((d) => d.method !== 'GET');
+  const dupRead = dups.filter((d) => d.method === 'GET');
+  if (dupWrite.length) add('net', 'major', `Повторная отправка данных: ${dupWrite.length}`,
+    'Один и тот же POST/PUT/DELETE ушёл несколько раз подряд — возможны двойные заказы, платежи или записи.',
+    'Блокировать кнопку на время запроса, добавить ключ идемпотентности на сервере.',
+    dupWrite.map((d) => `${d.method} ${shortUrl(d.url)} — лишних повторов: ${d.n}`));
+  if (dupRead.length) add('net', dupRead.some((d) => d.n >= 2) ? 'minor' : 'trivial', `Дублирующиеся запросы: ${dupRead.length}`,
+    'Одинаковый запрос отправляется несколько раз подряд: лишняя нагрузка на сервер и медленнее интерфейс. Часто причина — эффект в React срабатывает дважды или данные запрашивают несколько компонентов.',
+    'Кэшировать ответ (React Query, SWR), поднять запрос выше по дереву, проверить зависимости useEffect.',
+    dupRead.map((d) => `GET ${shortUrl(d.url)} — лишних повторов: ${d.n}`));
+
+  // --- сеть: N+1
+  const n1 = [];
+  const byPat = new Map();
+  api.forEach((e) => { const k = e.method + ' ' + normPath(e.url); (byPat.get(k) || byPat.set(k, []).get(k)).push(e); });
+  byPat.forEach((arr, k) => {
+    if (!k.includes('#')) return;
+    for (let s0 = 0; s0 < arr.length; s0++) {
+      const win = arr.filter((e) => e.ts >= arr[s0].ts && e.ts - arr[s0].ts < 3000);
+      const distinct = new Set(win.map((e) => e.url)).size;
+      if (distinct >= 5) { n1.push(`${k.replace(/^(\w+) https?:\/\/[^/]+/, '$1 ')} — ${distinct} запросов за 3 с`); break; }
+    }
+  });
+  if (n1.length) add('net', 'major', `Запросы по одному элементу (N+1): ${n1.length}`,
+    'Для списка данные загружаются отдельным запросом на каждый элемент. С ростом списка страница будет грузиться всё дольше.',
+    'Сделать один запрос на весь список (batch-эндпоинт, параметр ids=…) или отдавать данные вместе со списком.', n1);
+
+  // --- сеть: частый опрос
+  const poll = [];
+  byPat.forEach((arr, k) => {
+    if (arr.length < 15) return;
+    const span = (arr[arr.length - 1].ts - arr[0].ts) / 1000;
+    if (span > 0 && span / arr.length < 5) poll.push(`${k.replace(/^(\w+) https?:\/\/[^/]+/, '$1 ')} — ${arr.length} раз за ${Math.round(span)} с`);
+  });
+  if (poll.length) add('net', 'minor', `Слишком частые запросы: ${poll.length}`,
+    'Один и тот же адрес опрашивается чаще раза в 5 секунд: нагрузка на сервер и батарею.',
+    'Увеличить интервал, опрашивать только при видимой вкладке, перейти на WebSocket/SSE.', poll);
+
+  // --- сеть: медленные и тяжёлые
+  const slow = api.filter((e) => e.duration > 1000).sort((a, b) => b.duration - a.duration);
+  if (slow.length) add('net', slow[0].duration > 3000 ? 'major' : 'minor', `Медленные запросы (дольше 1 с): ${slow.length}`,
+    'Пользователь ждёт ответа сервера больше секунды.', 'Проверить запрос на сервере (индексы БД, N+1 на бэкенде), добавить кэш или пагинацию.',
+    slow.map((e) => `${e.method} ${shortUrl(e.url)} — ${X.fmtDur(e.duration)}`));
+  const heavy = api.filter((e) => e.size > 1048576);
+  if (heavy.length) add('net', 'minor', `Тяжёлые ответы (больше 1 МБ): ${heavy.length}`,
+    'Большие ответы долго грузятся на мобильном интернете.', 'Пагинация, выбор нужных полей, сжатие gzip/brotli.',
+    heavy.map((e) => `${e.method} ${shortUrl(e.url)} — ${X.fmtSize(e.size)}`));
+
+  // --- перерисовки
+  const storms = R.events.filter((e) => e.cat === 'render' && e.level === 'warn');
+  if (storms.length) {
+    const comps = new Map();
+    storms.forEach((e) => Object.entries((e.detail || {}).components || {}).forEach(([n, v]) => comps.set(n, (comps.get(n) || 0) + v[0])));
+    add('render', storms.length >= 5 ? 'major' : 'minor', `Шторм перерисовок: ${storms.length} с с 20+ обновлениями в секунду`,
+      'Интерфейс обновляется непрерывно — тратится процессор, страница может тормозить и разряжать батарею.',
+      'Найти источник частых setState (таймеры, подписки, анимации через state), использовать memo/useMemo, перенести анимацию в CSS.',
+      [...comps.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n} — ${c} перерисовок в эти секунды`));
+  }
+  const ra = rendersAgg();
+  const heavyComp = ra.list.filter(([, v]) => v[0] >= 100);
+  if (heavyComp.length) add('render', heavyComp[0][1][0] >= 300 ? 'major' : 'minor', `Компоненты перерисовываются слишком часто: ${heavyComp.length}`,
+    'Компонент перерисовался сотни раз за время проверки — скорее всего, без изменения данных.',
+    'React.memo для компонента, стабильные пропсы (useCallback/useMemo), разделение контекста.',
+    heavyComp.map(([n, v]) => `${n} — ${v[0]} перерисовок, ${v[1]} монтирований`));
+
+  // --- предупреждения консоли
+  const warns = R.console.filter((c) => c.level === 'warn' || (c.level === 'error' && /^Warning:/.test(c.text)));
+  const KNOWN = [
+    [/unique "?key"? prop/i, 'major', 'React: у элементов списка нет уникального key', 'Без key React путает элементы списка: сбрасывается ввод, мигают элементы, лишние перерисовки.', 'Добавить стабильный key (id из данных, не индекс массива).'],
+    [/unmounted component|Can't perform a React state update/i, 'minor', 'React: обновление состояния после размонтирования', 'Асинхронный код обновляет компонент, которого уже нет — признак утечки подписок или запросов.', 'Отменять запросы/подписки в cleanup-функции useEffect (AbortController).'],
+    [/Maximum update depth/i, 'critical', 'React: бесконечный цикл обновлений', 'setState вызывается в цикле — страница может зависнуть.', 'Проверить setState в useEffect без условий и зависимости эффекта.'],
+    [/validateDOMNesting/i, 'minor', 'Неверная вложенность HTML', 'Например <div> внутри <p> или <a> внутри <a>: браузер «чинит» разметку, вёрстка и поведение ломаются.', 'Исправить разметку компонента.'],
+    [/changing an uncontrolled input|controlled input/i, 'minor', 'React: поле ввода переключается между controlled/uncontrolled', 'Значение поля может «прыгать» или сбрасываться.', 'Задавать value всегда (пустая строка вместо undefined).'],
+    [/deprecated/i, 'trivial', 'Используются устаревшие API', 'Устаревшие функции удалят в будущих версиях.', 'Заменить на рекомендуемые аналоги из текста предупреждения.'],
+  ];
+  const groups = new Map();
+  warns.forEach((c) => {
+    const first = String(c.text).split('\n')[0];
+    const known = KNOWN.find(([re]) => re.test(c.text));
+    const key = known ? known[2] : first.replace(/\d+/g, '#').slice(0, 120);
+    const g = groups.get(key) || { known, first, n: 0 };
+    g.n++; groups.set(key, g);
+  });
+  groups.forEach((g) => {
+    if (g.known) add('console', g.known[1], `${g.known[2]} (×${g.n})`, g.known[3], g.known[4], [short(g.first, 200)], g.n);
+    else if (g.n >= 3) add('console', 'trivial', `Повторяющееся предупреждение (×${g.n})`, 'Одно и то же предупреждение в консоли много раз — шум мешает замечать настоящие проблемы.', 'Разобраться с причиной или убрать лишний вывод.', [short(g.first, 200)], g.n);
+  });
+
+  // --- производительность (из собранных метрик)
+  allFindings().filter((f) => ['slow', 'frames', 'fps', 'vitals', 'shifts', 'memory'].includes(f.cat)).forEach((f) => {
+    const why = { slow: 'Интерфейс отвечает на клик или ввод с заметной задержкой.', frames: 'Главный поток браузера был занят дольше 100 мс — страница «замирает».', fps: 'Анимации и прокрутка дёргаются.', vitals: 'Метрика Web Vitals хуже рекомендуемой Google.', shifts: 'Элементы «прыгают» во время загрузки или действий.', memory: 'Память растёт — возможна утечка.' }[f.cat];
+    const fix = { slow: 'Разбить тяжёлые обработчики, вынести вычисления из обработчика клика, debounce.', frames: 'Найти тяжёлый скрипт (указан в примере), разбить работу на части, Web Worker.', fps: 'Убрать тяжёлые вычисления из анимаций, анимировать transform/opacity.', vitals: 'См. рекомендации web.dev для этой метрики.', shifts: 'Задать размеры картинкам и блокам заранее, не вставлять контент над видимой областью.', memory: 'Проверить отписку от событий и таймеров, кэши без ограничения.' }[f.cat];
+    add('perf', f.level === 'error' ? 'major' : 'minor', f.title, why, fix, [f.plain || stripTags(f.text)], 1);
+  });
+
+  // --- данные проверок страниц (axe, изображения, DOM)
+  const audits = R.audits || [];
+  const rules = new Map();
+  audits.forEach((a) => a.a11y.forEach((v) => {
+    const r = rules.get(v.id) || { ...v, nodes: [], count: 0, pages: new Set() };
+    r.count += v.count; r.pages.add(a.url);
+    v.nodes.forEach((n) => r.nodes.length < 8 && r.nodes.push(n));
+    rules.set(v.id, r);
+  }));
+  [...rules.values()].sort((a, b) => sevOf(IMPACT_SEV[b.impact]).rank - sevOf(IMPACT_SEV[a.impact]).rank).forEach((r) =>
+    add('a11y', IMPACT_SEV[r.impact] || 'minor', `${r.help} (${r.count} эл.)`, r.description, `Подробно и как исправить: ${r.helpUrl}`,
+      r.nodes.map((n) => `${n.target} — ${short(n.html, 160)}`), r.count));
+  const imgs = audits.flatMap((a) => a.images);
+  const big = imgs.filter((i) => i.ratio >= 4);
+  if (big.length) add('img', 'minor', `Картинки больше, чем нужно для экрана: ${big.length}`, 'Загружается изображение в несколько раз больше, чем показывается — лишний трафик и медленная загрузка.', 'Отдавать уменьшенные версии (srcset, CDN-ресайз), формат WebP/AVIF.',
+    big.map((i) => `${shortUrl(i.src)} — файл ${i.natural}, показано ${i.shown} (в ${i.ratio}× больше)${i.bytes ? ', ' + X.fmtSize(i.bytes) : ''}`));
+  const heavyImg = imgs.filter((i) => i.bytes > 500000);
+  if (heavyImg.length) add('img', 'minor', `Тяжёлые картинки (больше 500 КБ): ${heavyImg.length}`, 'Долгая загрузка страницы, особенно на мобильном интернете.', 'Сжать изображения, WebP/AVIF, lazy-загрузка картинок ниже первого экрана.',
+    heavyImg.map((i) => `${shortUrl(i.src)} — ${X.fmtSize(i.bytes)}`));
+  const dup = audits.flatMap((a) => a.dom.dupIds || []);
+  if (dup.length) add('dom', 'minor', `Повторяющиеся id: ${dup.length}`, 'id должен быть уникальным: ломаются связи label/поле, автотесты и скрипты.', 'Сделать id уникальными или заменить на классы/data-атрибуты.', dup.map((d) => `#${d.id} — ${d.count} раз`));
+  const bigDom = audits.filter((a) => a.dom.nodes > 3000);
+  if (bigDom.length) add('dom', 'trivial', `Очень большой DOM`, 'Больше 3000 элементов замедляет отрисовку и работу скриптов.', 'Виртуализация длинных списков, ленивая отрисовка скрытых блоков.', bigDom.map((a) => `${shortUrl(a.url)} — ${a.dom.nodes} элементов, глубина ${a.dom.depth}`));
+
+  return I.sort((a, b) => sevOf(b.sev).rank - sevOf(a.sev).rank);
+}
+
+function renderAudit() {
+  const all = auditIssues();
+  const audits = R.audits || [];
+  const cats = {};
+  all.forEach((x) => (cats[x.cat] = (cats[x.cat] || 0) + 1));
+  const fb = (k, t) => `<button data-f="${k}" class="${auditFilter === k ? 'on' : ''}">${t}</button>`;
+  $('#afil').innerHTML = fb('all', `Все (${all.length})`) + Object.keys(AUDIT_CAT).filter((k) => cats[k]).map((k) => fb(k, `${AUDIT_CAT[k]} (${cats[k]})`)).join('');
+  $('#afil').querySelectorAll('button').forEach((b) => (b.onclick = () => { auditFilter = b.dataset.f; renderAudit(); }));
+  const list = all.filter((x) => auditFilter === 'all' || x.cat === auditFilter);
+  const pages = audits.length ? `Доступность и изображения проверены на страницах: ${audits.map((a) => esc(shortUrl(a.url))).join(', ')}.` : 'Доступность ещё не проверялась — нажмите 🩺 на панели на нужной странице (последняя страница проверяется автоматически при завершении).';
+  $('#audit-note').innerHTML = `Технические проблемы, найденные автоматически по данным проверки. Это не баги сценария, а то, что стоит улучшить. ${pages}`;
+  $('#audit').innerHTML = list.length
+    ? list.map((x) => `<details class="aud"><summary><span class="sevb s-${x.sev}">${sevLabel(x.sev)}</span><span class="acat">${AUDIT_CAT[x.cat]}</span><b>${esc(x.title)}</b></summary>
+        <div class="aud-b"><p><b>Почему это плохо:</b> ${esc(x.why)}</p><p><b>Как исправить:</b> ${esc(x.fix).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')}</p>
+        ${x.examples.length ? `<div class="fl">Примеры</div><ul>${x.examples.map((e) => `<li class="mono">${esc(e)}</li>`).join('')}</ul>` : ''}</div></details>`).join('')
+    : `<div class="card muted">${all.length ? 'Нет находок в этой категории.' : 'Автопроверка проблем не нашла 👍'}</div>`;
+}
+
+/** модель автопроверки для выгрузки */
+function auditModel() {
+  return auditIssues().map((x) => ({ cat: AUDIT_CAT[x.cat], sev: x.sev, sevLabel: sevLabel(x.sev), title: x.title, why: x.why, fix: x.fix, examples: x.examples }));
 }
 
 // ================= экспорт =================
@@ -562,8 +784,8 @@ async function doExport(kind, only) {
   try {
     const o = opts();
     const m = await buildModel(o, only);
-    if (!m.items.length && !m.appendix) { st.textContent = 'Нечего выгружать: нет пунктов выбранных видов. Отметьте их в «⚙ Что включать в отчёт».'; return; }
-    const base = baseName() + (only ? '_' + ({ r: 'zamechanie', e: 'oshibka', v: 'zapis' }[only[0]]) + '-' + only.slice(1) : '');
+    if (!m.items.length && !m.appendix && !m.audit.length) { st.textContent = 'Нечего выгружать: нет пунктов выбранных видов. Отметьте их в «⚙ Что включать в отчёт».'; return; }
+    const base = baseName() + (only === 'audit' ? '_avtoproverka' : only ? '_' + ({ r: 'zamechanie', e: 'oshibka', v: 'zapis' }[only[0]]) + '-' + only.slice(1) : '');
     const hasMedia = m.items.some((it) => it.kind === 'recording' || (it.voice || []).length) || m.voice.length;
     if (kind === 'docx') {
       if (hasMedia) {
@@ -614,7 +836,6 @@ async function doExport(kind, only) {
 function renderAll() {
   const f = R.fields;
   $('#f-title').value = f.title;
-  $('#f-severity').value = f.severity;
   $('#f-priority').value = f.priority || '';
   $('#f-steps').value = f.steps;
   $('#f-expected').value = f.expected;
@@ -633,6 +854,7 @@ function renderAll() {
 
   renderMedia();
   renderItems();
+  renderAudit();
   renderSummary();
   renderTab();
   $('#t-timeline').textContent = timelineItems('important').length;
@@ -1066,7 +1288,6 @@ bindField('#f-steps', 'steps');
 bindField('#f-expected', 'expected');
 bindField('#f-actual', 'actual');
 bindField('#f-notes', 'notes');
-$('#f-severity').onchange = () => { R.fields.severity = $('#f-severity').value; saveR(); };
 $('#f-priority').onchange = () => { R.fields.priority = $('#f-priority').value; saveR(); };
 $('#regen').onclick = () => {
   if ($('#f-steps').value.trim() && !confirm('Заменить текущие шаги автоматически собранными?')) return;
@@ -1076,6 +1297,7 @@ $('#regen').onclick = () => {
 document.querySelectorAll('[data-ex]').forEach((b) => (b.onclick = () => doExport(b.dataset.ex)));
 document.querySelectorAll('.tabs [data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; renderTab(); }));
 $('#search').oninput = () => renderTab();
+document.querySelectorAll('[data-adl]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; doExport(b.dataset.adl, 'audit'); }));
 $('#o-appendix').onchange = () => $('#apx-opts').classList.toggle('on', $('#o-appendix').checked);
 $('#lightbox').onclick = () => ($('#lightbox').hidden = true);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#lightbox').hidden = true; });

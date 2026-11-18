@@ -23,9 +23,6 @@
     <header class="rhead">
       <input id="f-title" class="title" placeholder="Название, например: «Оформление заказа — проверка 17.11»">
       <div class="hrow">
-        <label>Серьёзность <select id="f-severity">
-          <option>Блокирующий</option><option>Критический</option><option selected>Значительный</option><option>Незначительный</option><option>Тривиальный</option>
-        </select></label>
         <label>Приоритет <select id="f-priority"><option value="">—</option><option>Высокий</option><option>Средний</option><option>Низкий</option></select></label>
         <span id="created" class="muted"></span>
       </div>
@@ -46,6 +43,7 @@
         <label><input type="checkbox" id="o-remarks" checked> 💬 замечания</label>
         <label><input type="checkbox" id="o-errors" checked> ⚠ ошибки</label>
         <label><input type="checkbox" id="o-recordings" checked> 🎬 записи</label>
+        <label><input type="checkbox" id="o-audit" checked> 🩺 автопроверка (отдельным разделом)</label>
       </div>
       <div class="ex-opts">
         <label><input type="checkbox" id="o-appendix"> <b>Приложение: все данные сессии</b> (полные консоль, сеть, действия, производительность)</label>
@@ -70,6 +68,13 @@
     <section id="items-sec">
       <div class="items-head"><h2>Пункты</h2><div class="ifil" id="ifil"></div></div>
       <div id="items"></div>
+    </section>
+
+    <section id="audit-sec">
+      <div class="items-head"><h2>🩺 Автопроверка</h2><div class="ifil" id="afil"></div>
+        <details class="dl"><summary>⬇ Скачать только автопроверку</summary><div class="menu"><button data-adl="docx">📄 Word</button><button data-adl="md">📝 Markdown (.zip)</button><button data-adl="html">🌐 HTML</button></div></details></div>
+      <p class="muted" id="audit-note"></p>
+      <div id="audit"></div>
     </section>
 
     <details class="desc card" id="desc"><summary>📝 Описание для задачи <span class="muted">— шаги, ожидаемый и фактический результат (необязательно)</span></summary>

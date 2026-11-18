@@ -75,6 +75,8 @@
   .cancel{background:#f3f4f6;color:#374151} .cancel:hover{background:#e5e7eb}
   .k{margin-left:auto;color:#9ca3af;font-size:11px}
   .vo{font-size:12px;color:#b91c1c;margin-top:6px}
+  .sevrow{margin-top:8px;font-size:12px;color:#6b7280;display:flex;gap:6px;align-items:center}
+  .sevrow select{font:12px ${FONT};border:1px solid #d1d5db;border-radius:6px;padding:3px 6px;background:#fff;color:#111827}
   /* значки пометок с действиями */
   .chips{position:fixed;inset:0;pointer-events:none}
   .chip{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;pointer-events:auto;cursor:pointer}
@@ -110,6 +112,9 @@
   <div class="nt"><span class="ntt">Пометка #<span class="nn">1</span></span><small class="sel"></small></div>
   <textarea placeholder="Что здесь не так? Опишите проблему…"></textarea>
   <div class="vo" hidden>🎤 Идёт запись голоса — можно просто рассказать</div>
+  <div class="sevrow">Серьёзность <select class="sev">
+    <option value="blocker">🔴 Блокирующий</option><option value="critical">🟠 Критический</option><option value="major">🟡 Значительный</option>
+    <option value="minor" selected>🔵 Незначительный</option><option value="trivial">⚪ Тривиальный</option></select></div>
   <div class="row"><button class="save">Сохранить</button><button class="cancel">Отмена</button><span class="k">Ctrl+Enter · Esc</span></div>
 </div>
 <div class="mini" hidden title="Развернуть панель проверки">🐞 <span class="mt2">00:00</span><span class="me" hidden></span><span class="mr" hidden>● REC</span></div>
@@ -125,6 +130,7 @@
   <button data-act="voice" title="Голосовой комментарий с микрофона">🎤 <span class="vt">Голос</span></button>
   <button data-act="video" title="Начать или остановить запись видео вкладки"><span class="vdt">⏺ Записать видео</span></button>
   <span class="sep"></span>
+  <button data-act="audit" title="Автопроверка этой страницы: доступность, изображения, DOM">🩺</button>
   <button data-act="eye" title="Скрыть пометки на странице">👁</button>
   <button data-act="list" class="cnt" title="Список замечаний: показать, изменить, удалить">📋 <span class="cn">0</span></button>
   <button data-act="errs" class="cnt errs" title="Автоматически пойманные ошибки консоли и запросов" hidden>⚠ <span class="en">0</span></button>
@@ -453,6 +459,7 @@
     const tp = BT && (BT.byId(state.bugType) || BT.auto);
     ta.placeholder = tp ? tp.placeholder : 'Что здесь не так? Опишите проблему…';
     ta.value = edit ? shape.label || '' : '';
+    $('.sev').value = (edit && shape.severity) || 'minor';
     note.hidden = false;
     const nw = 340, nh = note.offsetHeight || 190;
     let x, y;
@@ -499,6 +506,7 @@
   const payload = (s, text) => ({
     kind: s.kind,
     comment: text,
+    severity: s.severity || 'minor',
     element: s.element || null,
     shape: s.kind === 'note' ? null : { x1: s.x1 - scrollX, y1: s.y1 - scrollY, x2: s.x2 - scrollX, y2: s.y2 - scrollY },
     viewport: { w: innerWidth, h: innerHeight, dpr: window.devicePixelRatio || 1, scrollX: Math.round(scrollX), scrollY: Math.round(scrollY) },
@@ -514,6 +522,7 @@
     editing = null;
     const oldLabel = s.label;
     s.label = text;
+    s.severity = $('.sev').value;
     if (!isEdit) s.n = state.annotations + 1; // предварительный номер для скриншота
     const r = await withCapture(s, () =>
       send(isEdit ? { type: 'annotation-update', n: s.n, recapture: true, ...payload(s, text) } : { type: 'annotation', ...payload(s, text) })
@@ -715,6 +724,13 @@
         clearTimeout(cancelArmed);
         await send({ type: 'cancel' });
       }
+    } else if (act === 'audit') {
+      b.disabled = true; b.textContent = '⏳';
+      showToast('Проверяю страницу: доступность, изображения, DOM…', 'info');
+      const r = await send({ type: 'audit-page' });
+      b.disabled = false; b.textContent = '🩺';
+      if (r && r.ok) showToast(r.a11y || r.images ? `🩺 Найдено: доступность — ${r.a11y} правил (${r.nodes} элементов), изображения — ${r.images}. Подробности в отчёте` : '🩺 Проблем доступности и изображений не найдено', r.a11y ? 'warn' : 'ok');
+      else showToast('Автопроверка не удалась: ' + ((r && r.error) || 'ошибка'), 'error');
     } else if (act === 'eye') {
       marksHidden = !marksHidden;
       b.textContent = marksHidden ? '🙈' : '👁';

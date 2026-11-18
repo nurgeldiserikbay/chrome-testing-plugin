@@ -215,6 +215,75 @@ async function deleteError(m) {
   return { ok: true };
 }
 
+// ================= 🩺 автопроверка страницы: доступность (axe-core), изображения, DOM =================
+let axeLocale = null;
+async function getAxeLocale() {
+  if (!axeLocale) axeLocale = await (await fetch(chrome.runtime.getURL('vendor/axe-ru.json'))).json();
+  return axeLocale;
+}
+// выполняется на странице (изолированный мир), должна быть самодостаточной
+async function pageAudit(locale) {
+  const out = { url: location.href, title: document.title, ts: Date.now(), a11y: [], images: [], dom: {}, error: null };
+  const short = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; };
+  try {
+    if (window.axe) {
+      try { window.axe.configure({ locale }); } catch (_) {}
+      const r = await window.axe.run(
+        { exclude: [['qa-bug-overlay']] },
+        { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] }, resultTypes: ['violations'], iframes: false }
+      );
+      out.a11y = r.violations.map((v) => ({
+        id: v.id, impact: v.impact, help: v.help, description: v.description, helpUrl: v.helpUrl,
+        nodes: v.nodes.slice(0, 8).map((n) => ({ target: (n.target || []).join(' '), html: short(n.html, 300), summary: short(n.failureSummary, 400) })),
+        count: v.nodes.length,
+      }));
+    }
+  } catch (e) { out.error = String(e && e.message || e); }
+  // изображения: слишком большие для размера на экране и тяжёлые
+  const dpr = window.devicePixelRatio || 1;
+  for (const img of [...document.images].slice(0, 400)) {
+    if (!img.complete || !img.naturalWidth) continue;
+    const w = img.clientWidth, h = img.clientHeight;
+    if (!w || !h) continue;
+    const entry = performance.getEntriesByName(img.currentSrc || img.src)[0];
+    const bytes = entry ? entry.encodedBodySize || entry.transferSize || 0 : 0;
+    const ratio = (img.naturalWidth * img.naturalHeight) / (w * h * dpr * dpr);
+    const noSize = !img.getAttribute('width') && !img.getAttribute('height') && !img.style.width && !img.style.height;
+    if ((ratio >= 4 && bytes > 50000) || bytes > 500000) {
+      out.images.push({ src: short(img.currentSrc || img.src, 200), natural: `${img.naturalWidth}×${img.naturalHeight}`, shown: `${w}×${h}`, ratio: Math.round(ratio * 10) / 10, bytes, noSize });
+    }
+  }
+  // DOM
+  const all = document.getElementsByTagName('*');
+  const ids = new Map();
+  for (const el of all) if (el.id) ids.set(el.id, (ids.get(el.id) || 0) + 1);
+  let depth = 0;
+  const walk = (el, d) => { if (d > depth) depth = d; if (d > 60) return; for (const c of el.children) walk(c, d + 1); };
+  walk(document.documentElement, 1);
+  out.dom = { nodes: all.length, depth, dupIds: [...ids.entries()].filter(([, c]) => c > 1).slice(0, 20).map(([id, c]) => ({ id, count: c })) };
+  return out;
+}
+
+async function auditPage(tabId) {
+  await ready;
+  if (!S || !S.active) return { ok: false, error: 'Проверка не активна' };
+  tabId = tabId || S.tabId;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, files: ['vendor/axe.min.js'] });
+    const [{ result }] = await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, func: pageAudit, args: [await getAxeLocale()] });
+    if (!result) return { ok: false, error: 'Страница не ответила' };
+    S.audits ||= [];
+    const key = result.url.replace(/#.*$/, '');
+    S.audits = S.audits.filter((a) => a.url.replace(/#.*$/, '') !== key);
+    S.audits.push(result);
+    await saveSessionNow();
+    const n = result.a11y.reduce((s, v) => s + v.count, 0);
+    return { ok: true, a11y: result.a11y.length, nodes: n, images: result.images.length, error: result.error };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // ================= жизненный цикл бага =================
 const status = () => ({
   active: !!(S && S.active),
@@ -320,6 +389,11 @@ async function doFinish({ open = true } = {}) {
   await ready;
   if (!S || !S.active) return { ok: false, error: 'Нет активного бага' };
   if (autoState.group) { clearTimeout(autoState.timer); await flushAuto(); }
+  try {
+    const tab = await chrome.tabs.get(S.tabId);
+    const key = (tab.url || '').replace(/#.*$/, '');
+    if (/^https?:|^file:/.test(tab.url) && !(S.audits || []).some((a) => a.url.replace(/#.*$/, '') === key)) await auditPage(S.tabId);
+  } catch (_) {}
   try { await stopVoice(); } catch (_) {}
   try { await stopVideo(); } catch (_) {}
   S.snapshotEnd = await takeSnapshot(S.tabId);
@@ -383,6 +457,7 @@ async function addAnnotation(m, sender) {
     ts: Date.now(),
     kind: m.kind,
     comment: m.comment || '',
+    severity: m.severity || 'minor',
     element: m.element || null,
     shape: m.shape || null,
     viewport: m.viewport || null,
@@ -415,6 +490,7 @@ async function updateAnnotation(m, sender) {
   const a = S.annotations.find((x) => x.n === m.n);
   if (!a) return { ok: false, error: 'Пометка не найдена' };
   a.comment = m.comment || '';
+  if (m.severity) a.severity = m.severity;
   if (m.recapture && sender.tab && sender.tab.id === S.tabId) {
     try {
       const dataUrl = await chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' });
@@ -739,6 +815,7 @@ const handlers = {
   'annotation-delete': (m) => deleteAnnotation(m),
   'error-delete': (m) => deleteError(m),
   'error-ignore': (m) => ignoreError(m),
+  'audit-page': (m, sender) => auditPage(sender.tab && sender.tab.id),
   'set-type': async (m) => {
     await ready;
     if (!S || !S.active) return { ok: false };

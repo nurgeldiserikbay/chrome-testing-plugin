@@ -156,7 +156,7 @@
 
     return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escH(m.title)}</title><style>${css}</style></head><body><div class="wrap">
-<h1>${escH(m.title)}</h1>${m.typeLabel ? `<span class="sev" style="background:#eff6ff;color:#1e3a8a">${escH(m.typeLabel)}</span> ` : ''}<span class="sev">${escH(m.severity)}</span>${m.priority ? ` <span class="sev" style="background:#e0e7ff;color:#3730a3">Приоритет: ${escH(m.priority)}</span>` : ''}
+<h1>${escH(m.title)}</h1>${m.typeLabel ? `<span class="sev" style="background:#eff6ff;color:#1e3a8a">${escH(m.typeLabel)}</span> ` : ''}${m.severity ? `<span class="sev">${escH(m.severity)}</span>` : ''}${m.sevSummary && !m.severity ? `<span class="meta">${escH(m.sevSummary)}</span>` : ''}${m.priority ? ` <span class="sev" style="background:#e0e7ff;color:#3730a3">Приоритет: ${escH(m.priority)}</span>` : ''}
 <p class="meta">Создан ${escH(m.createdAt)} · QA Bug Recorder</p>
 <h2>Описание</h2>
 ${block('Шаги воспроизведения', m.steps)}
@@ -164,6 +164,7 @@ ${block('Шаги воспроизведения', m.steps)}
 ${block('Дополнительно', m.notes)}
 <h2>Окружение</h2>${tblEnv}
 ${itemsHTML(m, media)}
+${auditHTML(m)}
 ${m.voice.length ? `<h2>Голос</h2>${voices}` : ''}
 ${m.appendix ? `<h2 style="margin-top:56px;border-top:3px solid var(--line);padding-top:24px">Приложение: все данные сессии</h2>
 ${m.findings && m.findings.length ? `<h2>Что найдено автоматически</h2><div class="finds">${m.findings.map((f) => `<div class="find ${f.level}"><b>${escH(f.title)}</b><span>${escH(f.text)}</span></div>`).join('')}</div>` : ''}
@@ -190,7 +191,7 @@ ${htmlStorage(m.storage)}
   }
 
   function exportMarkdown(m) {
-    let md = `# ${m.title}\n\n${m.typeLabel ? `**Тип:** ${m.typeLabel}  \n` : ''}**Серьёзность:** ${m.severity}${m.priority ? ` · **Приоритет:** ${m.priority}` : ''}  \n**Создан:** ${m.createdAt}\n\n`;
+    let md = `# ${m.title}\n\n${m.typeLabel ? `**Тип:** ${m.typeLabel}  \n` : ''}${m.severity ? `**Серьёзность:** ${m.severity}  \n` : m.sevSummary ? `**Пункты:** ${m.sevSummary}  \n` : ''}${m.priority ? `**Приоритет:** ${m.priority}  \n` : ''}**Создан:** ${m.createdAt}\n\n`;
     if (m.steps) md += `## Шаги воспроизведения\n\n${m.steps}\n\n`;
     if (m.expected) md += `## Ожидаемый результат\n\n${m.expected}\n\n`;
     if (m.actual) md += `## Фактический результат\n\n${m.actual}\n\n`;
@@ -200,6 +201,7 @@ ${htmlStorage(m.storage)}
     }
     md += `## Окружение\n\n` + mdTable(['Параметр', 'Значение'], m.env.map(([k, v]) => [mdCell(k), mdCell(v, 1000)])) + '\n';
     md += itemsMD(m);
+    md += auditMD(m);
     if (m.voice.length) md += `## Голос\n\n` + m.voice.map((v) => `- 🎤 [Голосовой комментарий ${v.n}](${v.file}) — ${fmtRel(v.rel)}, ${fmtDur(v.durationMs)}`).join('\n') + '\n\n';
     if (m.appendix) {
     md += `# Приложение: все данные сессии\n\n`;
@@ -265,12 +267,15 @@ ${htmlStorage(m.storage)}
   function itemText(it) {
     const L = [];
     const code = (t, n = 1500) => '```\n' + short(t, n) + '\n```';
+    const sevLine = () => { if (it.sevLabel) L.push(`Серьёзность: ${it.sevLabel}`); };
     if (it.kind === 'remark') {
       L.push(`💬 **Замечание:** ${it.comment || '(без комментария)'}`);
+      sevLine();
       if (it.url) L.push(`Страница: ${it.url}`);
       if (it.element) L.push(`Элемент: \`${it.element.selector}\``);
     } else if (it.kind === 'error') {
       L.push(`⚠ **${it.title}**${it.count > 1 ? ` (повторялась ${it.count} раз)` : ''}`);
+      sevLine();
       if (it.url) L.push(`Страница: ${it.url}`);
       it.jsErrors.forEach((j) => { L.push('', 'Ошибка JavaScript:', code(j.text + (j.loc ? '\n@ ' + j.loc : ''), 1200)); });
       it.requests.forEach((e) => {
@@ -281,6 +286,7 @@ ${htmlStorage(m.storage)}
       if (it.before.length) { L.push('', 'Шаги перед ошибкой:'); it.before.slice(-8).forEach((b, i) => L.push(`${i + 1}. ${b.text}`)); }
     } else {
       L.push(`🎬 **Запись видео** · ${fmtDur(it.durationMs)} (видео — отдельным файлом)`);
+      sevLine();
       const bad = it.timeline.filter((e) => e.level === 'error' || e.level === 'warn');
       const reqBad = it.requests.filter(isErr);
       if (reqBad.length) { L.push('', 'Запросы с ошибкой:'); reqBad.forEach((e) => L.push(`- ${e.method} ${statusLabel(e)} ${e.url}`)); }
@@ -301,7 +307,7 @@ ${htmlStorage(m.storage)}
       ${hasH(e.resHeaders) ? `<div class="label">Заголовки ответа</div><pre>${escH(hdrText(e.resHeaders))}</pre>` : ''}
       ${e.body ? `<div class="label">Ответ сервера</div><pre>${escH(e.body)}</pre>` : ''}</details>`;
     const body = m.items.map((it) => {
-      const head = `<div class="ih ${it.kind}"><span class="num">${it.kind === 'error' ? '!' : it.kind === 'recording' ? '▶' : it.n}</span><b>${escH(itemTitle(it))}</b><span class="tag">${fmtRel(it.rel)}</span>${it.count > 1 ? `<span class="tag">повторялась ${it.count} раз</span>` : ''}</div>${it.url ? `<div class="meta" style="margin:0 0 10px;word-break:break-all">${escH(it.url)}</div>` : ''}`;
+      const head = `<div class="ih ${it.kind}"><span class="num">${it.kind === 'error' ? '!' : it.kind === 'recording' ? '▶' : it.n}</span><b>${escH(itemTitle(it))}</b>${it.sevLabel ? `<span class="tag" style="background:#fff7ed;color:#9a3412">${escH(it.sevLabel)}</span>` : ''}<span class="tag">${fmtRel(it.rel)}</span>${it.count > 1 ? `<span class="tag">повторялась ${it.count} раз</span>` : ''}</div>${it.url ? `<div class="meta" style="margin:0 0 10px;word-break:break-all">${escH(it.url)}</div>` : ''}`;
       const img = it.dataUrl ? `<img src="${it.dataUrl}" alt="">` : '';
       if (it.kind === 'remark') {
         return `<div class="card item">${head}
@@ -343,7 +349,7 @@ ${htmlStorage(m.storage)}
       return s + '\n';
     };
     m.items.forEach((it) => {
-      md += `### ${itemTitle(it)}\n\n_${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}${it.url ? ` · ${it.url}` : ''}_\n\n`;
+      md += `### ${itemTitle(it)}\n\n${it.sevLabel ? `**${it.sevLabel}** · ` : ''}_${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}${it.url ? ` · ${it.url}` : ''}_\n\n`;
       if (it.kind === 'remark') {
         if (it.comment && it.comment.includes('\n')) md += it.comment + '\n\n';
         if (it.element) md += `Элемент: \`${it.element.selector}\` — <${it.element.tag}>, ${Math.round(it.element.rect.w)}×${Math.round(it.element.rect.h)}\n\n`;
@@ -383,7 +389,7 @@ ${htmlStorage(m.storage)}
     const lvlFill = (l) => (l === 'error' ? 'FEF2F2' : l === 'warn' ? 'FFFBEB' : undefined);
     m.items.forEach((it) => {
       d.h(itemTitle(it), 2);
-      d.p([d.run(`${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}`, { color: '6B7280', size: 18 }), it.url ? d.run(' · ' + it.url, { color: '6B7280', size: 18 }) : '']);
+      d.p([it.sevLabel ? d.run(it.sevLabel + ' · ', { bold: true, size: 18 }) : '', d.run(`${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}`, { color: '6B7280', size: 18 }), it.url ? d.run(' · ' + it.url, { color: '6B7280', size: 18 }) : '']);
       if (it.kind === 'remark') {
         if (it.comment && it.comment.includes('\n')) d.p(it.comment);
         if (it.element) d.p([d.run('Элемент: ', { bold: true, size: 18 }), d.run(`${it.element.selector} · <${it.element.tag}> ${Math.round(it.element.rect.w)}×${Math.round(it.element.rect.h)}`, { mono: true, size: 18 })]);
@@ -407,6 +413,37 @@ ${htmlStorage(m.storage)}
     });
   }
 
+  // ================= 🩺 автопроверка =================
+  const SEV_FILL = { blocker: 'FEE2E2', critical: 'FFEDD5', major: 'FEF9C3', minor: 'DBEAFE', trivial: 'F3F4F6' };
+  function auditHTML(m) {
+    if (!m.audit || !m.audit.length) return '';
+    return `<h2>🩺 Автопроверка (${m.audit.length})</h2><p class="meta">Технические проблемы, найденные автоматически: не баги сценария, а то, что стоит улучшить.</p>` +
+      m.audit.map((x) => `<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><span class="sev" style="background:#${SEV_FILL[x.sev]};color:#111827">${escH(x.sevLabel)}</span><span class="tag">${escH(x.cat)}</span><b>${escH(x.title)}</b></div>
+        <p><b>Почему это плохо:</b> ${escH(x.why)}</p><p><b>Как исправить:</b> ${escH(x.fix)}</p>
+        ${x.examples.length ? `<ul>${x.examples.map((e) => `<li class="mono">${escH(e)}</li>`).join('')}</ul>` : ''}</div>`).join('');
+  }
+  function auditMD(m) {
+    if (!m.audit || !m.audit.length) return '';
+    let md = `## 🩺 Автопроверка (${m.audit.length})\n\n_Технические проблемы, найденные автоматически: не баги сценария, а то, что стоит улучшить._\n\n`;
+    m.audit.forEach((x) => {
+      md += `### ${x.title}\n\n**${x.sevLabel}** · ${x.cat}\n\n**Почему это плохо:** ${x.why}\n\n**Как исправить:** ${x.fix}\n\n`;
+      if (x.examples.length) md += x.examples.map((e) => `- \`${String(e).replace(/`/g, "'")}\``).join('\n') + '\n\n';
+    });
+    return md;
+  }
+  function auditDOCX(d, m) {
+    if (!m.audit || !m.audit.length) return;
+    d.h(`🩺 Автопроверка (${m.audit.length})`, 1);
+    d.p('Технические проблемы, найденные автоматически: не баги сценария, а то, что стоит улучшить.', { run: { color: '6B7280', size: 18 } });
+    m.audit.forEach((x) => {
+      d.h(x.title, 3);
+      d.p([d.run(x.sevLabel, { bold: true, fill: SEV_FILL[x.sev] }), d.run('  ' + x.cat, { color: '6B7280' })]);
+      d.p([d.run('Почему это плохо: ', { bold: true }), d.run(x.why)]);
+      d.p([d.run('Как исправить: ', { bold: true }), d.run(x.fix)]);
+      x.examples.forEach((e) => d.p('• ' + e, { run: { mono: true, size: 16 }, indent: 280, after: 20 }));
+    });
+  }
+
   // ---------------- DOCX ----------------
   function exportDOCX(m) {
     const d = new g.DocxBuilder();
@@ -414,7 +451,7 @@ ${htmlStorage(m.storage)}
     const W = g.DOCX_TEXT_WIDTH;
     d.title(m.title);
     if (m.typeLabel) d.p([d.run('Тип бага: ', { bold: true }), d.run(m.typeLabel)]);
-    d.p([d.run('Серьёзность: ', { bold: true }), d.run(m.severity, { color: 'B91C1C', bold: true }), m.priority ? d.run('   Приоритет: ', { bold: true }) + d.run(m.priority) : '', d.run('   Создан: ', { bold: true }), d.run(m.createdAt)]);
+    d.p([m.severity ? d.run('Серьёзность: ', { bold: true }) + d.run(m.severity + '   ', { color: 'B91C1C', bold: true }) : m.sevSummary ? d.run('Пункты: ', { bold: true }) + d.run(m.sevSummary + '   ') : '', m.priority ? d.run('Приоритет: ', { bold: true }) + d.run(m.priority + '   ') : '', d.run('Создан: ', { bold: true }), d.run(m.createdAt)]);
 
     const section = (title, text) => { if (text) { d.h(title, 2); d.p(text); } };
     if (m.steps || m.expected || m.actual || m.notes) d.h('Описание', 1);
@@ -434,6 +471,7 @@ ${htmlStorage(m.storage)}
     d.table([['Параметр', 'Значение'], ...m.env.map(([k, v]) => [{ text: k, bold: true }, String(v)])], { widths: [2700, W - 2700], size: 18 });
 
     itemsDOCX(d, m);
+    auditDOCX(d, m);
     if (m.voice.length) { d.h('Голос', 1); m.voice.forEach((v) => d.p(`🎤 Голосовой комментарий ${v.n}: файл «${v.file.split('/').pop()}», ${fmtRel(v.rel)}, ${fmtDur(v.durationMs)}.`)); }
     if (m.appendix) {
     d.pageBreak();

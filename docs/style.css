@@ -254,3 +254,9 @@ details p{margin:0;padding:0 22px 20px;color:#3b4050}
 .itc p{margin:0;color:var(--muted);font-size:14.5px}
 .itc img{border-radius:10px;border:1px solid var(--line);box-shadow:0 10px 30px -15px rgba(11,13,18,.3)}
 @media (max-width:1000px){.it-grid{grid-template-columns:1fr}}
+
+/* ---------- автопроверка ---------- */
+.audit-sec{background:var(--paper)}
+.audit-in{display:grid;grid-template-columns:1fr 1.1fr;gap:48px;align-items:center}
+.audit-in .ticks li{margin:10px 0}
+@media (max-width:1000px){.audit-in{grid-template-columns:1fr}}
