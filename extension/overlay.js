@@ -107,7 +107,6 @@
 <div class="hint" hidden></div>
 <div class="toast" hidden></div>
 <div class="list" hidden></div>
-<div class="types" hidden></div>
 <div class="note" hidden>
   <div class="nt"><span class="ntt">Пометка #<span class="nn">1</span></span><small class="sel"></small></div>
   <textarea placeholder="Что здесь не так? Опишите проблему…"></textarea>
@@ -142,7 +141,7 @@
 
   const $ = (s) => root.querySelector(s);
   const cv = $('.cv'), ctx = cv.getContext('2d'), bar = $('.bar'), note = $('.note'), ta = $('textarea'),
-    hint = $('.hint'), toastEl = $('.toast'), chipsEl = $('.chips'), listEl = $('.list'), typesEl = $('.types');
+    hint = $('.hint'), toastEl = $('.toast'), chipsEl = $('.chips'), listEl = $('.list');
   const BT = globalThis.QA_BUG_TYPES;
 
   let state = { startTime: Date.now(), annotations: 0 };
@@ -386,7 +385,6 @@
     if (busy) return;
     if (pending) cancelNote();
     closeList();
-    if (m === 'type') { exitMode(); openTypes(); return; }
     if (m === 'note') { exitMode(); openNote({ kind: 'note' }); return; }
     if (mode === m) { exitMode(); return; }
     mode = m;
@@ -486,7 +484,7 @@
   // скриншот: на нём только одна пометка, без панели и прочих пометок
   async function withCapture(s, fn) {
     capturing = true;
-    note.hidden = true; bar.hidden = true; miniEl.hidden = true; hint.hidden = true; toastEl.hidden = true; listEl.hidden = true; typesEl.hidden = true;
+    note.hidden = true; bar.hidden = true; miniEl.hidden = true; hint.hidden = true; toastEl.hidden = true; listEl.hidden = true;
     const others = shapes;
     shapes = [];
     pending = s;
@@ -571,7 +569,6 @@
   // ================= список пометок =================
   const KIND = { element: '🎯', arrow: '➚', rect: '▭', note: '💬' };
   async function openList() {
-    closeTypes();
     const r = await send({ type: 'annotations-list' });
     const items = (r && r.items) || [];
     const errs = (r && r.errors) || [];
@@ -632,7 +629,7 @@
   async function capturePrep() {
     if (prepSaved) return true;
     prepSaved = { bar: bar.hidden, note: note.hidden, list: listEl.hidden, marks: marksHidden, mini: miniEl.hidden };
-    bar.hidden = true; miniEl.hidden = true; toastEl.hidden = true; note.hidden = true; listEl.hidden = true; typesEl.hidden = true; hint.hidden = true;
+    bar.hidden = true; miniEl.hidden = true; toastEl.hidden = true; note.hidden = true; listEl.hidden = true; hint.hidden = true;
     marksHidden = true; redraw();
     await raf(); await raf();
     return true;
@@ -643,31 +640,6 @@
     if (mode) hint.hidden = false;
     prepSaved = null; redraw();
   }
-
-  // ================= тип бага =================
-  function showType() {
-    if (!BT) return;
-    const t = BT.byId(state.bugType) || BT.auto;
-    const b = $('[data-act=type]');
-    b.textContent = `${t.icon} ${t.id === 'auto' ? 'Тип: авто' : t.name.split(' — ')[0]}`;
-  }
-  function openTypes() {
-    if (!BT) return;
-    closeList();
-    $('[data-act=type]').classList.add('open');
-    const cur = state.bugType || 'auto';
-    typesEl.hidden = false;
-    typesEl.innerHTML = `<h4>Тип бага<small>От типа зависит, какие данные покажет отчёт. Остальное не потеряется — его можно включить в отчёте.</small></h4>` +
-      [BT.auto, ...BT.list].map((t) => `<button class="ty ${t.id === cur ? 'on' : ''}" data-id="${t.id}"><i>${t.icon}</i><span><b>${escH(t.name)}</b><small>${escH(t.hint)}</small></span></button>`).join('');
-    typesEl.querySelectorAll('.ty').forEach((b) => (b.onclick = async () => {
-      const r = await send({ type: 'set-type', bugType: b.dataset.id });
-      if (r && r.ok) { state.bugType = r.bugType; showType(); }
-      closeTypes();
-      const t = BT.byId(state.bugType) || BT.auto;
-      showToast(`Тип бага: ${t.icon} ${t.name}`, 'ok');
-    }));
-  }
-  function closeTypes() { typesEl.hidden = true; $('[data-act=type]').classList.remove('open'); }
 
   // ================= клавиатура и сохранение =================
   $('.save').addEventListener('click', saveNote);
@@ -684,7 +656,6 @@
     if (pending) { cancelNote(); e.stopPropagation(); }
     else if (mode) { exitMode(); e.stopPropagation(); }
     else if (!listEl.hidden) { closeList(); e.stopPropagation(); }
-    else if (!typesEl.hidden) { closeTypes(); e.stopPropagation(); }
   };
   window.addEventListener('keydown', onKey, true);
 
@@ -737,8 +708,6 @@
       b.title = marksHidden ? 'Показать пометки' : 'Скрыть пометки на странице';
       hot = null;
       redraw();
-    } else if (act === 'type') {
-      if (typesEl.hidden) openTypes(); else closeTypes();
     } else if (act === 'list' || act === 'errs') {
       if (listEl.hidden) openList(); else closeList();
     } else if (act === 'voice' || act === 'video') {
@@ -786,7 +755,7 @@
     isMini = on;
     bar.hidden = on || !!prepSaved;
     miniEl.hidden = !on || !!prepSaved;
-    if (on) { closeList(); typesEl.hidden = true; if (mode) exitMode(); }
+    if (on) { closeList(); if (mode) exitMode(); }
     if (!on) applyPos();
     savePos();
   }
