@@ -63,7 +63,16 @@ function saveR() {
     // не перетираем данные, пока фиксация ещё идёт в service worker
     if (R.active) {
       const fresh = await QADB.get('reports', R.id);
-      if (fresh) { fresh.fields = R.fields; fresh.annotations.forEach((a) => { const m = R.annotations.find((x) => x.n === a.n); if (m) a.comment = m.comment; }); await QADB.put('reports', R.id, fresh); return; }
+      if (fresh) {
+        fresh.fields = R.fields;
+        fresh.aiSummary = R.aiSummary;
+        const merge = (arr, mine, keys) => (arr || []).forEach((a) => { const m = (mine || []).find((x) => x.n === a.n); if (m) keys.forEach((k) => (a[k] = m[k])); });
+        merge(fresh.annotations, R.annotations, ['comment', 'severity', 'ai']);
+        merge(fresh.errors, R.errors, ['severity', 'ai']);
+        merge(fresh.videos, R.videos, ['severity', 'ai']);
+        await QADB.put('reports', R.id, fresh);
+        return;
+      }
     }
     await QADB.put('reports', R.id, R);
   }, 400);
@@ -232,6 +241,7 @@ async function buildModel(o, only) {
     env: one ? env().filter(([k]) => ['Страница', 'Браузер', 'ОС', 'Размер окна', 'Экран', 'Язык браузера'].includes(k)) : env(),
     items,
     audit: (only === 'audit' || (!only && o.audit)) ? auditModel() : [],
+    aiSummary: only ? '' : (R.aiSummary && R.aiSummary.text) || '',
     sevSummary: SEV.map((x) => [x, items.filter((it) => it.sev === x.id).length]).filter(([, n]) => n).map(([x, n]) => `${x.icon} ${x.name}: ${n}`).join(' · '),
     appendix: apx,
     annotations: [],
@@ -314,10 +324,10 @@ function renderItems() {
     $('#items').innerHTML = `<div class="card muted">${all.length ? 'Нет пунктов этого вида.' : 'Пунктов нет. На странице используйте 🎯 Элемент, ➚ Стрелка, ▭ Область, 💬 Заметка или ⏺ Записать видео. Ошибки консоли и запросов сохраняются автоматически.'}</div>`;
     return;
   }
-  const dl = (key) => `<details class="dl"><summary>⬇ Скачать пункт</summary><div class="menu"><button data-dl="${key}" data-f="docx">📄 Word</button><button data-dl="${key}" data-f="md">📝 Markdown (.zip)</button><button data-dl="${key}" data-f="html">🌐 HTML</button></div></details>`;
+  const dl = (key) => `<details class="dl"><summary>⬇ Скачать пункт</summary><div class="menu"><button data-dl="${key}" data-f="docx">📄 Word</button><button data-dl="${key}" data-f="md">📝 Markdown (.zip)</button><button data-dl="${key}" data-f="html">🌐 HTML</button><button data-dl="${key}" data-f="gdocs">📄 Google Docs</button></div></details>`;
   const cp = (i) => `<details class="dl"><summary>📋 Копировать</summary><div class="menu"><button data-cp="${i.key}" data-w="text">📝 Текст для задачи</button>${i.kind !== 'recording' ? `<button data-cp="${i.key}" data-w="img">🖼 Скриншот</button><button data-cp="${i.key}" data-w="both">📄 Текст + скриншот<br><small>для Google Docs, Word, Notion</small></button>` : ''}</div></details>`;
   const sevSel = (i) => { const v = itemSev(i); return `<select class="isev s-${v}" data-sev="${i.key}" title="Серьёзность${i.kind === 'error' && !i.x.severity ? ' (подобрана автоматически)' : ''}">${SEV.map((x) => `<option value="${x.id}" ${x.id === v ? 'selected' : ''}>${x.icon} ${x.name}</option>`).join('')}</select>`; };
-  const head = (i, num, title, extra = '') => `<div class="it-h"><span class="ic">${ITEM_ICON[i.kind]} ${num}</span>${sevSel(i)}<b>${esc(title)}</b><span class="chip time" data-ts="${i.ts}" title="Перейти к моменту в видео">${X.fmtRel(i.ts - R.startTime)}</span>${extra}<span class="acts">${cp(i)}${dl(i.key)}${i.kind === 'error' ? `<button data-ign="${i.key}" title="Удалить и больше не сохранять такие ошибки">🙈</button>` : ''}<button data-del="${i.key}" title="Удалить пункт">🗑</button></span></div>`;
+  const head = (i, num, title, extra = '') => `<div class="it-h"><span class="ic">${ITEM_ICON[i.kind]} ${num}</span>${sevSel(i)}<b>${esc(title)}</b><span class="chip time" data-ts="${i.ts}" title="Перейти к моменту в видео">${X.fmtRel(i.ts - R.startTime)}</span>${extra}<span class="acts"><button class="aib" data-ai="${i.key}" title="AI оформит баг и подскажет причину">🤖 AI</button>${cp(i)}${dl(i.key)}${i.kind === 'error' ? `<button data-ign="${i.key}" title="Удалить и больше не сохранять такие ошибки">🙈</button>` : ''}<button data-del="${i.key}" title="Удалить пункт">🗑</button></span></div>`;
   const tbl = (head2, rows) => (rows.length ? `<table><tr>${head2.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>` : '<div class="zero">Нет данных</div>');
   const cls = (l) => (l === 'error' ? 'err' : l === 'warn' ? 'warn' : '');
   const reqRows = (arr) => arr.map((e) => `<tr class="${netErr(e) ? 'err' : ''}">${relCell(e.ts)}<td>${esc(e.method)}</td><td><b>${esc(X.statusLabel(e))}</b></td><td class="u mono">${esc(short(e.url, 180))}</td><td>${X.fmtDur(e.duration)}</td></tr>`);
@@ -347,7 +357,7 @@ function renderItems() {
           ${a.element ? `<div class="fact"><div class="fl">Элемент</div><div class="sel">${esc(a.element.selector)}<br>&lt;${esc(a.element.tag)}&gt; ${Math.round(a.element.rect.w)}×${Math.round(a.element.rect.h)}${a.element.text ? ' · «' + esc(short(a.element.text, 80)) + '»' : ''}</div></div>` : ''}
           ${vo.map((v) => `<div class="fact"><div class="fl">🎤 Голос</div><audio controls data-key="${v.key}"></audio></div>`).join('')}
           <div class="fact"><div class="fl">Страница</div><div class="url">${esc(a.url)}</div></div>
-        </div></div></div>`;
+        </div></div>${aiBox(i)}</div>`;
     }
     if (i.kind === 'error') {
       const x = i.x;
@@ -368,7 +378,7 @@ function renderItems() {
       ];
       return `<div class="it error">${head(i, x.n, x.title, x.count > 1 ? `<span class="pill bad">повторялась ${x.count} раз</span>` : '')}
         <div class="it-b ${x.shotKey && shots['e' + x.n] ? '' : 'one'}">${shots['e' + x.n] ? `<img src="${shots['e' + x.n]}" alt="">` : ''}<div class="facts">${facts}</div></div>
-        ${mini(i.key, tabs)}</div>`;
+        ${aiBox(i)}${mini(i.key, tabs)}</div>`;
     }
     const v = i.v;
     const c = recCtx(v);
@@ -380,7 +390,7 @@ function renderItems() {
     ];
     return `<div class="it recording">${head(i, v.n, `Запись видео · ${X.fmtDur((v.end || Date.now()) - v.start)}`, `<span class="muted">${X.fmtSize(mediaBlobs[v.key].size)} · данные за ${Math.round((v.start - c.from) / 1000)} с до начала и во время записи</span>`)}
       <div class="it-b one"><video controls preload="metadata" data-key="${v.key}" data-start="${v.start}"></video></div>
-      ${mini(i.key, tabs)}</div>`;
+      ${aiBox(i)}${mini(i.key, tabs)}</div>`;
   }).join('');
 
   // медиа
@@ -409,6 +419,20 @@ function renderItems() {
   $('#items').querySelectorAll('[data-sev]').forEach((sel) => (sel.onchange = () => {
     const i = itemList().find((x) => x.key === sel.dataset.sev);
     setItemSev(i, sel.value);
+    renderItems();
+  }));
+  $('#items').querySelectorAll('[data-ai]').forEach((b) => (b.onclick = () => runAI(b.dataset.ai, b)));
+  $('#items').querySelectorAll('[data-aicopy]').forEach((b) => (b.onclick = () => copyItem(b.dataset.aicopy, 'text')));
+  $('#items').querySelectorAll('[data-aisev]').forEach((b) => (b.onclick = () => {
+    const i = itemList().find((x) => x.key === b.dataset.aisev);
+    setItemSev(i, objOf(i).ai.severity);
+    renderItems();
+    flash('Серьёзность изменена');
+  }));
+  $('#items').querySelectorAll('[data-aidel]').forEach((b) => (b.onclick = () => {
+    const i = itemList().find((x) => x.key === b.dataset.aidel);
+    delete objOf(i).ai;
+    saveR();
     renderItems();
   }));
   $('#items').querySelectorAll('[data-cp]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; copyItem(b.dataset.cp, b.dataset.w); }));
@@ -448,6 +472,115 @@ function renderItems() {
     saveR();
     renderItems();
   }));
+}
+
+// ================= 🤖 AI =================
+const objOf = (i) => (i.kind === 'remark' ? i.a : i.kind === 'error' ? i.x : i.v);
+const SIDE_ICON = { frontend: '🖥', backend: '🗄', both: '🖥🗄', unknown: '❔' };
+function aiBox(i) {
+  const ai = objOf(i).ai;
+  if (!ai) return '';
+  const cur = itemSev(i);
+  return `<div class="aibox">
+    <div class="aih"><b>🤖 Разбор AI</b><span class="muted">${esc(ai.model)} · ${new Date(ai.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+      <span class="acts">${ai.severity && ai.severity !== cur ? `<button data-aisev="${i.key}" title="Поставить серьёзность, предложенную AI">${sevLabel(ai.severity)}?</button>` : ''}<button data-aicopy="${i.key}" title="Скопировать пункт вместе с разбором — для задачи в трекере">📋 Копировать как задачу</button><button data-ai="${i.key}" title="Разобрать ещё раз">↻</button><button data-aidel="${i.key}" title="Удалить разбор">✕</button></span></div>
+    ${ai.title ? `<div class="ait">${esc(ai.title)}</div>` : ''}
+    <div class="aig">
+      ${ai.steps.length ? `<div><div class="fl">Шаги воспроизведения</div><ol>${ai.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div>` : ''}
+      <div>${ai.expected ? `<div class="fl">Ожидалось</div><p>${esc(ai.expected)}</p>` : ''}${ai.actual ? `<div class="fl">Фактически</div><p>${esc(ai.actual)}</p>` : ''}</div>
+    </div>
+    ${ai.cause ? `<div class="fl">Вероятная причина <span class="side s-${ai.side}">${SIDE_ICON[ai.side]} ${QAInt.SIDE_RU[ai.side]}</span></div><p>${esc(ai.cause)}</p>` : ''}
+    ${ai.fix ? `<div class="fl">Что проверить</div><p class="pw">${esc(ai.fix)}</p>` : ''}
+    ${ai.questions.length ? `<div class="fl">Стоит уточнить</div><ul>${ai.questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ul>` : ''}
+  </div>`;
+}
+/** текст пункта для AI: данные пункта + контекст, токены скрыты */
+async function aiContext(i) {
+  const it = await itemModel(i, { ...opts(), details: true, mask: true });
+  const e = env();
+  const envLine = e.filter(([k]) => ['Браузер', 'ОС', 'Размер окна'].includes(k)).map(([k, v]) => `${k}: ${v}`).join('; ');
+  const L = [`Сайт: ${R.meta.title || ''} ${maskS(R.meta.startUrl || '')}`, envLine, '', X.itemText({ ...it, ai: null })];
+  if (i.kind === 'remark') {
+    const a = i.a;
+    if (a.element && a.element.text) L.push(`Текст элемента: «${short(a.element.text, 300)}»`);
+    const acts = timeline().filter((x) => x.ts <= a.ts && x.ts >= a.ts - 180000).slice(-8);
+    if (acts.length) { L.push('', 'Действия пользователя перед замечанием:'); acts.forEach((x, k) => L.push(`${k + 1}. ${x.kind === 'nav' ? 'Переход: ' + maskS(x.url) : X.describeAction(x)}`)); }
+    const errs = between(R.console, a.ts - 30000, a.ts + 2000).filter((c) => c.level === 'error').slice(-5);
+    if (errs.length) { L.push('', 'Ошибки консоли незадолго до замечания:'); errs.forEach((c) => L.push('- ' + short(maskS(c.text), 400))); }
+    const bad = between(allNet(), a.ts - 30000, a.ts + 2000).filter(netErr).slice(-5);
+    if (bad.length) { L.push('', 'Упавшие запросы незадолго до замечания:'); bad.forEach((r) => L.push(`- ${r.method} ${X.statusLabel(r)} ${maskS(r.url)}`)); }
+  }
+  return { text: short(L.join('\n'), 14000), image: it.dataUrl };
+}
+async function runAI(key, btn) {
+  const i = itemList().find((x) => x.key === key);
+  if (!i) return;
+  const ctx = await aiContext(i);
+  const s = await QAInt.getAI();
+  if (!QAInt.aiReady(s)) {
+    await navigator.clipboard.writeText(QAInt.promptForChat(ctx.text));
+    flash('AI не подключён. Запрос скопирован — вставьте его в Claude или ChatGPT. Подключить ключ: «🔌 Интеграции» вверху.');
+    return;
+  }
+  const old = btn.textContent;
+  document.querySelectorAll(`[data-ai="${key}"]`).forEach((b) => { b.disabled = true; b.textContent = '🤖 Думаю…'; });
+  try {
+    objOf(i).ai = await QAInt.analyzeItem(ctx.text, ctx.image);
+    saveR();
+    renderItems();
+    flash('Готово: разбор AI добавлен к пункту и попадёт в выгрузку');
+  } catch (e) {
+    console.error(e);
+    flash('AI: ' + e.message);
+    document.querySelectorAll(`[data-ai="${key}"]`).forEach((b) => { b.disabled = false; b.textContent = old; });
+  }
+}
+function summaryContext() {
+  const L = [`Сайт: ${R.meta.title || ''} ${maskS(R.meta.startUrl || '')}`, `Длительность проверки: ${X.fmtDur((R.endTime || Date.now()) - R.startTime)}`, '', 'Пункты:'];
+  for (const i of itemList()) {
+    const o = objOf(i);
+    const sv = sevLabel(itemSev(i));
+    if (i.kind === 'remark') L.push(`- Замечание ${o.n} [${sv}]: ${short(o.comment || '(без комментария)', 300)}${o.element ? ` (элемент ${o.element.selector})` : ''} — ${maskS(o.url)}`);
+    else if (i.kind === 'error') L.push(`- Ошибка ${o.n} [${sv}]: ${short(maskS(o.title), 300)}${o.count > 1 ? ` (×${o.count})` : ''} — ${maskS(o.url || '')}`);
+    else L.push(`- Запись ${o.n} [${sv}]: видео ${X.fmtDur((o.end || Date.now()) - o.start)}`);
+    if (o.ai && o.ai.cause) L.push(`  Разбор AI: ${o.ai.title}. Причина (${QAInt.SIDE_RU[o.ai.side]}): ${short(o.ai.cause, 300)}`);
+  }
+  const au = auditModel();
+  if (au.length) { L.push('', 'Автопроверка:'); au.slice(0, 25).forEach((f) => L.push(`- [${sevLabel(f.sev)}] ${f.title}`)); }
+  return short(L.join('\n'), 16000);
+}
+function renderAISummary() {
+  const el = $('#ai-summary');
+  const sm = R.aiSummary;
+  el.hidden = !sm;
+  if (!sm) return;
+  el.innerHTML = `<div class="aih"><b>🤖 Резюме AI</b><span class="muted">${esc(sm.model)} · ${new Date(sm.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · попадёт в начало выгрузки</span>
+    <span class="acts"><button id="sum-copy">📋 Копировать</button><button id="sum-redo" title="Составить заново">↻</button><button id="sum-del" title="Удалить резюме">✕</button></span></div><div class="sumbody">${X.mdLite(sm.text)}</div>`;
+  $('#sum-copy').onclick = async () => { await navigator.clipboard.writeText(sm.text); flash('Резюме скопировано'); };
+  $('#sum-redo').onclick = () => runSummary();
+  $('#sum-del').onclick = () => { delete R.aiSummary; saveR(); renderAISummary(); };
+}
+async function runSummary() {
+  const text = summaryContext();
+  const s = await QAInt.getAI();
+  if (!QAInt.aiReady(s)) {
+    await navigator.clipboard.writeText('Составь краткое резюме отчёта о тестировании для команды: итог, что исправить в первую очередь (с номерами пунктов), общие причины.\n\n' + text);
+    flash('AI не подключён. Запрос скопирован — вставьте его в Claude или ChatGPT. Подключить ключ: «🔌 Интеграции».');
+    return;
+  }
+  const b = $('#ai-sum');
+  b.disabled = true; b.textContent = '🤖 Составляю резюме…';
+  try {
+    R.aiSummary = await QAInt.summarize(text);
+    saveR();
+    renderAISummary();
+    $('#ai-summary').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (e) {
+    console.error(e);
+    flash('AI: ' + e.message);
+  } finally {
+    b.disabled = false; b.textContent = '🤖 Резюме отчёта';
+  }
 }
 
 // ---------- копирование пункта в буфер обмена ----------
@@ -497,7 +630,7 @@ async function itemModel(i, o) {
   };
   if (i.kind === 'remark') {
     const a = i.a;
-    const it = { kind: 'remark', key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: a.n, rel: a.ts - st, url: a.url, comment: a.comment, element: a.element,
+    const it = { kind: 'remark', ai: a.ai, key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: a.n, rel: a.ts - st, url: a.url, comment: a.comment, element: a.element,
       voice: voiceFor(a).map((v) => ({ key: v.key, file: `media/voice-${v.n}.webm` })) };
     await shot(shots[a.n], `screenshots/zamechanie-${String(a.n).padStart(2, '0')}.png`, it);
     return it;
@@ -506,7 +639,7 @@ async function itemModel(i, o) {
     const x = i.x;
     const c = errorCtx(x);
     const it = {
-      kind: 'error', key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: x.n, rel: x.ts - st, url: o.mask ? maskS(x.url) : x.url, title: o.mask ? maskS(x.title) : x.title, count: x.count,
+      kind: 'error', ai: x.ai, key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: x.n, rel: x.ts - st, url: o.mask ? maskS(x.url) : x.url, title: o.mask ? maskS(x.title) : x.title, count: x.count,
       jsErrors: c.jsErrors.map((j) => ({ text: o.mask ? maskS(j.text) : j.text, loc: j.loc })),
       requests: c.requests.map(m),
       before: c.before.map((b) => ({ rel: b.ts - st, text: o.mask ? maskS(b.text) : b.text })),
@@ -520,7 +653,7 @@ async function itemModel(i, o) {
   const v = i.v;
   const c = recCtx(v);
   return {
-    kind: 'recording', key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: v.n, rel: v.start - st, durationMs: (v.end || Date.now()) - v.start, size: mediaBlobs[v.key].size,
+    kind: 'recording', ai: v.ai, key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: v.n, rel: v.start - st, durationMs: (v.end || Date.now()) - v.start, size: mediaBlobs[v.key].size,
     file: `media/video-${v.n}.webm`, videoKey: v.key,
     timeline: c.timeline.map((x) => ({ rel: x.ts - st, cat: CAT_RU[x.cat] || x.cat, level: x.level, text: o.mask ? maskS(x.text) : x.text })),
     requests: c.requests.map(m),
@@ -832,6 +965,29 @@ async function doExport(kind, only) {
       const media = o.embed ? await embedMedia(m) : {};
       download(new Blob([X.exportHTML(m, media)], { type: 'text/html' }), base + '.html');
       st.textContent = 'Готово: один HTML-файл' + (Object.keys(media).length ? ' со встроенным видео/голосом' : '');
+    } else if (kind === 'gdocs') {
+      const gd = await QAInt.getGD();
+      if (!gd.clientId) {
+        const html = X.exportHTML(m, {});
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([X.exportMarkdown(m)], { type: 'text/plain' }) })]);
+        chrome.tabs.create({ url: 'https://docs.new' });
+        st.innerHTML = '✓ Отчёт скопирован и открыт новый Google-документ — нажмите в нём <b>Ctrl+V</b>' + (hasMedia ? ' (видео и голос так не переносятся)' : '') + '. <a href="settings.html#gd" target="_blank">Настроить выгрузку в один клик →</a>';
+        return;
+      }
+      st.textContent = 'Вход в Google…';
+      await QAInt.googleToken(true);
+      const parent = await QAInt.folderId();
+      const up = async (blob, file) => (await QAInt.upload(blob, `${base}_${file.split('/').pop()}`, { parent })).webViewLink;
+      let k = 0;
+      for (const it of m.items) {
+        if (it.kind === 'recording' && mediaBlobs[it.videoKey]) { st.textContent = `Загружаю видео ${++k}…`; it.link = await up(mediaBlobs[it.videoKey], it.file); }
+        for (const v of it.voice || []) if (mediaBlobs[v.key]) { st.textContent = `Загружаю голос ${++k}…`; v.link = await up(mediaBlobs[v.key], v.file); }
+      }
+      for (const v of m.voice) if (mediaBlobs[v.key]) { st.textContent = `Загружаю голос ${++k}…`; v.link = await up(mediaBlobs[v.key], v.file); }
+      st.textContent = 'Создаю документ…';
+      const doc = await QAInt.upload(X.exportDOCX(m), base, { convert: true, parent });
+      chrome.tabs.create({ url: doc.webViewLink });
+      st.innerHTML = `✓ Готово: <a href="${esc(doc.webViewLink)}" target="_blank">${esc(doc.name)}</a> в папке «QA Bug Recorder» на Google Диске${k ? ' · видео и голос загружены рядом, ссылки в документе' : ''}`;
     } else if (kind === 'har') {
       const full = await buildModel({ ...o, appendix: true, network: 'all', details: true });
       download(new Blob([JSON.stringify(X.exportHAR(full), null, 2)], { type: 'application/json' }), base + '.har');
@@ -879,6 +1035,7 @@ function renderAll() {
   $('#banner').innerHTML = warns.map(esc).join('<br>');
 
   renderMedia();
+  renderAISummary();
   renderItems();
   renderAudit();
   renderSummary();
@@ -1345,6 +1502,7 @@ $('#regen').onclick = () => {
   saveR();
 };
 document.querySelectorAll('[data-ex]').forEach((b) => (b.onclick = () => doExport(b.dataset.ex)));
+$('#ai-sum').onclick = () => runSummary();
 document.querySelectorAll('.tabs [data-tab]').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; renderTab(); }));
 $('#search').oninput = () => renderTab();
 document.querySelectorAll('[data-adl]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; doExport(b.dataset.adl, 'audit'); }));

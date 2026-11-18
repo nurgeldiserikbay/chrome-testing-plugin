@@ -228,3 +228,32 @@ td .sub{display:block;color:#6b7280;font-size:11.5px;margin-top:2px;font-family:
 .aud-b ul{margin:4px 0;padding-left:18px}
 .aud-b li{margin:3px 0;word-break:break-all;font-size:12px}
 .aud[open]{box-shadow:0 4px 14px rgba(0,0,0,.08)}
+
+/* ===== 🤖 AI и интеграции ===== */
+.ex-sep{flex:1}
+.ex-btns button.aib,.it-h button.aib{background:#f5f3ff;border:1px solid #ddd6fe;color:#5b21b6;font-weight:600}
+.ex-btns button.aib:hover,.it-h button.aib:hover{background:#ede9fe}
+.it-h button.aib{border-radius:8px;padding:4px 9px;cursor:pointer;font-size:13px}
+.intg{margin-left:auto;color:#4b5563;text-decoration:none;font-weight:600;padding:8px 6px;font-size:13.5px}
+.intg:hover{color:#111827}
+.ex-status a,#ex-status a{color:var(--blue)}
+.aibox,.aisum{background:#faf9ff;border:1px solid #e4defc;border-radius:12px;padding:12px 16px;margin:12px 16px}
+.aisum{margin:0 0 18px}
+.aih{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.aih b{color:#5b21b6}
+.aih .muted{font-size:12.5px}
+.aih .acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.aih .acts button{border:1px solid #ddd6fe;background:#fff;border-radius:8px;padding:4px 9px;cursor:pointer;font-size:12.5px;color:#4c1d95}
+.aih .acts button:hover{background:#f5f3ff}
+.ait{font-weight:700;font-size:15px;margin:2px 0 8px}
+.aig{display:grid;grid-template-columns:1.2fr 1fr;gap:6px 22px}
+.aibox .fl,.aisum .fl{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:#7c3aed;font-weight:700;margin:8px 0 3px}
+.aibox p,.aibox ol,.aibox ul{margin:0 0 4px}
+.aibox ol,.aibox ul{padding-left:20px}
+.aibox .pw{white-space:pre-wrap}
+.side{display:inline-block;text-transform:none;letter-spacing:0;font-weight:600;font-size:12px;border-radius:10px;padding:1px 8px;margin-left:6px;background:#eef2ff;color:#3730a3}
+.side.s-backend{background:#fef3c7;color:#92400e}
+.side.s-both{background:#fce7f3;color:#9d174d}
+.side.s-unknown{background:#f3f4f6;color:#4b5563}
+.sumbody p{margin:0 0 6px}.sumbody ol,.sumbody ul{margin:0 0 8px;padding-left:22px}
+@media (max-width:900px){.aig{grid-template-columns:1fr}}

@@ -25,6 +25,7 @@
       <div class="hrow">
         <label>Приоритет <select id="f-priority"><option value="">—</option><option>Высокий</option><option>Средний</option><option>Низкий</option></select></label>
         <span id="created" class="muted"></span>
+        <a class="intg" href="settings.html" target="_blank" title="Подключить AI-разбор и Google Docs">🔌 Интеграции: AI, Google Docs</a>
       </div>
       <div id="counts" class="counts"></div>
     </header>
@@ -32,10 +33,13 @@
     <section class="export card">
       <div class="ex-btns">
         <button data-ex="docx" class="primary">📄 Word (.docx)</button>
+        <button data-ex="gdocs" title="Создать Google-документ">📄 Google Docs</button>
         <button data-ex="md">📝 Markdown (.zip)</button>
         <button data-ex="html">🌐 HTML</button>
         <button data-ex="har">🔌 HAR</button>
         <button data-ex="all">📦 Всё одним архивом</button>
+        <span class="ex-sep"></span>
+        <button id="ai-sum" class="aib" title="AI составит резюме: что исправлять в первую очередь">🤖 Резюме отчёта</button>
       </div>
       <details class="ex-more"><summary>⚙ Что включать в отчёт</summary>
       <div class="ex-opts">
@@ -64,6 +68,8 @@
       </details>
       <div id="ex-status" class="muted"></div>
     </section>
+
+    <section id="ai-summary" class="card aisum" hidden></section>
 
     <section id="items-sec">
       <div class="items-head"><h2>Пункты</h2><div class="ifil" id="ifil"></div></div>
@@ -118,5 +124,6 @@
 <script src="zip.js"></script>
 <script src="docx.js"></script>
 <script src="exporters.js"></script>
+<script src="integrations.js"></script>
 <script src="report.js"></script>
 </body></html>

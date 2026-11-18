@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "QA Bug Recorder",
   "short_name": "QA Bug",
-  "description": "Фиксация багов: пометки и выбор элемента на странице, видео, голос, логи консоли, запросы и действия. Экспорт в Word, Markdown, HTML, HAR.",
-  "version": "1.6.2",
+  "description": "Фиксация багов: пометки на странице, видео, голос, логи консоли, запросы и действия. AI-разбор, экспорт в Word, Google Docs, Markdown, HTML, HAR.",
+  "version": "1.7.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "tabs",
@@ -13,7 +13,8 @@
     "unlimitedStorage",
     "tabCapture",
     "offscreen",
-    "debugger"
+    "debugger",
+    "identity"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -85,5 +86,9 @@
       },
       "description": "Завершить проверку и открыть отчёт"
     }
+  },
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": true
   }
 }

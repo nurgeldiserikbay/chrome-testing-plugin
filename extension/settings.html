@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Интеграции — QA Bug Recorder</title><link rel="icon" href="icons/32.png"><link rel="stylesheet" href="settings.css"></head>
+<body>
+<main>
+  <h1><img src="icons/48.png" alt=""> Интеграции</h1>
+  <p class="lead">Подключите AI для разбора багов и Google Docs для выгрузки отчётов. Всё необязательно: без настроек расширение работает как раньше.</p>
+
+  <section class="card" id="ai">
+    <h2>🤖 AI-разбор багов</h2>
+    <p>Кнопка <b>🤖 AI</b> у каждого пункта отчёта: AI оформит баг (заголовок, шаги, ожидалось / фактически), предложит серьёзность, подскажет вероятную причину — фронтенд или бэкенд — и что проверить разработчику. Для всего отчёта — <b>🤖 Резюме</b>: что исправлять в первую очередь.</p>
+    <div class="grid">
+      <label>Сервис
+        <select id="ai-provider"></select>
+      </label>
+      <label>API-ключ <a id="ai-keyurl" target="_blank" rel="noopener">где взять ключ</a>
+        <span class="pw"><input id="ai-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…"><button id="ai-eye" type="button" title="Показать">👁</button></span>
+      </label>
+      <label>Модель
+        <input id="ai-model" spellcheck="false">
+        <small>Можно оставить пустым — будет использована модель по умолчанию.</small>
+      </label>
+      <label id="ai-base-row">Адрес API
+        <input id="ai-base" spellcheck="false" placeholder="https://openrouter.ai/api/v1">
+        <small>Адрес, к которому добавляется /chat/completions.</small>
+      </label>
+    </div>
+    <label class="ck"><input type="checkbox" id="ai-images"><span>Отправлять скриншот пункта<small>AI видит, что на экране. Выключите, если модель не принимает картинки.</small></span></label>
+    <div class="row"><button id="ai-test" class="primary">Проверить подключение</button><span id="ai-st" class="st"></span></div>
+    <div class="note">🔒 Ключ хранится только в этом браузере. Данные пункта (текст, запросы, скриншот) отправляются выбранному сервису <b>только когда вы нажимаете 🤖</b>. Пароли и токены в запросах перед отправкой маскируются. Без ключа кнопка 🤖 копирует готовый запрос — его можно вставить в Claude или ChatGPT вручную.</div>
+  </section>
+
+  <section class="card" id="gd">
+    <h2>📄 Google Docs</h2>
+    <p>Кнопка <b>Google Docs</b> в отчёте: отчёт или отдельный пункт сразу появляется как Google-документ со скриншотами в папке <b>«QA Bug Recorder»</b> на вашем Диске. Видео и голос загружаются рядом, ссылки на них — в документе. Расширение видит только файлы, которые создало само.</p>
+    <p class="muted">Без настройки кнопка тоже работает: копирует отчёт и открывает новый документ — останется нажать Ctrl+V.</p>
+    <details class="howto" id="howto">
+      <summary>Как получить Client ID (один раз на команду, ~5 минут)</summary>
+      <ol>
+        <li>Откройте <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud Console</a> и создайте проект, например «QA Bug Recorder».</li>
+        <li>В <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener">библиотеке API</a> включите <b>Google Drive API</b>.</li>
+        <li>Откройте <a href="https://console.cloud.google.com/auth/overview" target="_blank" rel="noopener">Google Auth Platform</a> → «Начать»: название приложения, ваша почта, тип аудитории <b>External</b> (или Internal, если у компании Google Workspace).</li>
+        <li>В разделе <b>Audience</b> добавьте почты тестировщиков в Test users. Либо нажмите Publish app — доступ только к своим файлам (drive.file) не требует проверки Google.</li>
+        <li>В разделе <b>Clients</b> → Create client → тип <b>Web application</b>. В <b>Authorized redirect URIs</b> добавьте адрес ниже. У каждого, кто поставил расширение из своей папки, адрес свой — добавьте адреса всех тестировщиков в один и тот же клиент.</li>
+        <li>Скопируйте <b>Client ID</b> и вставьте в поле ниже. Всем тестировщикам вставлять один и тот же.</li>
+      </ol>
+    </details>
+    <label>Адрес для Authorized redirect URIs (ваш)
+      <span class="pw"><input id="gd-redirect" readonly><button id="gd-copy" type="button" title="Скопировать">📋</button></span>
+    </label>
+    <label>Client ID
+      <input id="gd-client" spellcheck="false" placeholder="1234567890-abc….apps.googleusercontent.com">
+    </label>
+    <div class="row"><button id="gd-test" class="primary">Войти в Google и проверить</button><button id="gd-out" class="link">Выйти</button><span id="gd-st" class="st"></span></div>
+  </section>
+
+  <section class="card">
+    <h2>🔌 MCP: Claude Desktop, Claude Code, Cursor</h2>
+    <p>Скоро: отчёты станут доступны AI-ассистентам разработчика напрямую — «исправь ошибку 3 из последнего отчёта», без копирования.</p>
+  </section>
+</main>
+<script src="integrations.js"></script>
+<script src="settings.js"></script>
+</body></html>

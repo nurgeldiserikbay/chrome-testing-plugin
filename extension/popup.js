@@ -100,6 +100,7 @@ $('cancel').onclick = async () => {
   $('cancel').textContent = 'Нажмите ещё раз, чтобы удалить';
 };
 $('reports').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('report.html') }); window.close(); };
+$('intg').onclick = () => { chrome.runtime.openOptionsPage(); window.close(); };
 $('shortcuts').onclick = () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
 
 async function showShortcut() {
