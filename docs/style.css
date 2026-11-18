@@ -18,8 +18,8 @@ kbd{font:600 12px var(--mono);background:#fff;border:1px solid #d4d0c4;border-bo
 /* ---------- кнопки ---------- */
 .btn{display:inline-flex;align-items:center;gap:9px;font:700 16px var(--body);text-decoration:none;padding:15px 24px;border-radius:12px;transition:transform .15s,background .15s,box-shadow .15s;border:1.5px solid transparent;cursor:pointer}
 .btn.sm{font-size:14px;padding:9px 15px;border-radius:10px}
-.btn-red{background:var(--red);color:#fff;box-shadow:0 10px 30px -8px rgba(255,45,85,.6)}
-.btn-red:hover{background:var(--red2);transform:translateY(-2px)}
+.btn-red{background:var(--red2);color:#fff;box-shadow:0 10px 30px -8px rgba(255,45,85,.6)}
+.btn-red:hover{background:#be123c;transform:translateY(-2px)}
 .btn-ghost{border-color:rgba(255,255,255,.22);color:#fff}
 .btn-ghost:hover{background:rgba(255,255,255,.08)}
 
@@ -28,8 +28,8 @@ kbd{font:600 12px var(--mono);background:#fff;border:1px solid #d4d0c4;border-bo
 .nav-in{display:flex;align-items:center;gap:28px;height:64px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;font:700 15px var(--display);letter-spacing:-.01em}
 .brand img{width:28px;height:28px;border-radius:7px}
-.nav nav{display:flex;gap:24px;margin-left:auto}
-.nav nav a{text-decoration:none;color:#b9bfcc;font-weight:600;font-size:14px}
+.nav nav{display:flex;gap:22px;margin-left:auto}
+.nav nav a{text-decoration:none;color:#b9bfcc;font-weight:600;font-size:14px;white-space:nowrap}
 .nav nav a:hover{color:#fff}
 
 /* ---------- hero ---------- */
@@ -66,7 +66,7 @@ h1 em::after{content:"";position:absolute;left:0;right:0;bottom:-.06em;height:.0
 
 /* ---------- общие секции ---------- */
 section{padding:110px 0}
-.kicker{font:600 13px var(--mono);color:var(--red2);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px}
+.kicker{font:600 13px var(--mono);color:#be123c;text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px}
 .kicker.light{color:var(--red)}
 .h2{font:700 clamp(28px,3.4vw,44px)/1.12 var(--display);letter-spacing:-.03em;margin:0 0 18px;max-width:860px}
 .h2.light{color:#fff}
@@ -82,14 +82,14 @@ section{padding:110px 0}
 .pain-card p{margin:0 0 18px;color:var(--muted)}
 .pain-card p.ok{color:var(--text);margin:6px 0 0}
 .pc-before,.pc-after{display:inline-block;font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;border-radius:5px}
-.pc-before{background:#f1efe9;color:#8a8577}
+.pc-before{background:#f1efe9;color:#5f5a4e}
 .pc-after{background:#dcfce7;color:#047857;margin-top:4px}
 
 /* ---------- шаги ---------- */
 .how{background:#fff}
 .step{display:grid;grid-template-columns:1fr 1.25fr;gap:64px;align-items:center;margin-top:90px}
 .step.rev .step-text{order:2}
-.num{font:800 64px/1 var(--display);color:transparent;-webkit-text-stroke:1.5px var(--red);margin-bottom:12px}
+.num{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:18px;background:var(--red2);color:#fff;font:800 28px/1 var(--display);letter-spacing:-.02em;margin-bottom:18px;box-shadow:0 12px 26px -12px rgba(225,29,72,.7)}
 .step h3{font:700 28px/1.2 var(--display);letter-spacing:-.02em;margin:0 0 14px}
 .step p{color:#3b4050;font-size:17px;margin:0 0 18px}
 .ticks{list-style:none;padding:0;margin:0}
@@ -260,3 +260,7 @@ details p{margin:0;padding:0 22px 20px;color:#3b4050}
 .audit-in{display:grid;grid-template-columns:1fr 1.1fr;gap:48px;align-items:center}
 .audit-in .ticks li{margin:10px 0}
 @media (max-width:1000px){.audit-in{grid-template-columns:1fr}}
+
+.nav-in .btn{white-space:nowrap;flex-shrink:0}
+.brand{flex-shrink:0;white-space:nowrap}
+@media (max-width:1180px){.nav nav{gap:16px}.nav nav a[href="#audit"],.nav nav a[href="#devtools"]{display:none}}

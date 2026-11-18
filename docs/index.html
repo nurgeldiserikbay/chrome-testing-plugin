@@ -21,9 +21,9 @@
     <a href="#" class="brand"><img src="img/logo.png" alt=""><span>QA Bug Recorder</span></a>
     <nav>
       <a href="#how">Как работает</a>
-      <a href="#items">Пункты отчёта</a>
+      <a href="#items">Пункты</a>
       <a href="#audit">Автопроверка</a>
-      <a href="#devtools">DevTools-данные</a>
+      <a href="#devtools">DevTools</a>
       <a href="#features">Возможности</a>
       <a href="#report">Отчёт</a>
       <a href="#install">Установка</a>
@@ -32,6 +32,7 @@
     <a class="btn btn-red sm" href="qa-bug-recorder.zip" download>Скачать</a>
   </div>
 </header>
+<main>
 
 <!-- ============ HERO ============ -->
 <section class="hero">
@@ -55,7 +56,7 @@
     <div class="hero-shot">
       <div class="browser">
         <div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
-        <img src="img/panel-element.webp" alt="Панель фиксации бага поверх сайта: выбран элемент «Оплатить», открыт комментарий" width="1800" height="1125">
+        <img src="img/panel-element.webp" srcset="img/panel-element-sm.webp 900w, img/panel-element.webp 1800w" sizes="(max-width: 900px) 100vw, 600px" alt="Панель фиксации бага поверх сайта: выбран элемент «Оплатить», открыт комментарий" width="1800" height="1125">
       </div>
       <div class="chip c1"><b>console.error</b> TypeError: Cannot read properties of null</div>
       <div class="chip c2"><b class="red">POST 501</b> /api/orders</div>
@@ -141,7 +142,7 @@
           <div class="sw-tabs"><button class="on" data-i="0">Элемент</button><button data-i="1">Стрелка</button><button data-i="2">Область</button></div>
           <div class="browser small">
             <div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
-            <img src="img/element-hover.webp" data-src="img/element-hover.webp|img/arrow.webp|img/area.webp" alt="Выбор элемента, стрелка и область на странице" loading="lazy" width="1800" height="1125">
+            <img src="img/element-hover.webp" srcset="img/element-hover-sm.webp 900w, img/element-hover.webp 1800w" sizes="(max-width: 900px) 100vw, 600px" data-src="img/element-hover.webp|img/arrow.webp|img/area.webp" alt="Выбор элемента, стрелка и область на странице" loading="lazy" width="1800" height="1125">
           </div>
         </div>
       </div>
@@ -161,7 +162,7 @@
       <div class="step-img">
         <div class="browser small">
           <div class="browser-bar"><i></i><i></i><i></i><span>Отчёт о проверке</span></div>
-          <img src="img/report.webp" alt="Отчёт: список пунктов — замечание, запись, ошибка" loading="lazy" width="1800" height="1250">
+          <img src="img/report.webp" srcset="img/report-sm.webp 900w, img/report.webp 1800w" sizes="(max-width: 900px) 100vw, 600px" alt="Отчёт: список пунктов — замечание, запись, ошибка" loading="lazy" width="1800" height="1250">
         </div>
       </div>
     </div>
@@ -177,13 +178,13 @@
     <div class="it-grid">
       <div class="itc err"><div class="itl"><span>⚠</span>Ошибка — автоматически</div>
         <p>Ошибка в консоли или запрос с ошибкой → пункт сам: скриншот в этот момент, текст ошибки, запрос с телом и ответом сервера, действия перед ошибкой, консоль и запросы рядом.</p>
-        <img src="img/item-error.webp" alt="Пункт «Ошибка»: скриншот, ошибка JS, запрос, действия перед ошибкой" loading="lazy" width="1600" height="1305"></div>
+        <img src="img/item-error.webp" srcset="img/item-error-sm.webp 900w, img/item-error.webp 1800w" sizes="(max-width: 900px) 100vw, 400px" alt="Пункт «Ошибка»: скриншот, ошибка JS, запрос, действия перед ошибкой" loading="lazy" width="1600" height="1305"></div>
       <div class="itc rem"><div class="itl"><span>💬</span>Замечание — вы отмечаете сами</div>
         <p>Элемент, стрелка, область или заметка → скриншот с выделением, ваш текст и голос. Без технических логов — они тут не нужны.</p>
-        <img src="img/item-remark.webp" alt="Пункт «Замечание»: скриншот с выделением и текст" loading="lazy" width="1600" height="649"></div>
+        <img src="img/item-remark.webp" srcset="img/item-remark-sm.webp 900w, img/item-remark.webp 1800w" sizes="(max-width: 900px) 100vw, 400px" alt="Пункт «Замечание»: скриншот с выделением и текст" loading="lazy" width="1600" height="649"></div>
       <div class="itc rec"><div class="itl"><span>🎬</span>Запись — когда включили видео</div>
         <p>Видео вкладки плюс действия, события, запросы и консоль за время записи и 1–2 минуты до неё.</p>
-        <img src="img/item-recording.webp" alt="Пункт «Запись»: видео и события за время записи" loading="lazy" width="1600" height="987"></div>
+        <img src="img/item-recording.webp" srcset="img/item-recording-sm.webp 900w, img/item-recording.webp 1800w" sizes="(max-width: 900px) 100vw, 400px" alt="Пункт «Запись»: видео и события за время записи" loading="lazy" width="1600" height="987"></div>
     </div>
   </div>
 </section>
@@ -393,6 +394,7 @@
   </div>
 </section>
 
+</main>
 <footer class="foot">
   <div class="wrap foot-in">
     <span><img src="img/logo.png" alt=""> QA Bug Recorder</span>
@@ -405,14 +407,16 @@
   document.querySelectorAll('[data-switch]').forEach(function (sw) {
     var img = sw.querySelector('img[data-src]');
     var srcs = img.dataset.src.split('|');
-    srcs.forEach(function (s) { var i = new Image(); i.src = s; }); // предзагрузка
+    srcs.forEach(function (s) { var i = new Image(); if (img.srcset) { i.sizes = img.sizes; i.srcset = s.replace('.webp', '-sm.webp') + ' 900w, ' + s + ' 1800w'; } i.src = s; }); // предзагрузка
     sw.querySelectorAll('.sw-tabs button').forEach(function (b) {
       b.addEventListener('click', function () {
         sw.querySelectorAll('.sw-tabs button').forEach(function (x) { x.classList.remove('on'); });
         b.classList.add('on');
         img.classList.add('fade');
         setTimeout(function () {
-          img.src = srcs[+b.dataset.i];
+          var nx = srcs[+b.dataset.i];
+          if (img.srcset) img.srcset = nx.replace('.webp', '-sm.webp') + ' 900w, ' + nx + ' 1800w';
+          img.src = nx;
           img.classList.toggle('portrait', /word/.test(img.src));
           img.classList.remove('fade');
         }, 150);
