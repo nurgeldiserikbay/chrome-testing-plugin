@@ -287,7 +287,7 @@ function recCtx(v) {
     timeline: tl,
     requests: between(allNet(), from, to).filter((e) => !noise(e) && (['XHR', 'Fetch'].includes(e.type) || netErr(e))),
     console: between(R.console, from, to).filter((c) => c.level === 'error' || c.level === 'warn'),
-    perf: between(R.events, from, to).filter((e) => ['long-frame', 'slow-interaction', 'fps', 'layout-shift'].includes(e.kind) && e.level !== 'info'),
+    perf: between(R.events, from, to).filter((e) => ['long-frame', 'slow-interaction', 'fps', 'layout-shift', 'rerender'].includes(e.kind) && e.level !== 'info'),
   };
 }
 const voiceFor = (a) => R.voice.filter((v) => mediaBlobs[v.key] && a.ts >= v.start - 2000 && a.ts <= (v.end || Date.now()) + 2000);
@@ -563,7 +563,7 @@ function setItemSev(i, v) {
 }
 
 // ================= 🩺 автопроверка: анализ =================
-const AUDIT_CAT = { net: '🌐 Сеть', render: '⚛️ Перерисовки', a11y: '♿ Доступность', img: '🖼 Изображения', console: '⚠️ Предупреждения', perf: '⚡ Производительность', dom: '🧱 DOM' };
+const AUDIT_CAT = { net: '🌐 Сеть', render: '🔁 Перерисовки', a11y: '♿ Доступность', img: '🖼 Изображения', console: '⚠️ Предупреждения', perf: '⚡ Производительность', dom: '🧱 DOM' };
 const IMPACT_SEV = { critical: 'critical', serious: 'major', moderate: 'minor', minor: 'trivial' };
 let auditFilter = 'all';
 const normPath = (u) => { try { const x = new URL(u); return x.origin + x.pathname.replace(/\/\d+(?=\/|$)/g, '/#').replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '#'); } catch (_) { return u; } };
@@ -642,6 +642,32 @@ function auditIssues() {
       'Интерфейс обновляется непрерывно — тратится процессор, страница может тормозить и разряжать батарею.',
       'Найти источник частых setState (таймеры, подписки, анимации через state), использовать memo/useMemo, перенести анимацию в CSS.',
       [...comps.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n} — ${c} перерисовок в эти секунды`));
+  }
+  // перерисовки DOM — для любого сайта
+  const da = domAgg();
+  const rec = da.list.filter((x) => x.recreated > 0).sort((a, b) => b.recreated - a.recreated);
+  if (da.recreated >= 10) add('render', da.recreated >= 200 ? 'major' : 'minor', `Элементы пересоздаются без изменений: ${da.recreated} раз`,
+    'Блок удаляется и вставляется заново с тем же содержимым. Браузер заново строит элементы, пересчитывает стили и макет, теряется фокус и состояние (выделение, прокрутка, ввод). Частая причина — перерисовка всего списка или innerHTML ради одного изменения.',
+    'Обновлять только изменившиеся элементы: точечные изменения DOM, стабильные key в списках (React/Vue), не пересоздавать разметку целиком.',
+    rec.map((x) => `${x.selector} — пересоздан ${x.recreated} раз`), da.recreated);
+  const nop = da.list.filter((x) => x.noop > 0).sort((a, b) => b.noop - a.noop);
+  if (da.noop >= 20) add('render', da.noop >= 300 ? 'minor' : 'trivial', `Пустые обновления DOM: ${da.noop}`,
+    'В атрибут, класс, стиль или текст записывается то же значение, что уже было. Изменений не видно, но браузер всё равно проверяет и пересчитывает.',
+    'Сравнивать значение перед записью, не обновлять стили/классы в цикле или на каждый кадр без изменений.',
+    nop.map((x) => `${x.selector} — ${x.noop} раз`), da.noop);
+  const hot = da.list.filter((x) => x.secs >= 15 && x.changes / x.secs >= 10).sort((a, b) => b.changes - a.changes);
+  if (hot.length) add('render', 'trivial', `Постоянно меняющиеся области: ${hot.length}`,
+    'Блок меняется десятки раз в секунду на протяжении долгого времени. Это нормально для таймеров и анимаций, но если область не должна меняться — это лишняя работа браузера.',
+    'Проверить, нужен ли такой частый апдейт; анимации делать через CSS (transform/opacity), таймеры обновлять не чаще, чем видно глазу.',
+    hot.map((x) => `${x.selector} — ${x.changes} изменений за ${x.secs} с`));
+  const ma = R.meta.cdpMetricsStart, mb = R.meta.cdpMetricsEnd;
+  if (ma && mb) {
+    const secs = Math.max(1, ((R.endTime || Date.now()) - R.startTime) / 1000);
+    const lay = (mb.LayoutCount || 0) - (ma.LayoutCount || 0), sty = (mb.RecalcStyleCount || 0) - (ma.RecalcStyleCount || 0);
+    if (lay / secs > 10 || sty / secs > 20) add('render', 'minor', `Частые пересчёты макета и стилей`,
+      'Браузер пересчитывал расположение элементов (layout) и стили очень часто — это одна из главных причин подтормаживаний.',
+      'Не читать размеры элементов (offsetHeight, getBoundingClientRect) сразу после изменения стилей в цикле, группировать изменения DOM.',
+      [`layout: ${lay} раз за ${Math.round(secs)} с (${(lay / secs).toFixed(1)}/с)`, `стили: ${sty} раз (${(sty / secs).toFixed(1)}/с)`]);
   }
   const ra = rendersAgg();
   const heavyComp = ra.list.filter(([, v]) => v[0] >= 100);
@@ -994,6 +1020,7 @@ function eventSub(e) {
   if (e.kind === 'slow-interaction' && d.processing != null) return `худший случай: задержка ввода ${d.input} мс · обработчик ${d.processing} мс · отрисовка ${d.presentation} мс`;
   if (e.kind === 'messages' && (d.lastIn || d.lastOut)) return (d.lastIn ? '↓ ' + d.lastIn : '') + (d.lastIn && d.lastOut ? '\n' : '') + (d.lastOut ? '↑ ' + d.lastOut : '');
   if (e.kind === 'mutations' && d.top && d.top.length) return d.top.map((t) => `${t.selector} — ${t.count}`).join('\n');
+  if (e.kind === 'rerender') return [...(d.recreated || []).map((t) => `пересоздано: ${t.selector} — ${t.count}`), ...(d.noop || []).map((t) => `пустые обновления: ${t.selector} — ${t.count}`)].join('\n');
   if (e.kind === 'react' && d.components) return Object.entries(d.components).slice(0, 8).map(([n, v]) => `${n} ×${v[0] + v[1]}${v[1] ? ` (новых ${v[1]})` : ''}`).join(', ');
   return '';
 }
@@ -1071,6 +1098,23 @@ function rendersAgg() {
   return { commits, busy, list: [...map.entries()].sort((a, b) => b[1][0] + b[1][1] - (a[1][0] + a[1][1])) };
 }
 const evOf = (kind) => R.events.filter((e) => e.kind === kind);
+/** перерисовки на уровне DOM — работает для любого сайта */
+function domAgg() {
+  const map = new Map();
+  const get = (sel) => map.get(sel) || (map.set(sel, { selector: sel, recreated: 0, noop: 0, changes: 0, secs: 0 }), map.get(sel));
+  evOf('rerender').forEach((e) => {
+    const d = e.detail || {};
+    (d.recreated || []).forEach((t) => (get(t.selector).recreated += t.count));
+    (d.noop || []).forEach((t) => (get(t.selector).noop += t.count));
+  });
+  evOf('mutations').forEach((e) => ((e.detail && e.detail.top) || []).forEach((t) => { const g = get(t.selector); g.changes += t.count; g.secs++; }));
+  const list = [...map.values()];
+  return {
+    list,
+    recreated: list.reduce((a, b) => a + b.recreated, 0),
+    noop: list.reduce((a, b) => a + b.noop, 0),
+  };
+}
 
 function allFindings() {
   const F = [];
@@ -1209,10 +1253,16 @@ function renderPerf(body) {
     </div>
     <div class="muted" style="margin-top:-8px">Пунктир — начало проверки.</div>
 
+    ${(() => {
+      const da = domAgg();
+      const rows = da.list.filter((x) => x.recreated || x.noop || x.secs >= 5).sort((a, b) => b.recreated * 3 + b.noop - (a.recreated * 3 + a.noop) || b.changes - a.changes).slice(0, 15);
+      return `<div class="ph">Перерисовки DOM <small>работает на любом сайте: пересоздание элементов без изменений, пустые обновления, постоянно меняющиеся области</small></div>` +
+        (rows.length ? tbl(['Элемент', 'Пересоздан без изменений', 'Пустых обновлений', 'Всего изменений', 'Секунд с изменениями'], rows.map((x) => `<tr><td class="mono">${esc(x.selector)}</td><td><b>${x.recreated || ''}</b></td><td>${x.noop || ''}</td><td>${x.changes || ''}</td><td>${x.secs || ''}</td></tr>`)) : '<div class="muted">Лишних перерисовок не найдено 👍</div>');
+    })()}
     <div class="ph">Перерисовки React <small>${ra.list.length ? `всего обновлений: ${ra.commits}` : ''}</small></div>
     ${ra.list.length ? tbl(['Компонент', 'Перерисовок', 'Монтирований', ''], ra.list.slice(0, 25).map(([n, v]) =>
       `<tr><td class="mono">${esc(n)}</td><td><b>${v[0]}</b></td><td>${v[1]}</td><td style="width:40%"><span class="bar" style="width:${Math.max(2, ((v[0] + v[1]) / maxR) * 100)}%"></span></td></tr>`))
-      : '<div class="muted">Нет данных: страница не на React или подсчёт выключен в настройках расширения.</div>'}
+      : '<div class="muted">Страница не на React (или подсчёт выключен в настройках) — смотрите «Перерисовки DOM» выше, они работают для любого сайта.</div>'}
 
     <div class="ph">Долгие кадры и зависания <small>кадр дольше 100 мс — интерфейс заметно подтормаживает</small></div>
     ${evOf('long-frame').length ? tbl(['Время', 'Что блокировало'], evRows('long-frame')) : '<div class="muted">Не обнаружено 👍</div>'}

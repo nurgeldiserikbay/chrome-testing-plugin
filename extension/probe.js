@@ -175,7 +175,23 @@
     const isErr = /error|danger|fail|alert/i.test(cls + ' ' + role) || /ошибк|не удалось|error|failed/i.test(text);
     ev('dom', 'appeared', `Появился элемент ${sel(el)}: «${text}»`, { level: isErr ? 'error' : 'info', selector: sel(el) });
   }
+  // лишние перерисовки на любом сайте (без привязки к фреймворку):
+  // пересоздание элемента с тем же содержимым и запись того же значения в атрибут/текст
+  let recreated = new Map(), noop = new Map();
+  const sigOf = (n) => n.nodeType === 1 ? `${n.tagName}|${typeof n.className === 'string' ? n.className : ''}|${(n.textContent || '').slice(0, 160)}|${n.childElementCount}` : null;
   const mo = new MutationObserver((list) => {
+    // 1) что удалено в этой пачке изменений (по родителю)
+    const removedSig = new Map();
+    for (const m of list) {
+      if (m.type !== 'childList' || !m.removedNodes.length || inOverlay(m.target)) continue;
+      let mp = removedSig.get(m.target);
+      for (const n of m.removedNodes) {
+        const sg = sigOf(n);
+        if (!sg) continue;
+        if (!mp) { mp = new Map(); removedSig.set(m.target, mp); }
+        mp.set(sg, (mp.get(sg) || 0) + 1);
+      }
+    }
     for (const m of list) {
       if (inOverlay(m.target)) continue;
       if (m.type === 'childList') {
@@ -183,18 +199,29 @@
           if (n.nodeName === OVERLAY) continue;
           mAdd++;
           if (n.nodeType === 1) {
+            const mp = removedSig.get(m.target);
+            if (mp) {
+              const sg = sigOf(n);
+              const c = mp.get(sg);
+              if (c) { mp.set(sg, c - 1); recreated.set(m.target, (recreated.get(m.target) || 0) + 1); }
+            }
             notable(n);
             if (n.querySelectorAll) n.querySelectorAll('[role=alert],[role=alertdialog],[role=dialog],[aria-live],dialog').forEach(notable);
           }
         }
         mRem += m.removedNodes.length;
-      } else if (m.type === 'attributes') mAttr++;
-      else mText++;
+      } else if (m.type === 'attributes') {
+        mAttr++;
+        if (m.oldValue === m.target.getAttribute(m.attributeName)) noop.set(m.target, (noop.get(m.target) || 0) + 1);
+      } else {
+        mText++;
+        if (m.oldValue === m.target.data && m.target.parentElement) noop.set(m.target.parentElement, (noop.get(m.target.parentElement) || 0) + 1);
+      }
       const t = m.target.nodeType === 1 ? m.target : m.target.parentElement;
       if (t) targets.set(t, (targets.get(t) || 0) + 1);
     }
   });
-  const startMo = () => mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  const startMo = () => mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true, attributeOldValue: true, characterDataOldValue: true });
   if (document.documentElement) startMo();
   setInterval(() => {
     const total = mAdd + mRem + mAttr + mText;
@@ -210,6 +237,20 @@
         detail: { added: mAdd, removed: mRem, attrs: mAttr, text: mText, top },
       });
     }
+    const rc = [...recreated.values()].reduce((a, b) => a + b, 0);
+    const nc = [...noop.values()].reduce((a, b) => a + b, 0);
+    if (rc >= 2 || nc >= 5) {
+      const topR = [...recreated.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([el, c]) => ({ selector: sel(el), count: c }));
+      const topN = [...noop.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([el, c]) => ({ selector: sel(el), count: c }));
+      const parts = [];
+      if (rc) parts.push(`пересоздано без изменений: ${rc}${topR[0] ? ' в ' + topR[0].selector : ''}`);
+      if (nc) parts.push(`пустых обновлений: ${nc}${topN[0] ? ' в ' + topN[0].selector : ''}`);
+      ev('dom', 'rerender', `Лишние перерисовки: ${parts.join('; ')}`, {
+        level: rc >= 10 || nc >= 30 ? 'warn' : 'info', value: rc + nc,
+        detail: { recreated: topR, noop: topN, rc, nc },
+      });
+    }
+    recreated = new Map(); noop = new Map();
     mAdd = mRem = mAttr = mText = 0;
     targets = new Map();
   }, 1000);
