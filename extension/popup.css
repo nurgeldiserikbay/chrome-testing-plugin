@@ -40,3 +40,10 @@ footer{display:flex;justify-content:space-between;align-items:center;padding:8px
 .keys{color:#9ca3af;font-size:11px}
 .keys.link{color:#9ca3af;font-size:11px;padding:0}
 .keys.link.warn{color:#b45309;font-weight:600}
+.ign{font-size:12px;margin:2px 0 8px 22px}
+.ign summary{cursor:pointer;color:#374151;font-weight:600}
+.ign ul{margin:6px 0;padding:0;list-style:none;max-height:140px;overflow:auto}
+.ign li{display:flex;gap:6px;align-items:flex-start;padding:3px 0;border-bottom:1px solid #f3f4f6}
+.ign li span{flex:1;word-break:break-all;color:#4b5563}
+.ign li button{border:0;background:#f3f4f6;border-radius:5px;cursor:pointer;font-size:11px}
+.muted2{color:#9ca3af}

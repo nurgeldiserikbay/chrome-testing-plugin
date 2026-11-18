@@ -564,8 +564,14 @@
           }).join('')
         : '<div class="empty">Пока нет замечаний. Используйте 🎯 Элемент, ➚ Стрелка, ▭ Область или 💬 Заметка.</div>') +
       (errs.length
-        ? `<h5>⚠ Пойманные ошибки (${errs.length})</h5>` + errs.map((x) => `<div class="li" data-e="${x.n}"><span class="n e">!</span><div class="tx"><b>${escH(x.title)}</b><small>${x.count > 1 ? 'повторялась ' + x.count + ' раз · ' : ''}сохранена со скриншотом и контекстом</small></div><div class="bt"><button data-a="edel" title="Удалить">🗑</button></div></div>`).join('')
+        ? `<h5>⚠ Пойманные ошибки (${errs.length})</h5>` + errs.map((x) => `<div class="li" data-e="${x.n}"><span class="n e">!</span><div class="tx"><b>${escH(x.title)}</b><small>${x.count > 1 ? 'повторялась ' + x.count + ' раз · ' : ''}сохранена со скриншотом и контекстом</small></div><div class="bt"><button data-a="eign" title="Удалить и больше не сохранять такие ошибки">🙈</button><button data-a="edel" title="Удалить">🗑</button></div></div>`).join('')
         : '');
+    listEl.querySelectorAll('[data-a=eign]').forEach((b) => (b.onclick = async () => {
+      if (!b.classList.contains('yes')) { b.classList.add('yes'); b.textContent = 'Игнорировать такие?'; return; }
+      const n = +b.closest('.li').dataset.e;
+      const rr = await send({ type: 'error-ignore', n });
+      if (rr && rr.ok) { showToast('Такие ошибки больше не будут сохраняться. Список — в настройках расширения', 'ok'); openList(); }
+    }));
     listEl.querySelectorAll('[data-a=edel]').forEach((b) => (b.onclick = async () => {
       if (!b.classList.contains('yes')) { b.classList.add('yes'); b.textContent = 'Удалить?'; return; }
       const n = +b.closest('.li').dataset.e;

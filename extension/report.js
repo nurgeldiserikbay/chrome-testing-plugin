@@ -300,7 +300,8 @@ function renderItems() {
     return;
   }
   const dl = (key) => `<details class="dl"><summary>⬇ Скачать пункт</summary><div class="menu"><button data-dl="${key}" data-f="docx">📄 Word</button><button data-dl="${key}" data-f="md">📝 Markdown (.zip)</button><button data-dl="${key}" data-f="html">🌐 HTML</button></div></details>`;
-  const head = (i, num, title, extra = '') => `<div class="it-h"><span class="ic">${ITEM_ICON[i.kind]} ${num}</span><b>${esc(title)}</b><span class="chip time" data-ts="${i.ts}" title="Перейти к моменту в видео">${X.fmtRel(i.ts - R.startTime)}</span>${extra}<span class="acts">${dl(i.key)}<button data-del="${i.key}" title="Удалить пункт">🗑</button></span></div>`;
+  const cp = (i) => `<details class="dl"><summary>📋 Копировать</summary><div class="menu"><button data-cp="${i.key}" data-w="text">📝 Текст для задачи</button>${i.kind !== 'recording' ? `<button data-cp="${i.key}" data-w="img">🖼 Скриншот</button><button data-cp="${i.key}" data-w="both">📄 Текст + скриншот<br><small>для Google Docs, Word, Notion</small></button>` : ''}</div></details>`;
+  const head = (i, num, title, extra = '') => `<div class="it-h"><span class="ic">${ITEM_ICON[i.kind]} ${num}</span><b>${esc(title)}</b><span class="chip time" data-ts="${i.ts}" title="Перейти к моменту в видео">${X.fmtRel(i.ts - R.startTime)}</span>${extra}<span class="acts">${cp(i)}${dl(i.key)}${i.kind === 'error' ? `<button data-ign="${i.key}" title="Удалить и больше не сохранять такие ошибки">🙈</button>` : ''}<button data-del="${i.key}" title="Удалить пункт">🗑</button></span></div>`;
   const tbl = (head2, rows) => (rows.length ? `<table><tr>${head2.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>` : '<div class="zero">Нет данных</div>');
   const cls = (l) => (l === 'error' ? 'err' : l === 'warn' ? 'warn' : '');
   const reqRows = (arr) => arr.map((e) => `<tr class="${netErr(e) ? 'err' : ''}">${relCell(e.ts)}<td>${esc(e.method)}</td><td><b>${esc(X.statusLabel(e))}</b></td><td class="u mono">${esc(short(e.url, 180))}</td><td>${X.fmtDur(e.duration)}</td></tr>`);
@@ -389,6 +390,22 @@ function renderItems() {
     $('#items').querySelectorAll(`.mb[data-k="${k}"]`).forEach((m) => (m.hidden = m.dataset.i !== b.dataset.i));
   }));
   $('#items').querySelectorAll('[data-dl]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; doExport(b.dataset.f, b.dataset.dl); }));
+  $('#items').querySelectorAll('[data-cp]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; copyItem(b.dataset.cp, b.dataset.w); }));
+  // только одно открытое меню
+  $('#items').querySelectorAll('details.dl').forEach((d) => d.addEventListener('toggle', () => { if (d.open) $('#items').querySelectorAll('details.dl[open]').forEach((x) => x !== d && (x.open = false)); }));
+  $('#items').querySelectorAll('[data-ign]').forEach((b) => (b.onclick = async () => {
+    const n = +b.dataset.ign.slice(1);
+    const x = R.errors.find((y) => y.n === n);
+    if (!confirm(`Удалить этот пункт и больше не сохранять такие ошибки?\n\n${x.title}\n\nСписок игнорируемых — в настройках расширения.`)) return;
+    const { qa_ignore: list = [] } = await chrome.storage.local.get('qa_ignore');
+    x.sigs.forEach((sig) => { if (!list.some((l) => l.sig === sig)) list.push({ sig, title: x.title, added: Date.now() }); });
+    await chrome.storage.local.set({ qa_ignore: list });
+    R.errors = R.errors.filter((y) => y !== x);
+    if (x.shotKey) await QADB.del('blobs', x.shotKey).catch(() => {});
+    saveR();
+    renderItems();
+    flash('Такие ошибки больше не будут сохраняться');
+  }));
   $('#items').querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
     const key = b.dataset.del;
     if (!confirm('Удалить этот пункт из отчёта?')) return;
@@ -410,6 +427,38 @@ function renderItems() {
     saveR();
     renderItems();
   }));
+}
+
+// ---------- копирование пункта в буфер обмена ----------
+function flash(text) {
+  let t = $('#flash');
+  if (!t) { t = document.createElement('div'); t.id = 'flash'; document.body.appendChild(t); }
+  t.textContent = text;
+  t.className = 'show';
+  clearTimeout(t._h);
+  t._h = setTimeout(() => (t.className = ''), 2600);
+}
+async function copyItem(key, what) {
+  try {
+    const i = itemList().find((x) => x.key === key);
+    const it = await itemModel(i, { ...opts(), details: true });
+    const text = X.itemText(it);
+    const png = it.dataUrl ? await (await fetch(it.dataUrl)).blob() : null;
+    if (what === 'text') {
+      await navigator.clipboard.writeText(text);
+      flash('Текст скопирован — вставьте в задачу (Ctrl+V)');
+    } else if (what === 'img') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+      flash('Скриншот скопирован — вставьте в задачу или чат (Ctrl+V)');
+    } else {
+      const html = `<div>${esc(text).replace(/\n/g, '<br>')}</div>${it.dataUrl ? `<p><img src="${it.dataUrl}" style="max-width:100%"></p>` : ''}`;
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': new Blob([text], { type: 'text/plain' }), 'text/html': new Blob([html], { type: 'text/html' }) })]);
+      flash('Текст и скриншот скопированы — вставьте в Google Docs, Word или Notion');
+    }
+  } catch (e) {
+    console.error(e);
+    flash('Не удалось скопировать: ' + e.message);
+  }
 }
 
 /** модель одного пункта для выгрузки */

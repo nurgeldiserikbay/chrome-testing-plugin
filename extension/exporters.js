@@ -261,6 +261,36 @@ ${htmlStorage(m.storage)}
         : `🎬 Запись ${it.n} · ${fmtDur(it.durationMs)}`;
   const reqLine = (e) => `${e.method} ${statusLabel(e)} ${e.url}${e.duration != null ? ` · ${fmtDur(e.duration)}` : ''}${e.error ? ` — ${e.error}` : ''}`;
 
+  /** Короткий текст пункта для вставки в задачу / мессенджер (Markdown) */
+  function itemText(it) {
+    const L = [];
+    const code = (t, n = 1500) => '```\n' + short(t, n) + '\n```';
+    if (it.kind === 'remark') {
+      L.push(`💬 **Замечание:** ${it.comment || '(без комментария)'}`);
+      if (it.url) L.push(`Страница: ${it.url}`);
+      if (it.element) L.push(`Элемент: \`${it.element.selector}\``);
+    } else if (it.kind === 'error') {
+      L.push(`⚠ **${it.title}**${it.count > 1 ? ` (повторялась ${it.count} раз)` : ''}`);
+      if (it.url) L.push(`Страница: ${it.url}`);
+      it.jsErrors.forEach((j) => { L.push('', 'Ошибка JavaScript:', code(j.text + (j.loc ? '\n@ ' + j.loc : ''), 1200)); });
+      it.requests.forEach((e) => {
+        L.push('', `Запрос: ${e.method} ${e.url} → ${statusLabel(e)}${e.statusText ? ' ' + e.statusText : ''}${e.duration != null ? ` · ${fmtDur(e.duration)}` : ''}${e.error ? ` — ${e.error}` : ''}`);
+        if (e.postData) L.push('Тело запроса:', code(e.postData, 1000));
+        if (e.body) L.push('Ответ сервера:', code(e.body, 1500));
+      });
+      if (it.before.length) { L.push('', 'Шаги перед ошибкой:'); it.before.slice(-8).forEach((b, i) => L.push(`${i + 1}. ${b.text}`)); }
+    } else {
+      L.push(`🎬 **Запись видео** · ${fmtDur(it.durationMs)} (видео — отдельным файлом)`);
+      const bad = it.timeline.filter((e) => e.level === 'error' || e.level === 'warn');
+      const reqBad = it.requests.filter(isErr);
+      if (reqBad.length) { L.push('', 'Запросы с ошибкой:'); reqBad.forEach((e) => L.push(`- ${e.method} ${statusLabel(e)} ${e.url}`)); }
+      if (bad.length) { L.push('', 'Что пошло не так:'); bad.slice(0, 10).forEach((e) => L.push(`- ${fmtRel(e.rel)} ${e.text}`)); }
+      const acts = it.timeline.filter((e) => e.cat === 'Действие' || e.cat === 'Переход');
+      if (acts.length) { L.push('', 'Действия:'); acts.slice(-10).forEach((e, i) => L.push(`${i + 1}. ${e.text}`)); }
+    }
+    return L.join('\n');
+  }
+
   function itemsHTML(m, media) {
     if (!m.items || !m.items.length) return '';
     const tbl = (head, rows) => `<table><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>`;
@@ -533,5 +563,5 @@ ${htmlStorage(m.storage)}
     };
   }
 
-  g.QAExport = { exportHTML, exportMarkdown, exportDOCX, exportHAR, describeAction, fmtRel, fmtDur, fmtSize, statusLabel, isErr, LEVEL_RU, KIND_RU };
+  g.QAExport = { itemText, exportHTML, exportMarkdown, exportDOCX, exportHAR, describeAction, fmtRel, fmtDur, fmtSize, statusLabel, isErr, LEVEL_RU, KIND_RU };
 })(typeof window !== 'undefined' ? window : globalThis);

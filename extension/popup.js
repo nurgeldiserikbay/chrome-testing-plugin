@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const DEF = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true };
+const DEF = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true };
 let st = null;
 
 const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
@@ -9,7 +9,7 @@ function showErr(t) { $('err').textContent = t; $('err').hidden = !t; }
 async function loadSettings() {
   const { qa_settings } = await chrome.storage.local.get('qa_settings');
   const s = Object.assign({}, DEF, qa_settings);
-  ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders', 'autoErrors'].forEach((k) => {
+  ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders', 'autoErrors', 'ownOnly'].forEach((k) => {
     $('s-' + k).checked = !!s[k];
     $('s-' + k).onchange = save;
   });
@@ -24,6 +24,7 @@ async function save() {
       cdp: $('s-cdp').checked,
       reactRenders: $('s-reactRenders').checked,
       autoErrors: $('s-autoErrors').checked,
+      ownOnly: $('s-ownOnly').checked,
       bufferMin: +$('s-bufferMin').value,
     },
   });
@@ -111,6 +112,17 @@ async function showShortcut() {
 }
 $('keys').onclick = () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
 
+async function showIgnore() {
+  const { qa_ignore: list = [] } = await chrome.storage.local.get('qa_ignore');
+  const el = $('ign');
+  if (!list.length) { el.innerHTML = '<span class="muted2">Игнорируемых ошибок нет. Добавить: ⚠ на панели → 🙈</span>'; return; }
+  const escH = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  el.innerHTML = `<details><summary>🙈 Игнорируется ошибок: ${list.length}</summary><ul>${list.map((x, i) => `<li><span>${escH(x.title)}</span><button data-i="${i}" title="Снова сохранять">✕</button></li>`).join('')}</ul><button class="link" id="ign-clear">Очистить список</button></details>`;
+  el.querySelectorAll('[data-i]').forEach((b) => (b.onclick = async () => { list.splice(+b.dataset.i, 1); await chrome.storage.local.set({ qa_ignore: list }); showIgnore(); }));
+  $('ign-clear').onclick = async () => { await chrome.storage.local.set({ qa_ignore: [] }); showIgnore(); };
+}
+
+showIgnore();
 showShortcut();
 loadSettings();
 bufferInfo();

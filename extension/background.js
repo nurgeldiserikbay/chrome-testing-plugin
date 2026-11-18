@@ -1,7 +1,7 @@
 importScripts('db.js');
 
 // ================= настройки и лимиты =================
-const DEFAULT_SETTINGS = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true };
+const DEFAULT_SETTINGS = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true };
 const BUF_LIM = { console: 800, network: 500, actions: 300, nav: 100, events: 1500, samples: 60, resources: 400 };
 const SES_LIM = { console: 5000, network: 3000, actions: 2000, nav: 500, events: 10000, samples: 2000, resources: 3000 };
 const BUF_BODY = 4000;
@@ -87,19 +87,60 @@ chrome.storage.onChanged.addListener((ch) => { if (ch.qa_settings) autoSettingsC
 
 function pathOf(u) { try { const x = new URL(u); return x.pathname + (x.search.length > 60 ? x.search.slice(0, 60) + '…' : x.search); } catch (_) { return u; } }
 
+// сайт (регистрируемый домен): shop.example.kz и api.example.kz — один сайт
+function siteOf(u) {
+  try {
+    const h = new URL(u).hostname;
+    if (/^[\d.]+$/.test(h) || h === 'localhost' || !h.includes('.')) return h;
+    const p = h.split('.');
+    const second = ['co', 'com', 'org', 'net', 'gov', 'edu', 'ac', 'gen'];
+    return p.length > 2 && p[p.length - 1].length === 2 && second.includes(p[p.length - 2]) ? p.slice(-3).join('.') : p.slice(-2).join('.');
+  } catch (_) { return ''; }
+}
+// подпись ошибки без изменчивых частей (числа, id) — чтобы повторы и игнор работали
+const normSig = (s) => String(s).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f-]{20,}/gi, '#').replace(/\d+/g, '#').slice(0, 200);
+
+let ignoreCache = null;
+async function ignoreList() {
+  if (!ignoreCache) ignoreCache = (await chrome.storage.local.get('qa_ignore')).qa_ignore || [];
+  return ignoreCache;
+}
+chrome.storage.onChanged.addListener((ch) => { if (ch.qa_ignore) ignoreCache = null; });
+
 function autoCheck(kind, e) {
   if (!S || !S.active) return;
   let err = null;
+  const mySite = siteOf(S.meta.startUrl);
   if (kind === 'console' && e.level === 'error' && e.source !== 'resource') {
     const first = String(e.text || '').split('\n')[0];
-    err = { type: 'js', sig: 'js:' + first.slice(0, 160), title: first.slice(0, 200), ts: e.ts, ref: { ts: e.ts, text: e.text, loc: e.loc, source: e.source } };
+    const where = e.loc || (String(e.text || '').match(/(https?|chrome-extension):\/\/[^\s)]+/) || [])[0] || '';
+    if (/^chrome-extension:|moz-extension:/.test(where)) return; // ошибки других расширений браузера
+    err = { type: 'js', sig: 'js:' + normSig(first), title: first.slice(0, 200), ts: e.ts, foreign: !!(where && /^https?:/.test(where) && siteOf(where) !== mySite), ref: { ts: e.ts, text: e.text, loc: e.loc, source: e.source } };
   } else if (kind === 'network' && (e.failed || e.status >= 400) && !e.canceled && !noiseUrl(e.url)) {
     if (e.source === 'perf' || ['Image', 'Stylesheet', 'Font', 'Media'].includes(e.type)) return;
     const st = e.failed ? (e.error || 'сбой') : e.status;
-    err = { type: 'request', sig: `req:${e.method}:${pathOf(e.url).split('?')[0]}:${e.failed ? 'fail' : e.status}`, title: `${e.method} ${st} ${pathOf(e.url)}`, ts: e.ts, ref: { id: e.id, ts: e.ts, url: e.url, method: e.method } };
+    err = { type: 'request', sig: normSig(`req:${e.method}:${siteOf(e.url)}${pathOf(e.url).split('?')[0]}:${e.failed ? 'fail' : e.status}`), title: `${e.method} ${st} ${pathOf(e.url)}`, ts: e.ts, foreign: siteOf(e.url) !== mySite, ref: { id: e.id, ts: e.ts, url: e.url, method: e.method } };
   }
   if (!err) return;
-  autoEnabled().then((on) => { if (on) queueAuto(err); });
+  Promise.all([getSettings(), ignoreList()]).then(([st, ign]) => {
+    if (st.autoErrors === false) return;
+    if (st.ownOnly !== false && err.foreign) { S.meta.foreignSkipped = (S.meta.foreignSkipped || 0) + 1; return; }
+    if (ign.some((x) => x.sig === err.sig)) { S.meta.ignoredSkipped = (S.meta.ignoredSkipped || 0) + 1; return; }
+    queueAuto(err);
+  });
+}
+
+async function ignoreError(m) {
+  await ready;
+  if (!S || !S.active) return { ok: false };
+  const it = (S.errors || []).find((x) => x.n === m.n);
+  if (!it) return { ok: false, error: 'Пункт не найден' };
+  const list = (await chrome.storage.local.get('qa_ignore')).qa_ignore || [];
+  it.sigs.forEach((sig, i) => { if (!list.some((x) => x.sig === sig)) list.push({ sig, title: it.title, added: Date.now(), site: siteOf(it.url || '') }); });
+  await chrome.storage.local.set({ qa_ignore: list });
+  ignoreCache = null;
+  await deleteError({ n: m.n });
+  return { ok: true, count: list.length };
 }
 
 function queueAuto(err) {
@@ -159,7 +200,7 @@ async function flushAuto() {
   S.errors.push(item);
   await saveSessionNow();
   pushOverlayState();
-  toast(`⚠ Поймана ${item.kind === 'js' ? 'ошибка JavaScript' : 'ошибка запроса'} — сохранена отдельным пунктом${item.shotKey ? ' со скриншотом' : ''}`, 'warn');
+  toast(`⚠ Поймана ${item.kind === 'js' ? 'ошибка JavaScript' : 'ошибка запроса'} — сохранена отдельным пунктом${item.shotKey ? ' со скриншотом' : ''}. Лишняя? Нажмите ⚠ на панели → 🙈`, 'warn');
 }
 
 async function deleteError(m) {
@@ -697,6 +738,7 @@ const handlers = {
   annotation: (m, sender) => addAnnotation(m, sender),
   'annotation-delete': (m) => deleteAnnotation(m),
   'error-delete': (m) => deleteError(m),
+  'error-ignore': (m) => ignoreError(m),
   'set-type': async (m) => {
     await ready;
     if (!S || !S.active) return { ok: false };
