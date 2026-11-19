@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const DEF = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true };
+const DEF = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true };
 let st = null;
 
 const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
@@ -9,7 +9,7 @@ function showErr(t) { $('err').textContent = t; $('err').hidden = !t; }
 async function loadSettings() {
   const { qa_settings } = await chrome.storage.local.get('qa_settings');
   const s = Object.assign({}, DEF, qa_settings);
-  ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders', 'autoErrors', 'ownOnly'].forEach((k) => {
+  ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders', 'autoErrors', 'ownOnly', 'autoAudit'].forEach((k) => {
     $('s-' + k).checked = !!s[k];
     $('s-' + k).onchange = save;
   });
@@ -25,6 +25,7 @@ async function save() {
       reactRenders: $('s-reactRenders').checked,
       autoErrors: $('s-autoErrors').checked,
       ownOnly: $('s-ownOnly').checked,
+      autoAudit: $('s-autoAudit').checked,
       bufferMin: +$('s-bufferMin').value,
     },
   });

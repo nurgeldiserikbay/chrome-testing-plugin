@@ -11,6 +11,21 @@
     try { document.dispatchEvent(new CustomEvent(TAG, { detail: JSON.stringify({ kind, data }) })); } catch (_) {}
   };
   const ev = (cat, kind, text, extra) => post('event', Object.assign({ ts: Date.now(), cat, kind, text, level: 'info' }, extra || {}));
+  // предупреждения браузера: устаревшие API и вмешательства (Reporting API)
+  try {
+    if (window.ReportingObserver) {
+      const seenRep = new Set();
+      new ReportingObserver((reports) => reports.forEach((r) => {
+        const b = r.body || {};
+        const key = r.type + (b.id || '') + (b.message || '');
+        if (seenRep.has(key)) return;
+        seenRep.add(key);
+        ev('page', r.type, `${r.type === 'deprecation' ? 'Устаревший API' : 'Браузер вмешался'}: ${b.message || b.id}`, {
+          level: 'warn', detail: { id: b.id, message: b.message, source: b.sourceFile ? `${b.sourceFile}:${b.lineNumber}` : '', removal: b.anticipatedRemoval || null },
+        });
+      }), { types: ['deprecation', 'intervention'], buffered: true }).observe();
+    }
+  } catch (_) {}
   const short = (s, n) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n) + '…' : s; };
   const ms = (v) => Math.round(v);
   const absTs = (t) => Math.round(performance.timeOrigin + t);

@@ -699,7 +699,7 @@ function setItemSev(i, v) {
 }
 
 // ================= 🩺 автопроверка: анализ =================
-const AUDIT_CAT = { net: '🌐 Сеть', render: '🔁 Перерисовки', a11y: '♿ Доступность', img: '🖼 Изображения', console: '⚠️ Предупреждения', perf: '⚡ Производительность', dom: '🧱 DOM' };
+const AUDIT_CAT = { seo: '🔎 SEO', perf: '⚡ Скорость', a11y: '♿ Доступность', sem: '🏷 Семантика', best: '✅ Практики и безопасность', net: '🌐 Сеть', render: '🔁 Перерисовки', img: '🖼 Изображения', console: '⚠️ Предупреждения', dom: '🧱 DOM' };
 const IMPACT_SEV = { critical: 'critical', serious: 'major', moderate: 'minor', minor: 'trivial' };
 let auditFilter = 'all';
 const normPath = (u) => { try { const x = new URL(u); return x.origin + x.pathname.replace(/\/\d+(?=\/|$)/g, '/#').replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '#'); } catch (_) { return u; } };
@@ -868,6 +868,128 @@ function auditIssues() {
   const bigDom = audits.filter((a) => a.dom.nodes > 3000);
   if (bigDom.length) add('dom', 'trivial', `Очень большой DOM`, 'Больше 3000 элементов замедляет отрисовку и работу скриптов.', 'Виртуализация длинных списков, ленивая отрисовка скрытых блоков.', bigDom.map((a) => `${shortUrl(a.url)} — ${a.dom.nodes} элементов, глубина ${a.dom.depth}`));
 
+  // ================= 🔎 SEO =================
+  const pg = (a) => shortUrl(a.url);
+  const A = audits.filter((a) => a.seo);
+  const each = (cond, line) => A.filter(cond).map((a) => `${pg(a)}${line ? ' — ' + line(a) : ''}`);
+  const closed = A.filter((a) => /noindex/i.test(a.seo.robots || '') || /noindex/i.test(a.seo.xRobots || ''));
+  if (closed.length) add('seo', 'critical', `Страница закрыта от поисковиков (noindex): ${closed.length}`,
+    'Google и Яндекс не будут показывать эти страницы в поиске. Частая ошибка после релиза: на проде остался noindex со стейджа.',
+    'Если страницы должны быть в поиске — убрать noindex из <meta name="robots"> и заголовка X-Robots-Tag.',
+    closed.map((a) => `${pg(a)} — ${[a.seo.robots, a.seo.xRobots && 'X-Robots-Tag: ' + a.seo.xRobots].filter(Boolean).join('; ')}`));
+  const rtx = A.find((a) => a.seo.robotsTxt && a.seo.robotsTxt.blockAll);
+  if (rtx) add('seo', 'critical', 'Весь сайт закрыт в robots.txt', 'В robots.txt для всех роботов стоит «Disallow: /» — поисковики не обходят сайт.',
+    'Если сайт должен быть в поиске — убрать «Disallow: /» из группы «User-agent: *».', [new URL(rtx.url).origin + '/robots.txt']);
+  const noRt = A.find((a) => a.seo.robotsTxt && !a.seo.robotsTxt.found);
+  if (noRt) add('seo', 'trivial', 'Нет robots.txt', 'Поисковики обходят сайт без подсказок: что не индексировать и где карта сайта.', 'Добавить /robots.txt со ссылкой на sitemap.xml.', [new URL(noRt.url).origin + '/robots.txt']);
+  else if (A.some((a) => a.seo.robotsTxt && a.seo.robotsTxt.found && !a.seo.robotsTxt.sitemap)) add('seo', 'trivial', 'В robots.txt нет ссылки на карту сайта', 'Карта сайта помогает поисковикам быстрее находить новые страницы.', 'Добавить строку «Sitemap: https://…/sitemap.xml» в robots.txt.', [new URL(A[0].url).origin + '/robots.txt']);
+  let x = each((a) => !a.seo.title);
+  if (x.length) add('seo', 'major', `Нет заголовка страницы <title>: ${x.length}`, 'Заголовок — это ссылка в результатах поиска и название вкладки. Без него страница почти не получает переходов.', 'Заполнить <title>: суть страницы и название сайта, 30–60 символов.', x);
+  x = each((a) => a.seo.title && (a.seo.title.length < 15 || a.seo.title.length > 70), (a) => `${a.seo.title.length} симв.: «${short(a.seo.title, 80)}»`);
+  if (x.length) add('seo', 'trivial', `Заголовок <title> слишком короткий или длинный: ${x.length}`, 'Короткий заголовок мало говорит о странице, длинный поисковик обрежет.', 'Оптимально 30–60 символов.', x);
+  x = each((a) => !a.seo.description);
+  if (x.length) add('seo', 'minor', `Нет описания страницы (meta description): ${x.length}`, 'Поисковик сам выберет кусок текста для сниппета — часто неудачный, и по ссылке кликают реже.', 'Добавить <meta name="description" content="…"> — 70–160 символов о содержании страницы.', x);
+  x = each((a) => a.seo.description && (a.seo.description.length < 50 || a.seo.description.length > 170), (a) => `${a.seo.description.length} симв.`);
+  if (x.length) add('seo', 'trivial', `Описание страницы слишком короткое или длинное: ${x.length}`, 'Короткое описание неинформативно, длинное обрежется в поиске.', 'Оптимально 70–160 символов.', x);
+  const dupBy = (f) => { const m = new Map(); A.forEach((a) => { const v = f(a); if (v) (m.get(v) || m.set(v, []).get(v)).push(a); }); return [...m.entries()].filter(([, l]) => new Set(l.map((a) => a.url.replace(/[?#].*$/, ''))).size > 1); };
+  x = dupBy((a) => a.seo.title);
+  if (x.length) add('seo', 'minor', `Одинаковые заголовки на разных страницах: ${x.length}`, 'Поисковик не понимает, какая страница главная по запросу, и может показывать не ту.', 'Сделать <title> уникальным для каждой страницы.', x.map(([t, l]) => `«${short(t, 70)}» — ${l.length} стр.: ${l.slice(0, 3).map(pg).join(', ')}`));
+  x = dupBy((a) => a.seo.description);
+  if (x.length) add('seo', 'trivial', `Одинаковые описания на разных страницах: ${x.length}`, 'Одинаковые сниппеты в поиске выглядят как дубли.', 'Сделать description уникальным для каждой страницы.', x.map(([t, l]) => `«${short(t, 60)}» — ${l.length} стр.`));
+  x = each((a) => a.seo.h1.length === 0);
+  if (x.length) add('seo', 'minor', `Нет заголовка <h1>: ${x.length}`, 'H1 — главный заголовок страницы: по нему поисковики и читалки понимают, о чём она.', 'Сделать главный заголовок страницы тегом <h1> (один на страницу).', x);
+  x = each((a) => a.seo.h1.length > 1, (a) => `${a.seo.h1.length} шт.: ${a.seo.h1.slice(0, 3).map((h) => '«' + short(h, 40) + '»').join(', ')}`);
+  if (x.length) add('seo', 'trivial', `Несколько <h1> на странице: ${x.length}`, 'Непонятно, какой заголовок главный.', 'Оставить один <h1>, остальные сделать <h2>.', x);
+  x = each((a) => !a.seo.canonical && /^https?:/.test(a.url));
+  if (x.length) add('seo', 'trivial', `Нет канонического адреса (canonical): ${x.length}`, 'Одна страница с метками (utm, сортировка, фильтры) выглядит для поисковика как много разных — дубли и потеря позиций.', 'Добавить <link rel="canonical" href="основной адрес страницы">.', x);
+  x = each((a) => !a.seo.viewport);
+  if (x.length) add('seo', 'major', `Не адаптировано для телефонов (нет meta viewport): ${x.length}`, 'На телефоне страница откроется как уменьшенная десктопная; Google понижает такие страницы в мобильном поиске.', 'Добавить <meta name="viewport" content="width=device-width, initial-scale=1">.', x);
+  x = each((a) => !a.seo.og.title || !a.seo.og.image, (a) => ['og:title', 'og:image'].filter((k) => !a.seo.og[k.slice(3)]).join(', '));
+  if (x.length) add('seo', 'trivial', `Нет превью для соцсетей и мессенджеров (Open Graph): ${x.length}`, 'Ссылка на страницу в Telegram, WhatsApp, Facebook будет без картинки и с неудачным заголовком.', 'Добавить og:title, og:description, og:image (1200×630).', x);
+  if (A.length && A.every((a) => !a.seo.jsonld)) add('seo', 'trivial', 'Нет структурированных данных (schema.org)', 'Без разметки поисковик не покажет расширенный сниппет: цены, рейтинг, хлебные крошки, FAQ.', 'Добавить JSON-LD разметку для типа страницы (Organization, Product, Article, FAQPage…).', A.slice(0, 3).map(pg));
+  if (A.length && A.every((a) => !a.seo.favicon)) add('seo', 'trivial', 'Нет иконки сайта (favicon)', 'Во вкладках, закладках и в поиске Google будет пустая иконка.', 'Добавить <link rel="icon" href="/favicon.svg"> или /favicon.ico.', [new URL(A[0].url).origin]);
+
+  // ================= 🏷 семантика и формы =================
+  const S2 = audits.filter((a) => a.sem);
+  const flat = (f) => S2.flatMap((a) => f(a).map((v) => ({ a, v })));
+  x = flat((a) => a.sem.clickable);
+  if (x.length) add('sem', 'major', `Кликабельные элементы — не кнопки и не ссылки: ${x.length}`,
+    'Блок выглядит кликабельным (курсор-рука), но это <div>/<span>. С клавиатуры до него не дойти, читалка не скажет, что это кнопка, у ссылок не работает «открыть в новой вкладке».',
+    'Использовать <button> для действий и <a href> для переходов. Если нельзя — role="button", tabindex="0" и обработка Enter/пробела.',
+    x.map(({ a, v }) => `${v.sel}${v.text ? ' «' + v.text + '»' : ''}${v.tab ? '' : ' — недоступен с клавиатуры'} · ${pg(a)}`), x.length);
+  x = flat((a) => a.sem.fakeLinks);
+  if (x.length) add('sem', 'minor', `Ссылки-заглушки (href="#" или javascript:): ${x.length}`, 'Ссылка, которая на самом деле кнопка: «открыть в новой вкладке» даёт пустую страницу, href="#" прокручивает страницу наверх.', 'Для действий использовать <button>, для переходов — настоящий адрес.',
+    x.map(({ a, v }) => `${v.sel}${v.text ? ' «' + v.text + '»' : ''} — ${v.href} · ${pg(a)}`), x.length);
+  x = flat((a) => a.sem.formButtons);
+  if (x.length) add('sem', 'minor', `В форме несколько кнопок без type: ${x.length}`, 'Кнопка без type внутри формы — это «Отправить». Нажатие на «Добавить», «Показать пароль» и т. п. случайно отправит форму.', 'Указать type="button" у всех кнопок, кроме отправки (type="submit").',
+    x.map(({ a, v }) => `${v.sel}: ${v.buttons.map((b) => '«' + b + '»').join(', ')} · ${pg(a)}`));
+  x = flat((a) => a.sem.inputTypes);
+  if (x.length) add('sem', 'trivial', `Поля email/телефона с type="text": ${x.length}`, 'На телефоне откроется обычная клавиатура вместо удобной (с @ или цифрами), браузер хуже подставляет автозаполнение.', 'Указать type="email" / type="tel" / type="url" и подходящий autocomplete.',
+    x.map(({ a, v }) => `${v.sel} → type="${v.want}"${v.hint ? ' («' + v.hint + '»)' : ''} · ${pg(a)}`));
+
+  // ================= ✅ лучшие практики и безопасность =================
+  const B = audits.filter((a) => a.best);
+  x = B.filter((a) => a.best.passOnHttp).map(pg);
+  if (x.length) add('best', 'critical', `Пароль вводится на странице без HTTPS: ${x.length}`, 'Пароль передаётся открытым текстом — его может перехватить любой в той же сети Wi-Fi. Браузер помечает страницу как небезопасную.', 'Перевести сайт на HTTPS (Let\'s Encrypt бесплатно) и включить редирект с http.', x);
+  else { x = B.filter((a) => a.best.noHttps).map(pg); if (x.length) add('best', 'major', `Сайт работает без HTTPS: ${x.length}`, 'Браузер показывает «Не защищено», данные можно перехватить, поисковики понижают такие сайты.', 'Перевести сайт на HTTPS и включить редирект с http.', x); }
+  x = B.flatMap((a) => a.best.mixed.map((u) => `${u} · ${pg(a)}`));
+  if (x.length) add('best', 'major', `Смешанный контент (http на https-странице): ${x.length}`, 'Браузер блокирует такие скрипты и стили или помечает страницу как небезопасную — часть сайта может не работать.', 'Загружать все ресурсы по https://.', x, x.length);
+  x = B.flatMap((a) => (a.best.formHttp || []).map((u) => `${u} · ${pg(a)}`));
+  if (x.length) add('best', 'major', `Форма отправляет данные по http: ${x.length}`, 'Введённые данные уходят незашифрованными.', 'Указать https:// в action формы.', x);
+  x = B.flatMap((a) => a.best.brokenLinks.map((l) => `${shortUrl(l.url)} — ${l.status} · на странице ${pg(a)}`));
+  if (x.length) add('best', 'major', `Битые ссылки: ${x.length}`, 'Ссылка ведёт на несуществующую страницу — пользователь видит ошибку, поисковики понижают сайт.', 'Исправить адреса ссылок или настроить редирект.', x, x.length);
+  x = B.flatMap((a) => a.best.brokenRes.map((r) => `${shortUrl(r.url)} — ${r.status} (${r.type}) · ${pg(a)}`));
+  if (x.length) add('best', 'minor', `Ресурсы не загрузились (4xx/5xx): ${x.length}`, 'Картинки, стили, шрифты или скрипты отвечают ошибкой — что-то на странице не отображается или не работает.', 'Проверить пути к файлам, удалить ссылки на несуществующие ресурсы.', x, x.length);
+  const dep = new Map();
+  R.events.filter((e) => e.kind === 'deprecation' || e.kind === 'intervention').forEach((e) => { const d = e.detail || {}; const k = d.id || d.message; const g = dep.get(k) || { e, d, n: 0 }; g.n++; dep.set(k, g); });
+  if (dep.size) add('best', 'trivial', `Браузер предупреждает об устаревших API: ${dep.size}`, 'Эти возможности удалят из браузера в будущих версиях — код перестанет работать.', 'Заменить на современные аналоги (подробности в тексте предупреждения).',
+    [...dep.values()].map((g) => `${short(g.d.message || g.d.id, 180)}${g.d.source ? ' — ' + shortUrl(g.d.source) : ''}${g.d.removal ? ' (удалят ' + new Date(g.d.removal).toLocaleDateString('ru-RU') + ')' : ''}`));
+  const hdr = B.find((a) => a.best.headers && /^https:/.test(a.url));
+  if (hdr) {
+    const h = hdr.best.headers, miss = [];
+    if (!h['strict-transport-security']) miss.push('Strict-Transport-Security — браузер всегда будет открывать сайт по HTTPS');
+    if (!h['content-security-policy']) miss.push('Content-Security-Policy — защита от внедрения чужих скриптов (XSS)');
+    if (!h['x-content-type-options']) miss.push('X-Content-Type-Options: nosniff');
+    if (!h['x-frame-options'] && !/frame-ancestors/i.test(h['content-security-policy'] || '')) miss.push('X-Frame-Options или frame-ancestors — защита от встраивания сайта в чужой iframe (кликджекинг)');
+    if (!h['referrer-policy']) miss.push('Referrer-Policy — не передавать полный адрес страницы другим сайтам');
+    if (miss.length) add('best', miss.length >= 3 ? 'minor' : 'trivial', `Не хватает заголовков безопасности: ${miss.length}`, 'Заголовки ответа сервера, которые включают защиту в браузере. Их проверяют аудиты безопасности и пентесты.', 'Добавить в настройках веб-сервера (nginx, CDN) или фреймворка.', miss);
+    const leak = ['server', 'x-powered-by'].filter((k) => h[k] && /\d/.test(h[k])).map((k) => `${k}: ${h[k]}`);
+    if (leak.length) add('best', 'trivial', 'Сервер раскрывает версии ПО', 'По точной версии злоумышленнику проще подобрать известную уязвимость.', 'Скрыть версии в заголовках Server и X-Powered-By (nginx: server_tokens off).', leak);
+  }
+
+  // ================= ⚡ скорость загрузки =================
+  const P = audits.filter((a) => a.perfx);
+  x = P.flatMap((a) => a.perfx.blocking.map((r) => `${shortUrl(r.url)} — ${r.ms} мс${r.kb ? ', ' + r.kb + ' КБ' : ''} · ${pg(a)}`));
+  if (x.length >= 3) add('perf', 'minor', `Ресурсы блокируют отрисовку: ${x.length}`, 'Пока эти скрипты и стили не загрузятся, браузер показывает белый экран.', 'Скриптам — defer или async; критичный CSS встроить, остальной грузить асинхронно; объединить мелкие файлы.', x, x.length);
+  x = P.flatMap((a) => a.perfx.uncompressed.map((r) => `${shortUrl(r.url)} — ${r.kb} КБ без сжатия · ${pg(a)}`));
+  if (x.length) add('perf', 'minor', `Файлы отдаются без сжатия: ${x.length}`, 'Текстовые файлы (JS, CSS, HTML, JSON) можно сжать в 3–5 раз — страница загрузится заметно быстрее.', 'Включить gzip или brotli на сервере или CDN.', x, x.length);
+  x = P.flatMap((a) => a.perfx.bigJs.map((r) => `${shortUrl(r.url)} — ${r.kb} КБ${r.gz ? ' (по сети ' + r.gz + ' КБ)' : ''} · ${pg(a)}`));
+  const jsMax = Math.max(0, ...P.map((a) => a.perfx.jsTotal));
+  if (x.length || jsMax > 1500000) add('perf', jsMax > 3000000 ? 'major' : 'minor', `Слишком много JavaScript: до ${X.fmtSize(jsMax)} на странице`, 'Браузер должен скачать, разобрать и выполнить весь этот код — на слабых телефонах страница долго не реагирует.', 'Разделить код по страницам (code splitting, динамический import), убрать неиспользуемые библиотеки, проверить бандл (webpack-bundle-analyzer, source-map-explorer).', x.length ? x : P.map((a) => `${pg(a)} — JS ${X.fmtSize(a.perfx.jsTotal)}`));
+  x = P.filter((a) => a.perfx.weight > 3000000).map((a) => `${pg(a)} — ${X.fmtSize(a.perfx.weight)}, ${a.perfx.requests} запросов`);
+  if (x.length) add('perf', 'minor', `Тяжёлые страницы (больше 3 МБ): ${x.length}`, 'На мобильном интернете такая страница грузится долго и тратит трафик.', 'Сжать картинки, убрать лишние скрипты и шрифты, ленивая загрузка.', x);
+  x = P.filter((a) => a.perfx.requests > 150).map((a) => `${pg(a)} — ${a.perfx.requests} запросов`);
+  if (x.length) add('perf', 'trivial', `Очень много запросов при загрузке: ${x.length}`, 'Каждый запрос — накладные расходы; страница загружается дольше.', 'Объединить мелкие файлы, спрайты/иконочные шрифты → SVG-спрайт, убрать лишние сторонние скрипты.', x);
+  x = [...new Set(P.flatMap((a) => a.perfx.fonts))];
+  if (x.length) add('perf', 'trivial', `Шрифты без font-display: ${x.length}`, 'Пока шрифт грузится, текст невидим (до 3 секунд) — пользователь видит пустую страницу.', 'Добавить font-display: swap в @font-face (для Google Fonts — &display=swap в ссылке).', x);
+  x = P.flatMap((a) => a.perfx.lazyFirst.map((u) => `${shortUrl(u)} · ${pg(a)}`));
+  if (x.length) add('perf', 'minor', `Картинки первого экрана с loading="lazy": ${x.length}`, 'Главная картинка начинает грузиться позже, чем могла бы, — ухудшается LCP (скорость появления основного контента).', 'Убрать loading="lazy" у картинок первого экрана, главной добавить fetchpriority="high".', x);
+  x = P.filter((a) => a.perfx.noLazy >= 5).map((a) => `${pg(a)} — ${a.perfx.noLazy} картинок`);
+  if (x.length) add('perf', 'trivial', `Картинки ниже первого экрана грузятся сразу: ${x.length}`, 'Браузер качает картинки, до которых пользователь может и не долистать.', 'Добавить loading="lazy" картинкам ниже первого экрана.', x);
+  x = P.flatMap((a) => a.perfx.oldFormat.map((r) => `${shortUrl(r.url)} — ${r.kb} КБ · ${pg(a)}`));
+  if (x.length) add('perf', 'trivial', `Тяжёлые JPEG/PNG: ${x.length}`, 'В формате WebP или AVIF та же картинка весит в 2–3 раза меньше.', 'Конвертировать в WebP/AVIF (тег <picture> для старых браузеров).', x);
+  x = P.flatMap((a) => a.perfx.noSizeImgs.map((u) => `${shortUrl(u)} · ${pg(a)}`));
+  if (x.length) add('perf', 'trivial', `Картинки без размеров: ${x.length}`, 'Пока картинка не загрузилась, место под неё не зарезервировано — текст «прыгает» (CLS).', 'Указать width и height у <img> (или aspect-ratio в CSS).', x);
+  x = P.flatMap((a) => a.perfx.cache.map((r) => `${shortUrl(r.url)} — ${r.cc}`));
+  if (x.length) add('perf', 'minor', `Статика не кэшируется браузером: ${x.length}`, 'При каждом заходе браузер заново скачивает скрипты, стили и картинки.', 'Отдавать статику с Cache-Control: public, max-age=31536000, immutable (имена файлов с хэшем).', [...new Set(x)]);
+  const old = P.find((a) => a.perfx.protocol === 'http/1.1' && /^https:/.test(a.url));
+  if (old) add('perf', 'trivial', 'Сервер работает по HTTP/1.1', 'По HTTP/1.1 файлы грузятся по несколько штук за раз; HTTP/2 и HTTP/3 загружают всё параллельно в одном соединении.', 'Включить HTTP/2 (и HTTP/3) на веб-сервере или CDN.', [pg(old)]);
+  const tp = new Map();
+  P.forEach((a) => a.perfx.thirdParty.forEach((t) => { const g = tp.get(t.host) || { n: 0, kb: 0 }; g.n = Math.max(g.n, t.n); g.kb = Math.max(g.kb, t.kb); tp.set(t.host, g); }));
+  const tpKb = [...tp.values()].reduce((s2, t) => s2 + t.kb, 0);
+  if (tp.size >= 8 || tpKb > 1000) add('perf', 'trivial', `Много сторонних сервисов: ${tp.size} доменов, ~${Math.round(tpKb)} КБ`, 'Счётчики, чаты, реклама и виджеты замедляют загрузку, и если один из них упадёт — может пострадать весь сайт.', 'Убрать неиспользуемые, остальные грузить отложенно (после загрузки страницы или по действию).',
+    [...tp.entries()].sort((p1, p2) => p2[1].kb - p1[1].kb).slice(0, 10).map(([h, t]) => `${h} — ${t.n} запросов, ${t.kb} КБ`));
+
   return I.sort((a, b) => sevOf(b.sev).rank - sevOf(a.sev).rank);
 }
 
@@ -880,8 +1002,17 @@ function renderAudit() {
   $('#afil').innerHTML = fb('all', `Все (${all.length})`) + Object.keys(AUDIT_CAT).filter((k) => cats[k]).map((k) => fb(k, `${AUDIT_CAT[k]} (${cats[k]})`)).join('');
   $('#afil').querySelectorAll('button').forEach((b) => (b.onclick = () => { auditFilter = b.dataset.f; renderAudit(); }));
   const list = all.filter((x) => auditFilter === 'all' || x.cat === auditFilter);
-  const pages = audits.length ? `Доступность и изображения проверены на страницах: ${audits.map((a) => esc(shortUrl(a.url))).join(', ')}.` : 'Доступность ещё не проверялась — нажмите 🩺 на панели на нужной странице (последняя страница проверяется автоматически при завершении).';
-  $('#audit-note').innerHTML = `Технические проблемы, найденные автоматически по данным проверки. Это не баги сценария, а то, что стоит улучшить. ${pages}`;
+  const pages = audits.length ? `Проверено страниц: <b>${audits.length}</b> — ${audits.slice(0, 12).map((a) => esc(shortUrl(a.url))).join(', ')}${audits.length > 12 ? '…' : ''}.` : 'Страницы ещё не проверялись — нажмите 🩺 на панели (или включите «Проверять каждую открытую страницу» в настройках).';
+  $('#audit-note').innerHTML = `Что улучшить на сайте: SEO, скорость, доступность, семантика, безопасность. Это не баги сценария, а рекомендации. ${pages}`;
+  // оценки по направлениям: 100 минус штрафы за находки
+  const PEN = { blocker: 30, critical: 25, major: 12, minor: 5, trivial: 1 };
+  const SC = [['seo', '🔎 SEO', true], ['perf', '⚡ Скорость', false], ['a11y', '♿ Доступность', true], ['sem', '🏷 Семантика', true], ['best', '✅ Практики и безопасность', true]];
+  $('#ascore').innerHTML = SC.filter(([, , needAudit]) => !needAudit || audits.length).map(([k, t]) => {
+    const v = Math.max(0, 100 - all.filter((x) => x.cat === k).reduce((acc, x) => acc + (PEN[x.sev] || 1), 0));
+    const c = v >= 90 ? 'good' : v >= 60 ? 'mid' : 'bad';
+    return `<button class="sc sc-${c}${auditFilter === k ? ' on' : ''}" data-f="${k}"><b>${v}</b><span>${t}</span></button>`;
+  }).join('');
+  $('#ascore').querySelectorAll('button').forEach((b) => (b.onclick = () => { auditFilter = auditFilter === b.dataset.f ? 'all' : b.dataset.f; renderAudit(); }));
   $('#audit').innerHTML = list.length
     ? list.map((x) => `<details class="aud"><summary><span class="sevb s-${x.sev}">${sevLabel(x.sev)}</span><span class="acat">${AUDIT_CAT[x.cat]}</span><b>${esc(x.title)}</b></summary>
         <div class="aud-b"><p><b>Почему это плохо:</b> ${esc(x.why)}</p><p><b>Как исправить:</b> ${esc(x.fix).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')}</p>
@@ -914,6 +1045,8 @@ const A11Y_RU = {
   'listitem': ['<li> вне списка', 'Пункт списка вне <ul>/<ol> — читалка не понимает, что это список.', 'Обернуть пункты в <ul> или <ol>.'],
   'meta-viewport': ['Запрещено масштабирование на телефоне', 'Пользователь не может увеличить мелкий текст пальцами.', 'Убрать user-scalable=no и maximum-scale из meta viewport.'],
   'frame-title': ['Фреймы без названия', 'Читалка объявляет iframe без пояснения, что внутри.', 'Добавить title к <iframe>.'],
+  'target-size': ['Слишком маленькие кнопки и ссылки', 'В элемент меньше 24×24 px сложно попасть пальцем на телефоне — пользователь промахивается и нажимает соседнее.', 'Увеличить область нажатия (padding) до 24×24 px, лучше 44×44, или раздвинуть элементы.'],
+  'empty-heading': ['Пустые заголовки', 'Заголовок без текста: читалка объявляет пустой заголовок, структура страницы ломается.', 'Удалить пустой заголовок или заменить на элемент без смысловой роли.'],
   'select-name': ['Выпадающие списки без подписи', 'Непонятно, что выбирать в списке.', 'Связать <select> с <label> или добавить aria-label.'],
 };
 

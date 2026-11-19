@@ -1,7 +1,7 @@
 importScripts('db.js');
 
 // ================= настройки и лимиты =================
-const DEFAULT_SETTINGS = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true };
+const DEFAULT_SETTINGS = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true };
 const BUF_LIM = { console: 800, network: 500, actions: 300, nav: 100, events: 1500, samples: 60, resources: 400 };
 const SES_LIM = { console: 5000, network: 3000, actions: 2000, nav: 500, events: 10000, samples: 2000, resources: 3000 };
 const BUF_BODY = 4000;
@@ -261,6 +261,188 @@ async function pageAudit(locale) {
   const walk = (el, d) => { if (d > depth) depth = d; if (d > 60) return; for (const c of el.children) walk(c, d + 1); };
   walk(document.documentElement, 1);
   out.dom = { nodes: all.length, depth, dupIds: [...ids.entries()].filter(([, c]) => c > 1).slice(0, 20).map(([id, c]) => ({ id, count: c })) };
+
+  // ---------- общие помощники ----------
+  const web = /^https?:$/.test(location.protocol);
+  const own = (u) => { try { return new URL(u, location.href).origin === location.origin; } catch (_) { return false; } };
+  const sel = (el) => {
+    if (el.id) return '#' + CSS.escape(el.id);
+    const parts = [];
+    for (let e = el; e && e.nodeType === 1 && parts.length < 4; e = e.parentElement) {
+      let p = e.tagName.toLowerCase();
+      const cls = [...e.classList].filter((c) => !/^(css|sc|jsx|svelte|_)-?[a-z0-9]{4,}$/i.test(c)).slice(0, 2);
+      if (cls.length) p += '.' + cls.map((c) => CSS.escape(c)).join('.');
+      parts.unshift(p);
+      if (e.id) { parts[0] = '#' + CSS.escape(e.id); break; }
+    }
+    return parts.join(' > ');
+  };
+  const txt = (el) => short((el.innerText || el.textContent || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim(), 60);
+  const vis = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+  const head = async (u, method = 'HEAD') => { try { const r = await withTimeout(fetch(u, { method, cache: 'no-store', credentials: 'same-origin', redirect: 'follow' }), 6000); return r; } catch (_) { return null; } };
+  const metaC = (q) => { const e = document.querySelector(q); return e ? (e.getAttribute('content') ?? e.getAttribute('href') ?? '').trim() : null; };
+
+  // ---------- 🔎 SEO ----------
+  const seo = {
+    title: document.title.trim(),
+    description: metaC('meta[name="description" i]'),
+    canonical: metaC('link[rel="canonical" i]'),
+    robots: [metaC('meta[name="robots" i]'), metaC('meta[name="googlebot" i]')].filter(Boolean).join(', '),
+    viewport: metaC('meta[name="viewport" i]'),
+    lang: document.documentElement.getAttribute('lang') || '',
+    h1: [...document.querySelectorAll('h1')].filter(vis).map((h) => short(h.textContent.replace(/\s+/g, ' ').trim(), 120)),
+    og: { title: metaC('meta[property="og:title" i]'), description: metaC('meta[property="og:description" i]'), image: metaC('meta[property="og:image" i]') },
+    jsonld: document.querySelectorAll('script[type="application/ld+json"]').length,
+    favicon: !!document.querySelector('link[rel~="icon" i]'),
+    robotsTxt: null, xRobots: null,
+  };
+  out.seo = seo;
+
+  // заголовки ответа главного документа (для SEO и безопасности)
+  let H = null;
+  if (web) {
+    let r = await head(location.href);
+    if (r && r.status === 405) r = await head(location.href, 'GET');
+    if (r) {
+      H = { status: r.status };
+      ['content-security-policy', 'strict-transport-security', 'x-content-type-options', 'x-frame-options', 'referrer-policy', 'x-robots-tag', 'server', 'x-powered-by', 'cache-control'].forEach((k) => (H[k] = r.headers.get(k)));
+      seo.xRobots = H['x-robots-tag'];
+    }
+    // robots.txt — только для главной страницы сайта достаточно один раз, но запрос дешёвый
+    const rt = await head(location.origin + '/robots.txt', 'GET');
+    if (rt && rt.ok && /text\/plain/i.test(rt.headers.get('content-type') || '')) {
+      const t = (await rt.text()).slice(0, 50000);
+      let star = false, group = false, blockAll = false;
+      for (let line of t.split(/\r?\n/)) {
+        line = line.replace(/#.*$/, '').trim();
+        const m = line.match(/^([a-z-]+)\s*:\s*(.*)$/i);
+        if (!m) continue;
+        const k = m[1].toLowerCase(), v = m[2].trim();
+        if (k === 'user-agent') { if (!group) star = false; group = true; if (v === '*') star = true; }
+        else { group = false; if (k === 'disallow' && star && v === '/') blockAll = true; }
+      }
+      seo.robotsTxt = { found: true, blockAll, sitemap: /^\s*sitemap\s*:/im.test(t) };
+    } else if (rt) seo.robotsTxt = { found: false };
+    if (!seo.favicon) { const f = await head(location.origin + '/favicon.ico'); seo.favicon = !!(f && f.ok); }
+  }
+  out.headers = H;
+
+  // ---------- 🏷 семантика и формы ----------
+  const sem = { clickable: [], emptyHeadings: [], fakeLinks: [], formButtons: [], inputTypes: [], headings: [] };
+  const INTER = 'a[href],button,input,select,textarea,label,summary,[role=button],[role=link],[role=tab],[role=menuitem],[role=option],[role=checkbox],[role=switch],[role=radio],[contenteditable=""],[contenteditable=true]';
+  let scanned = 0;
+  for (const el of document.body ? document.body.querySelectorAll('div,span,li,img,svg,p,i,td,section,article') : []) {
+    if (++scanned > 4000 || sem.clickable.length >= 15) break;
+    if (el.closest(INTER) || el.closest('qa-bug-overlay')) continue;
+    const cs = getComputedStyle(el);
+    if (cs.cursor !== 'pointer' && !el.hasAttribute('onclick')) continue;
+    const par = el.parentElement;
+    if (par && getComputedStyle(par).cursor === 'pointer' && !par.closest(INTER)) continue; // берём верхний
+    if (!vis(el)) continue;
+    sem.clickable.push({ sel: sel(el), text: txt(el), tab: el.hasAttribute('tabindex') });
+  }
+  document.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach((h) => {
+    if (!vis(h)) return;
+    const t = (h.textContent || '').trim() || [...h.querySelectorAll('img[alt]')].map((i) => i.alt).join(' ').trim() || h.getAttribute('aria-label');
+    if (!t) sem.emptyHeadings.push({ sel: sel(h), tag: h.tagName.toLowerCase() });
+    if (sem.headings.length < 60) sem.headings.push(h.tagName.toLowerCase() + ' ' + short((h.textContent || '').replace(/\s+/g, ' ').trim(), 70));
+  });
+  document.querySelectorAll('a').forEach((a) => {
+    const h = (a.getAttribute('href') || '').trim();
+    if (sem.fakeLinks.length < 15 && vis(a) && (!a.hasAttribute('href') || h === '#' || /^javascript:/i.test(h)) && !a.getAttribute('role')) sem.fakeLinks.push({ sel: sel(a), text: txt(a), href: h || '(нет href)' });
+  });
+  document.querySelectorAll('form').forEach((f) => {
+    const bs = [...f.querySelectorAll('button:not([type])')].filter(vis);
+    if (bs.length > 1) sem.formButtons.push({ sel: sel(f), buttons: bs.slice(0, 4).map(txt) });
+  });
+  document.querySelectorAll('input:not([type]),input[type=text]').forEach((i) => {
+    if (sem.inputTypes.length >= 10 || !vis(i)) return;
+    const hint = [i.name, i.id, i.placeholder, i.getAttribute('autocomplete'), i.getAttribute('aria-label')].join(' ').toLowerCase();
+    const want = /e-?mail|почт/.test(hint) ? 'email' : /phone|tel\b|телефон|mobile/.test(hint) ? 'tel' : /url|сайт|website/.test(hint) ? 'url' : null;
+    if (want) sem.inputTypes.push({ sel: sel(i), want, hint: short(i.placeholder || i.name || i.id, 40) });
+  });
+  out.sem = sem;
+
+  // ---------- ✅ лучшие практики и безопасность ----------
+  const res = performance.getEntriesByType('resource');
+  const best = { mixed: [], brokenRes: [], brokenLinks: [], checkedLinks: 0, passOnHttp: false, headers: H };
+  if (location.protocol === 'https:') {
+    res.forEach((r) => { if (/^http:/i.test(r.name)) best.mixed.push(short(r.name, 160)); });
+    document.querySelectorAll('img[src^="http:"],script[src^="http:"],iframe[src^="http:"],link[href^="http:"][rel~="stylesheet"]').forEach((e) => best.mixed.push(short(e.src || e.href, 160)));
+    best.mixed = [...new Set(best.mixed)].slice(0, 15);
+    best.formHttp = [...document.querySelectorAll('form[action^="http:"]')].slice(0, 5).map((f) => short(f.action, 120));
+  } else if (location.protocol === 'http:' && !/^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(location.hostname)) {
+    best.passOnHttp = !!document.querySelector('input[type=password]');
+    best.noHttps = true;
+  }
+  res.forEach((r) => { if (r.responseStatus >= 400 && best.brokenRes.length < 20) best.brokenRes.push({ url: short(r.name, 180), status: r.responseStatus, type: r.initiatorType }); });
+  if (web) {
+    const links = [...new Set([...document.querySelectorAll('a[href]')].map((a) => a.href.split('#')[0]).filter((u) => /^https?:/.test(u) && own(u) && u !== location.href.split('#')[0] && !/log-?out|sign-?out|exit|delete|remove|destroy|unsubscribe|cancel|выход|удал/i.test(u)))].slice(0, 40);
+    best.checkedLinks = links.length;
+    for (let k = 0; k < links.length; k += 6) {
+      const part = await Promise.all(links.slice(k, k + 6).map(async (u) => {
+        let r = await head(u);
+        if (r && (r.status === 405 || r.status === 501)) r = await head(u, 'GET');
+        return r && r.status >= 400 ? { url: short(u, 180), status: r.status } : null;
+      }));
+      part.forEach((x) => x && best.brokenLinks.push(x));
+    }
+  }
+  out.best = best;
+
+  // ---------- ⚡ производительность загрузки ----------
+  const navE = performance.getEntriesByType('navigation')[0];
+  const TEXT = /\.(m?js|css|json|html?|svg|xml|txt|map)(\?|$)/i;
+  const px = { blocking: [], uncompressed: [], bigJs: [], jsTotal: 0, cssTotal: 0, weight: 0, requests: res.length, thirdParty: {}, fonts: [], lazyFirst: [], noLazy: 0, oldFormat: [], noSizeImgs: [], protocol: navE ? navE.nextHopProtocol : '', cache: [] };
+  res.forEach((r) => {
+    px.weight += r.transferSize || 0;
+    if (r.renderBlockingStatus === 'blocking') px.blocking.push({ url: short(r.name, 160), ms: Math.round(r.duration), kb: Math.round((r.encodedBodySize || 0) / 1024) });
+    if (r.encodedBodySize > 20000 && r.decodedBodySize && r.encodedBodySize >= r.decodedBodySize * 0.97 && TEXT.test(new URL(r.name).pathname)) px.uncompressed.push({ url: short(r.name, 160), kb: Math.round(r.encodedBodySize / 1024) });
+    const path = (() => { try { return new URL(r.name).pathname; } catch (_) { return ''; } })();
+    if (r.initiatorType === 'script' || /\.m?js$/i.test(path)) { px.jsTotal += r.decodedBodySize || 0; if (r.decodedBodySize > 400000) px.bigJs.push({ url: short(r.name, 160), kb: Math.round(r.decodedBodySize / 1024), gz: Math.round((r.encodedBodySize || 0) / 1024) }); }
+    if (/\.css$/i.test(path)) px.cssTotal += r.decodedBodySize || 0;
+    if (/\.(jpe?g|png|gif|bmp)$/i.test(path) && r.encodedBodySize > 150000) px.oldFormat.push({ url: short(r.name, 160), kb: Math.round(r.encodedBodySize / 1024) });
+    if (!own(r.name)) { try { const h = new URL(r.name).hostname; const t = px.thirdParty[h] || (px.thirdParty[h] = { n: 0, kb: 0 }); t.n++; t.kb += Math.round((r.transferSize || 0) / 1024); } catch (_) {} }
+  });
+  if (navE) {
+    px.weight += navE.transferSize || 0;
+    if (navE.encodedBodySize > 20000 && navE.decodedBodySize && navE.encodedBodySize >= navE.decodedBodySize * 0.97) px.uncompressed.unshift({ url: short(location.href, 160) + ' (сама страница)', kb: Math.round(navE.encodedBodySize / 1024) });
+  }
+  px.blocking = px.blocking.slice(0, 15); px.uncompressed = px.uncompressed.slice(0, 15); px.oldFormat = px.oldFormat.slice(0, 10);
+  for (const sh of [...document.styleSheets].slice(0, 60)) {
+    let rules;
+    try { rules = sh.cssRules; } catch (_) { continue; }
+    for (const r of rules || []) {
+      if (r.type === 5) { const fd = r.style.getPropertyValue('font-display'); if (!fd || fd === 'auto' || fd === 'block') px.fonts.push(short(r.style.getPropertyValue('font-family').replace(/["']/g, ''), 60) + (fd ? ` (font-display: ${fd})` : '')); }
+    }
+  }
+  document.querySelectorAll('link[href*="fonts.googleapis.com"]').forEach((l) => { if (!/display=(swap|optional|fallback)/.test(l.href)) px.fonts.push('Google Fonts без &display=swap'); });
+  px.fonts = [...new Set(px.fonts)].slice(0, 12);
+  const vh = innerHeight;
+  [...document.images].forEach((img) => {
+    if (!img.naturalWidth || !vis(img)) return;
+    const r = img.getBoundingClientRect(), top = r.top + scrollY;
+    const big = r.width * r.height > 40000;
+    if (img.loading === 'lazy' && top < vh && big && px.lazyFirst.length < 5) px.lazyFirst.push(short(img.currentSrc || img.src, 140));
+    if (img.loading !== 'lazy' && top > vh * 1.5 && big) px.noLazy++;
+    if (!img.getAttribute('width') && !img.getAttribute('height') && !img.style.width && !img.style.aspectRatio && big && px.noSizeImgs.length < 10) {
+      const cs = getComputedStyle(img);
+      if (cs.aspectRatio === 'auto') px.noSizeImgs.push(short(img.currentSrc || img.src, 140));
+    }
+  });
+  if (web) {
+    const statics = res.filter((r) => own(r.name) && /\.(m?js|css|woff2?|png|jpe?g|webp|avif|svg)(\?|$)/i.test(r.name)).slice(0, 6);
+    for (const r of statics) {
+      const h = await head(r.name);
+      if (!h || !h.ok) continue;
+      const cc = (h.headers.get('cache-control') || '').toLowerCase();
+      const age = +((cc.match(/max-age=(\d+)/) || [])[1] || 0);
+      if (!cc || /no-store|no-cache/.test(cc) || age < 3600) px.cache.push({ url: short(r.name, 160), cc: cc || '(нет Cache-Control)' });
+    }
+  }
+  px.thirdParty = Object.entries(px.thirdParty).sort((a, b) => b[1].kb - a[1].kb).slice(0, 12).map(([h, v]) => ({ host: h, ...v }));
+  out.perfx = px;
   return out;
 }
 
@@ -755,7 +937,25 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   await ready;
   if (info.url && /^(https?|file):/.test(info.url)) ingest(tabId, 'nav', { ts: Date.now(), url: info.url, title: tab.title });
   if (S && S.active && tabId === S.tabId && info.status === 'complete') injectOverlay(tabId);
+  if (S && S.active && tabId === S.tabId && (info.status === 'complete' || info.url)) scheduleAudit(tabId);
 });
+
+// автопроверка каждой новой страницы (раз на адрес, после того как страница успокоится)
+let auditTimer = null, auditBusy = false;
+function scheduleAudit(tabId) {
+  clearTimeout(auditTimer);
+  auditTimer = setTimeout(async () => {
+    if (!S || !S.active || tabId !== S.tabId || auditBusy) return;
+    if (!(await getSettings()).autoAudit) return;
+    let tab;
+    try { tab = await chrome.tabs.get(tabId); } catch (_) { return; }
+    if (tab.status !== 'complete' || !/^(https?|file):/.test(tab.url || '')) return;
+    const key = tab.url.replace(/#.*$/, '');
+    if ((S.audits || []).some((a) => a.url.replace(/#.*$/, '') === key)) return;
+    auditBusy = true;
+    try { await auditPage(tabId); } finally { auditBusy = false; }
+  }, 4000);
+}
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   await ready;
   delete buffers[tabId];
