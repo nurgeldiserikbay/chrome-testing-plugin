@@ -266,3 +266,6 @@ td .sub{display:block;color:#6b7280;font-size:11.5px;margin-top:2px;font-family:
 .ascore .sc-good b{color:#059669}.ascore .sc-mid b{color:#d97706}.ascore .sc-bad b{color:#dc2626}
 .ascore .sc.on{outline:2px solid #6366f1;outline-offset:1px}
 .ascore .sc:hover{background:#f9fafb}
+
+/* скриншоты экранов: не растягивать узкую длинную картинку */
+.it-b img.scr{max-height:620px;width:auto;max-width:100%;object-fit:contain;object-position:top;justify-self:center;background:#f9fafb}

@@ -48,6 +48,26 @@
   <button id="cancel" class="link danger">Отменить проверку и удалить данные</button>
 </section>
 
+<section id="xtools">
+  <div class="xh">Инструменты</div>
+  <div id="rec-on" class="recon" hidden>● Идёт запись автотеста: <b id="rec-n">0</b> <button id="rec-cancel" class="link danger">Отменить</button></div>
+  <div class="tools two">
+    <button id="rec" title="Запишите сценарий на этой странице: клики, ввод, проверки">🤖 Записать автотест</button>
+    <button id="tests" title="Сценарии, прогон и результаты">▶ Автотесты</button>
+  </div>
+  <div class="tools two">
+    <button id="mocks" title="Подменить ответ сервера: ошибка, пустой список, задержка">🧪 Подмена API</button>
+    <button id="screens" title="Скриншоты страницы на ширине 375, 768, 1280 и 1920 px — пунктами в отчёт">📐 Экраны</button>
+  </div>
+  <details id="cond"><summary>📶 Условия: <b id="cond-l">обычные</b></summary>
+    <label class="row">Сеть <select id="cn-net"></select></label>
+    <label class="row">Процессор <select id="cn-cpu"></select></label>
+    <label class="row">Устройство <select id="cn-dev"></select></label>
+    <p class="hint">Только для этой вкладки. Chrome покажет полосу «отлаживается» — так и должно быть. Условия записываются в отчёт к каждому пункту.</p>
+    <button id="c-reset" class="link">Сбросить</button>
+  </details>
+</section>
+
 <div id="err" class="err" hidden></div>
 
 <footer>

@@ -3,7 +3,7 @@
   "name": "QA Bug Recorder",
   "short_name": "QA Bug",
   "description": "Фиксация багов: пометки на странице, видео, голос, логи консоли, запросы и действия. AI-разбор, экспорт в Word, Google Docs, Markdown, HTML, HAR.",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "tabs",

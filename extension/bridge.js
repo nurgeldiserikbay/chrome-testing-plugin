@@ -195,7 +195,7 @@
 
   if (!isTop) return; // действия пользователя пишем только в основном фрейме
 
-  const fromOverlay = (e) => e.composedPath().some((n) => n && n.tagName === OVERLAY_TAG);
+  const fromOverlay = (e) => e.composedPath().some((n) => n && (n.tagName === OVERLAY_TAG || n.tagName === 'QA-MOCK-PILL' || n.tagName === 'QA-REC-BAR'));
 
   document.addEventListener(
     'click',
@@ -271,4 +271,30 @@
     },
     true
   );
+
+  // ---------- 🧪 подмена ответов: правила → inject.js, плашка на странице ----------
+  const host = location.hostname;
+  let activeMocks = [];
+  const mocksFor = (st) => (st.qa_mocks_on === false ? [] : (st.qa_mocks || []).filter((m) => m.on && (!m.host || host === m.host || host.endsWith('.' + m.host))));
+  const sendMocks = () => document.dispatchEvent(new CustomEvent(TAG + ':mocks', { detail: JSON.stringify(activeMocks) }));
+  const loadMocks = () => chrome.storage.local.get(['qa_mocks', 'qa_mocks_on']).then((st) => { activeMocks = mocksFor(st); sendMocks(); if (isTop) pill(); }).catch(() => {});
+  document.addEventListener(TAG + ':mocks-req', sendMocks);
+  chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && (ch.qa_mocks || ch.qa_mocks_on)) loadMocks(); });
+  loadMocks();
+  let pillEl = null, hits = 0;
+  function pill() {
+    if (!activeMocks.length) { if (pillEl) { pillEl.remove(); pillEl = null; } return; }
+    if (!document.body) { document.addEventListener('DOMContentLoaded', pill, { once: true }); return; }
+    if (!pillEl) {
+      pillEl = document.createElement('qa-mock-pill');
+      pillEl.style.cssText = 'all:initial;position:fixed;left:12px;bottom:12px;z-index:2147483646';
+      const sh = pillEl.attachShadow({ mode: 'closed' });
+      sh.innerHTML = '<style>b{font:600 12px/1 system-ui,sans-serif;background:#7c3aed;color:#fff;border-radius:999px;padding:7px 12px;box-shadow:0 6px 18px -6px rgba(0,0,0,.4);cursor:pointer;display:inline-block}</style><b title="Часть ответов сервера подменяется расширением QA Bug Recorder. Нажмите, чтобы открыть правила."></b>';
+      sh.querySelector('b').onclick = () => chrome.runtime.sendMessage({ type: 'open-tools', hash: 'mocks' }).catch(() => {});
+      pillEl.__b = sh.querySelector('b');
+      document.documentElement.appendChild(pillEl);
+    }
+    pillEl.__b.textContent = `🧪 Подмена ответов: ${activeMocks.length} ${activeMocks.length === 1 ? 'правило' : activeMocks.length < 5 ? 'правила' : 'правил'}${hits ? ` · сработала ${hits}×` : ''}`;
+  }
+  document.addEventListener(TAG + ':mock-hit', () => { hits++; if (isTop) pill(); });
 })();

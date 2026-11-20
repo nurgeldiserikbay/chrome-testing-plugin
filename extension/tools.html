@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Автотесты и подмена API — QA Bug Recorder</title><link rel="icon" href="icons/32.png"><link rel="stylesheet" href="settings.css"><link rel="stylesheet" href="tools.css"></head>
+<body>
+<main class="wide">
+  <h1><img src="icons/48.png" alt=""> Инструменты</h1>
+  <nav class="tabs"><a href="#tests" data-t="tests">🤖 Автотесты</a><a href="#mocks" data-t="mocks">🧪 Подмена ответов API</a><a href="settings.html" class="ext">🔌 Интеграции</a></nav>
+
+  <!-- ================= автотесты ================= -->
+  <section id="tests" class="pane">
+    <div class="card intro">
+      <div>
+        <h2>Сценарии для регресса</h2>
+        <p>Запишите идеальный сценарий один раз: кликайте, заполняйте поля, ставьте <b>✓ Проверки</b> — «появился текст „Заказ оформлен“», «адрес содержит /success». Потом прогоняйте все сценарии одной кнопкой после каждого релиза.</p>
+      </div>
+      <div class="rec-new">
+        <label>Начальная страница<input id="rec-url" placeholder="https://site.ru/catalog" spellcheck="false"></label>
+        <button id="rec-go" class="primary">● Записать новый сценарий</button>
+        <small>Или откройте нужную страницу и нажмите <b>🤖 Записать автотест</b> в меню расширения.</small>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button id="run-sel" class="primary">▶ Запустить выбранные</button>
+      <button id="run-all">▶ Запустить все</button>
+      <button id="run-stop" hidden>■ Остановить</button>
+      <span class="sp"></span>
+      <label class="ck"><input type="checkbox" id="opt-errors" checked> Ошибки консоли и упавшие запросы — это падение</label>
+      <label class="sm">Ожидание элемента <select id="opt-timeout"><option value="5">5 с</option><option value="10" selected>10 с</option><option value="20">20 с</option><option value="30">30 с</option></select></label>
+    </div>
+    <div class="toolbar sub">
+      <button id="exp-pw">⬇ Playwright (.zip)</button>
+      <button id="exp-json">⬇ Экспорт сценариев</button>
+      <label class="filebtn">⬆ Импорт<input type="file" id="imp-json" accept=".json" hidden></label>
+    </div>
+
+    <div id="run-box"></div>
+    <div id="tests-list"></div>
+
+    <h3 class="hist-h">История прогонов</h3>
+    <div id="hist"></div>
+  </section>
+
+  <!-- ================= подмена API ================= -->
+  <section id="mocks" class="pane" hidden>
+    <div class="card intro">
+      <div>
+        <h2>Подмена ответов сервера</h2>
+        <p>Проверьте, как сайт ведёт себя, когда сервер отвечает ошибкой, пустым списком или очень медленно, — без помощи бэкенда. Правило срабатывает для запросов fetch и XHR, адрес которых содержит указанный текст (можно со звёздочкой <code>*</code>).</p>
+        <p class="warn">Пока правило включено, на странице видна фиолетовая плашка «🧪 Подмена ответов», а подменённые запросы в отчёте помечены 🧪 и не становятся «ошибками», чтобы их не приняли за баг сайта.</p>
+      </div>
+      <div class="master"><label class="switch"><input type="checkbox" id="mk-master"><span></span></label><b>Подмена включена</b></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3 id="mk-form-h">Новое правило</h3>
+        <div class="presets">Быстро: <button data-p="500">Ошибка 500</button><button data-p="401">Нет доступа 401</button><button data-p="404">Не найдено 404</button><button data-p="empty">Пустой список</button><button data-p="slow">Медленно 5 с</button><button data-p="net">Нет сети</button></div>
+        <label>Адрес запроса содержит<input id="mk-match" placeholder="/api/cart или */api/orders/*" spellcheck="false"></label>
+        <div class="row3">
+          <label>Метод<select id="mk-method"><option>ANY</option><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label>
+          <label>Что сделать<select id="mk-action"><option value="respond">Вернуть ответ</option><option value="delay">Задержать настоящий ответ</option><option value="network">Ошибка сети</option></select></label>
+          <label>Задержка, мс<input id="mk-delay" type="number" min="0" step="100" value="0"></label>
+        </div>
+        <div id="mk-respond">
+          <div class="row3">
+            <label>Статус<select id="mk-status"><option>200</option><option>201</option><option>204</option><option>400</option><option>401</option><option>403</option><option>404</option><option>409</option><option>422</option><option>429</option><option>500</option><option>502</option><option>503</option><option>504</option></select></label>
+            <label>Тип<select id="mk-ct"><option value="application/json; charset=utf-8">JSON</option><option value="text/plain; charset=utf-8">Текст</option><option value="text/html; charset=utf-8">HTML</option></select></label>
+            <label>Сайт (необязательно)<input id="mk-host" placeholder="все сайты" spellcheck="false"></label>
+          </div>
+          <label>Тело ответа<textarea id="mk-body" rows="8" spellcheck="false" placeholder='{"items": []}'></textarea><small id="mk-json-st"></small></label>
+        </div>
+        <div class="row"><button id="mk-save" class="primary">Добавить правило</button><button id="mk-reset" class="link">Очистить</button><span id="mk-st" class="st"></span></div>
+      </div>
+      <div class="card">
+        <h3>Последние запросы на вкладке</h3>
+        <p class="muted" id="req-note">Откройте эту страницу из меню расширения на нужной вкладке — здесь появятся её запросы. Нажмите на запрос, чтобы подставить адрес и настоящий ответ в форму и отредактировать его.</p>
+        <div id="req-list"></div>
+      </div>
+    </div>
+
+    <h3>Правила</h3>
+    <div id="mk-list"></div>
+  </section>
+</main>
+<script src="db.js"></script>
+<script src="zip.js"></script>
+<script src="tools.js"></script>
+</body></html>

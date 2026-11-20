@@ -124,6 +124,60 @@ async function showIgnore() {
   $('ign-clear').onclick = async () => { await chrome.storage.local.set({ qa_ignore: [] }); showIgnore(); };
 }
 
+// ---------- инструменты ----------
+const curTab = async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+$('tests').onclick = async () => { const t = await curTab(); await send({ type: 'open-tools', hash: 'tests', tabId: t && t.id }); window.close(); };
+$('mocks').onclick = async () => { const t = await curTab(); await send({ type: 'open-tools', hash: 'mocks', tabId: t && t.id }); window.close(); };
+$('rec').onclick = async () => {
+  showErr('');
+  const t = await curTab();
+  const r = await send({ type: 'rec-start', tabId: t.id });
+  if (r && r.ok === false) { showErr(r.error); return; }
+  window.close();
+};
+$('rec-cancel').onclick = async () => { const t = await curTab(); await send({ type: 'rec-cancel', tabId: t.id }); recState(); };
+async function recState() {
+  const t = await curTab();
+  if (!t) return;
+  const r = await send({ type: 'rec-status', tabId: t.id });
+  $('rec-on').hidden = !(r && r.rec);
+  $('rec').disabled = !!(r && r.rec);
+  if (r && r.rec) $('rec-n').textContent = r.steps + ' шаг.';
+}
+$('screens').onclick = async () => {
+  showErr('');
+  const t = await curTab();
+  $('screens').disabled = true;
+  $('screens').textContent = '📐 Снимаю…';
+  const r = await send({ type: 'screens-shot', tabId: t.id });
+  $('screens').disabled = false;
+  $('screens').textContent = '📐 Экраны';
+  if (r && r.ok === false) showErr(r.error);
+  else window.close();
+};
+async function condInit() {
+  const t = await curTab();
+  if (!t) return;
+  const r = await send({ type: 'emu-get', tabId: t.id });
+  if (!r || !r.ok) return;
+  const fill = (id, obj, val) => { $(id).innerHTML = Object.entries(obj).map(([k, v]) => `<option value="${k}">${v}</option>`).join(''); $(id).value = String(val); };
+  fill('cn-net', r.nets, r.emu.net);
+  fill('cn-cpu', r.cpus, r.emu.cpu);
+  fill('cn-dev', r.devices, r.emu.device);
+  $('cond-l').textContent = r.label ? 'изменены' : 'обычные';
+  if (r.label) $('cond').open = true;
+  const apply = async () => {
+    showErr('');
+    const res = await send({ type: 'emu-set', tabId: t.id, conf: { net: $('cn-net').value, cpu: +$('cn-cpu').value, device: $('cn-dev').value } });
+    if (res && res.ok === false) showErr(res.error);
+    $('cond-l').textContent = res && res.label ? 'изменены' : 'обычные';
+  };
+  ['cn-net', 'cn-cpu', 'cn-dev'].forEach((id) => ($(id).onchange = apply));
+  $('c-reset').onclick = async () => { await send({ type: 'emu-clear', tabId: t.id }); condInit(); };
+}
+recState();
+condInit();
+
 showIgnore();
 showShortcut();
 loadSettings();

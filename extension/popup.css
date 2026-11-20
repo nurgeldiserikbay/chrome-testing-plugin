@@ -47,3 +47,13 @@ footer{display:flex;justify-content:space-between;align-items:center;padding:8px
 .ign li span{flex:1;word-break:break-all;color:#4b5563}
 .ign li button{border:0;background:#f3f4f6;border-radius:5px;cursor:pointer;font-size:11px}
 .muted2{color:#9ca3af}
+
+#xtools{padding:0 14px 10px}
+.xh{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;font-weight:700;margin:4px 0 6px;border-top:1px solid #f3f4f6;padding-top:10px}
+#xtools .tools button{font-size:12.5px}
+.recon{background:#fef2f2;color:#b91c1c;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.recon .link{margin:0 0 0 auto;display:inline}
+#cond summary b{color:#6d28d9}
+#cond select{max-width:190px}
+.hint{font-size:11px;color:#9ca3af;margin:6px 0}
+[hidden]{display:none!important}

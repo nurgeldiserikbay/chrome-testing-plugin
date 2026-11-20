@@ -109,6 +109,7 @@ chrome.storage.onChanged.addListener((ch) => { if (ch.qa_ignore) ignoreCache = n
 
 function autoCheck(kind, e) {
   if (!S || !S.active) return;
+  if (e.mocked) return; // ответ подменён тестировщиком — это не баг сайта
   let err = null;
   const mySite = siteOf(S.meta.startUrl);
   if (kind === 'console' && e.level === 'error' && e.source !== 'resource') {
@@ -197,6 +198,7 @@ async function flushAuto() {
       if (ready) chrome.tabs.sendMessage(S.tabId, { type: 'qa-capture-done' }).catch(() => {});
     }
   } catch (_) {}
+  item.cond = emuLabel(S.tabId);
   S.errors.push(item);
   await saveSessionNow();
   pushOverlayState();
@@ -581,7 +583,8 @@ async function doFinish({ open = true } = {}) {
   S.snapshotEnd = await takeSnapshot(S.tabId);
   if (S.meta.cdp) {
     S.meta.cdpMetricsEnd = await cdpMetrics(S.tabId);
-    try { await chrome.debugger.detach({ tabId: S.tabId }); } catch (_) {}
+    if (emuActive(S.tabId)) dbgOwned.add(S.tabId); // условия (сеть, устройство) продолжают действовать
+    else try { await chrome.debugger.detach({ tabId: S.tabId }); } catch (_) {}
     S.meta.cdp = false;
   }
   S.active = false;
@@ -604,7 +607,7 @@ async function cancelBug() {
   const id = S.id;
   try { await stopVoice(); } catch (_) {}
   try { await stopVideo(); } catch (_) {}
-  if (S.meta.cdp) { try { await chrome.debugger.detach({ tabId: S.tabId }); } catch (_) {} }
+  if (S.meta.cdp) { if (emuActive(S.tabId)) dbgOwned.add(S.tabId); else try { await chrome.debugger.detach({ tabId: S.tabId }); } catch (_) {} }
   chrome.tabs.sendMessage(S.tabId, { type: 'qa-overlay-remove' }).catch(() => {});
   S = null;
   await chrome.storage.local.remove('qa_active');
@@ -647,6 +650,7 @@ async function addAnnotation(m, sender) {
     title: sender.tab.title,
     shotKey: key,
     voiceRecording: S.voice.some((v) => v.recording),
+    cond: emuLabel(sender.tab.id),
   });
   if (m.viewport && !S.meta.viewport) S.meta.viewport = m.viewport;
   await saveSessionNow();
@@ -790,7 +794,7 @@ const cdpReq = {};
 const cdp = (tabId, method, params = {}) => chrome.debugger.sendCommand({ tabId }, method, params);
 async function attachCdp(tabId) {
   try {
-    await chrome.debugger.attach({ tabId }, '1.3');
+    try { await chrome.debugger.attach({ tabId }, '1.3'); } catch (e) { if (!/already attached/i.test(e.message)) throw e; }
     await cdp(tabId, 'Network.enable', { maxPostDataSize: 20000 });
     await cdp(tabId, 'Log.enable');
     await cdp(tabId, 'Performance.enable').catch(() => {});
@@ -1050,3 +1054,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     .then(sendResponse, (e) => sendResponse({ ok: false, error: String((e && e.message) || e) }));
   return true;
 });
+
+// инструменты: автотесты, условия, скриншоты экранов
+importScripts('tools-bg.js');

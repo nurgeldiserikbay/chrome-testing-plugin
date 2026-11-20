@@ -194,7 +194,7 @@ function opts() {
     appendix: $('#o-appendix').checked,
   };
 }
-const netErr = (e) => e.failed || e.status >= 400;
+const netErr = (e) => !e.mocked && (e.failed || e.status >= 400);
 function filterConsole(list, mode) {
   if (mode === 'none') return [];
   if (mode === 'warn') return list.filter((c) => c.level === 'error' || c.level === 'warn');
@@ -354,12 +354,13 @@ function renderItems() {
       const a = i.a;
       const vo = voiceFor(a);
       return `<div class="it remark">${head(i, a.n, a.comment || '(без комментария)')}
-        <div class="it-b ${shots[a.n] ? '' : 'one'}">${shots[a.n] ? `<img src="${shots[a.n]}" alt="">` : ''}
+        <div class="it-b ${shots[a.n] ? '' : 'one'}">${shots[a.n] ? `<img src="${shots[a.n]}" alt=""${a.kind === 'screen' ? ' class="scr"' : ''}>` : ''}
         <div class="facts">
           <div class="fact"><div class="fl">Замечание</div><textarea rows="3" data-c="${a.n}">${esc(a.comment)}</textarea></div>
           ${a.element ? `<div class="fact"><div class="fl">Элемент</div><div class="sel">${esc(a.element.selector)}<br>&lt;${esc(a.element.tag)}&gt; ${Math.round(a.element.rect.w)}×${Math.round(a.element.rect.h)}${a.element.text ? ' · «' + esc(short(a.element.text, 80)) + '»' : ''}</div></div>` : ''}
           ${vo.map((v) => `<div class="fact"><div class="fl">🎤 Голос</div><audio controls data-key="${v.key}"></audio></div>`).join('')}
           <div class="fact"><div class="fl">Страница</div><div class="url">${esc(a.url)}</div></div>
+          ${a.cond ? `<div class="fact"><div class="fl">Условия</div><div>📶 ${esc(a.cond)}</div></div>` : ''}
         </div></div>${aiBox(i)}</div>`;
     }
     if (i.kind === 'error') {
@@ -371,6 +372,7 @@ function renderItems() {
         req ? `<div class="fact"><div class="fl">Запрос с ошибкой</div><pre>${esc(`${req.method} ${X.statusLabel(req)} ${req.url}`)}</pre></div>` : '',
         c.before.length ? `<div class="fact"><div class="fl">Перед ошибкой пользователь</div><ol>${c.before.slice(-5).map((b) => `<li>${esc(b.text)}</li>`).join('')}</ol></div>` : '',
         `<div class="fact"><div class="fl">Страница</div><div class="url">${esc(x.url || '')}</div></div>`,
+        x.cond ? `<div class="fact"><div class="fl">Условия</div><div>📶 ${esc(x.cond)}</div></div>` : '',
       ].join('');
       const tabs = [
         c.requests.length ? ['Детали запроса', `<div class="facts" style="padding:12px 16px">${c.requests.map(reqDet).join('')}</div>`] : null,
@@ -633,7 +635,7 @@ async function itemModel(i, o) {
   };
   if (i.kind === 'remark') {
     const a = i.a;
-    const it = { kind: 'remark', ai: a.ai, key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: a.n, rel: a.ts - st, url: a.url, comment: a.comment, element: a.element,
+    const it = { kind: 'remark', ai: a.ai, cond: a.cond || '', key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: a.n, rel: a.ts - st, url: a.url, comment: a.comment, element: a.element,
       voice: voiceFor(a).map((v) => ({ key: v.key, file: `media/voice-${v.n}.webm` })) };
     await shot(shots[a.n], `screenshots/zamechanie-${String(a.n).padStart(2, '0')}.png`, it);
     return it;
@@ -642,7 +644,7 @@ async function itemModel(i, o) {
     const x = i.x;
     const c = errorCtx(x);
     const it = {
-      kind: 'error', ai: x.ai, key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: x.n, rel: x.ts - st, url: o.mask ? maskS(x.url) : x.url, title: o.mask ? maskS(x.title) : x.title, count: x.count,
+      kind: 'error', ai: x.ai, cond: x.cond || '', key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: x.n, rel: x.ts - st, url: o.mask ? maskS(x.url) : x.url, title: o.mask ? maskS(x.title) : x.title, count: x.count,
       jsErrors: c.jsErrors.map((j) => ({ text: o.mask ? maskS(j.text) : j.text, loc: j.loc })),
       requests: c.requests.map(m),
       before: c.before.map((b) => ({ rel: b.ts - st, text: o.mask ? maskS(b.text) : b.text })),

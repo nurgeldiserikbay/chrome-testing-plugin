@@ -23,9 +23,9 @@
     return (b / 1048576).toFixed(1).replace('.', ',') + ' МБ';
   }
   const LEVEL_RU = { error: 'Ошибка', warn: 'Предупр.', info: 'Инфо', log: 'Лог', debug: 'Отладка' };
-  const KIND_RU = { element: 'Элемент', arrow: 'Стрелка', rect: 'Область', note: 'Заметка' };
+  const KIND_RU = { element: 'Элемент', arrow: 'Стрелка', rect: 'Область', note: 'Заметка', screen: 'Экран' };
   const isErr = (e) => !!(e.failed || e.status >= 400);
-  const statusLabel = (e) => (e.failed ? (e.canceled ? 'отменён' : e.blocked ? 'блок.' : 'ошибка') : e.status == null ? '…' : String(e.status));
+  const statusLabel = (e) => (e.mocked ? '🧪 ' : '') + (e.failed ? (e.canceled ? 'отменён' : e.blocked ? 'блок.' : 'ошибка') : e.status == null ? '…' : String(e.status));
   const hasH = (h) => !!h && Object.keys(h).length > 0;
   const hdrText = (h) => Object.entries(h || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
   const short = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) + '…' : s; };
@@ -315,11 +315,13 @@ ${htmlStorage(m.storage)}
       L.push(`💬 **Замечание:** ${it.comment || '(без комментария)'}`);
       sevLine();
       if (it.url) L.push(`Страница: ${it.url}`);
+      if (it.cond) L.push(`Условия: ${it.cond}`);
       if (it.element) L.push(`Элемент: \`${it.element.selector}\``);
     } else if (it.kind === 'error') {
       L.push(`⚠ **${it.title}**${it.count > 1 ? ` (повторялась ${it.count} раз)` : ''}`);
       sevLine();
       if (it.url) L.push(`Страница: ${it.url}`);
+      if (it.cond) L.push(`Условия: ${it.cond}`);
       it.jsErrors.forEach((j) => { L.push('', 'Ошибка JavaScript:', code(j.text + (j.loc ? '\n@ ' + j.loc : ''), 1200)); });
       it.requests.forEach((e) => {
         L.push('', `Запрос: ${e.method} ${e.url} → ${statusLabel(e)}${e.statusText ? ' ' + e.statusText : ''}${e.duration != null ? ` · ${fmtDur(e.duration)}` : ''}${e.error ? ` — ${e.error}` : ''}`);
@@ -352,7 +354,7 @@ ${htmlStorage(m.storage)}
       ${hasH(e.resHeaders) ? `<div class="label">Заголовки ответа</div><pre>${escH(hdrText(e.resHeaders))}</pre>` : ''}
       ${e.body ? `<div class="label">Ответ сервера</div><pre>${escH(e.body)}</pre>` : ''}</details>`;
     const body = m.items.map((it) => {
-      const head = `<div class="ih ${it.kind}"><span class="num">${it.kind === 'error' ? '!' : it.kind === 'recording' ? '▶' : it.n}</span><b>${escH(itemTitle(it))}</b>${it.sevLabel ? `<span class="tag" style="background:#fff7ed;color:#9a3412">${escH(it.sevLabel)}</span>` : ''}<span class="tag">${fmtRel(it.rel)}</span>${it.count > 1 ? `<span class="tag">повторялась ${it.count} раз</span>` : ''}</div>${it.url ? `<div class="meta" style="margin:0 0 10px;word-break:break-all">${escH(it.url)}</div>` : ''}`;
+      const head = `<div class="ih ${it.kind}"><span class="num">${it.kind === 'error' ? '!' : it.kind === 'recording' ? '▶' : it.n}</span><b>${escH(itemTitle(it))}</b>${it.sevLabel ? `<span class="tag" style="background:#fff7ed;color:#9a3412">${escH(it.sevLabel)}</span>` : ''}<span class="tag">${fmtRel(it.rel)}</span>${it.count > 1 ? `<span class="tag">повторялась ${it.count} раз</span>` : ''}</div>${it.url ? `<div class="meta" style="margin:0 0 10px;word-break:break-all">${escH(it.url)}</div>` : ''}${it.cond ? `<div class="meta" style="margin:-6px 0 10px">📶 Условия: ${escH(it.cond)}</div>` : ''}`;
       const img = it.dataUrl ? `<img src="${it.dataUrl}" alt="">` : '';
       if (it.kind === 'remark') {
         return `<div class="card item">${head}
@@ -396,7 +398,7 @@ ${htmlStorage(m.storage)}
       return s + '\n';
     };
     m.items.forEach((it) => {
-      md += `### ${itemTitle(it)}\n\n${it.sevLabel ? `**${it.sevLabel}** · ` : ''}_${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}${it.url ? ` · ${it.url}` : ''}_\n\n`;
+      md += `### ${itemTitle(it)}\n\n${it.sevLabel ? `**${it.sevLabel}** · ` : ''}_${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}${it.url ? ` · ${it.url}` : ''}_\n\n${it.cond ? `📶 Условия: ${it.cond}\n\n` : ''}`;
       if (it.kind === 'remark') {
         if (it.comment && it.comment.includes('\n')) md += it.comment + '\n\n';
         if (it.element) md += `Элемент: \`${it.element.selector}\` — <${it.element.tag}>, ${Math.round(it.element.rect.w)}×${Math.round(it.element.rect.h)}\n\n`;
@@ -438,6 +440,7 @@ ${htmlStorage(m.storage)}
     m.items.forEach((it) => {
       d.h(itemTitle(it), 2);
       d.p([it.sevLabel ? d.run(it.sevLabel + ' · ', { bold: true, size: 18 }) : '', d.run(`${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}`, { color: '6B7280', size: 18 }), it.url ? d.run(' · ' + it.url, { color: '6B7280', size: 18 }) : '']);
+      if (it.cond) d.p(`📶 Условия: ${it.cond}`, { run: { color: '6D28D9', size: 18 } });
       if (it.kind === 'remark') {
         if (it.comment && it.comment.includes('\n')) d.p(it.comment);
         if (it.element) d.p([d.run('Элемент: ', { bold: true, size: 18 }), d.run(`${it.element.selector} · <${it.element.tag}> ${Math.round(it.element.rect.w)}×${Math.round(it.element.rect.h)}`, { mono: true, size: 18 })]);
