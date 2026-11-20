@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>API-тесты — QA Bug Recorder</title><link rel="icon" href="icons/32.png"><link rel="stylesheet" href="settings.css"><link rel="stylesheet" href="tools.css"><link rel="stylesheet" href="api.css"></head>
+<body>
+<main class="wide">
+  <h1><img src="icons/48.png" alt=""> Инструменты</h1>
+  <nav class="tabs"><a href="tools.html#tests">🤖 Автотесты</a><a href="tools.html#mocks">🧪 Подмена ответов API</a><a href="api.html" class="on">🔌 API-тесты</a><a href="settings.html" class="ext">⚙ Интеграции</a></nav>
+
+  <div class="api">
+    <aside>
+      <button id="imp-open" class="primary">＋ Импортировать</button>
+      <div id="projects"></div>
+      <p class="muted small">Swagger / OpenAPI 2–3 (JSON, YAML) или коллекция Postman 2.x.</p>
+    </aside>
+
+    <section id="pane">
+      <!-- импорт -->
+      <div id="imp" class="card" hidden>
+        <h2>Импорт API</h2>
+        <p>Расширение разберёт эндпоинты, сгенерирует проверки — правильные, неполные и неверные данные, доступ без токена, несуществующие объекты — и цепочки «создать → получить → изменить → удалить → проверить, что удалено».</p>
+        <div class="imp3">
+          <label class="drop" id="drop"><input type="file" id="imp-file" accept=".json,.yaml,.yml" hidden><b>📄 Выбрать файл</b><span>или перетащите сюда swagger.json / openapi.yaml / collection.json</span></label>
+          <div><label>По адресу<input id="imp-url" placeholder="https://api.site.ru/swagger.json" spellcheck="false"></label><button id="imp-url-go">Загрузить</button></div>
+        </div>
+        <label>Или вставьте текст<textarea id="imp-text" rows="6" spellcheck="false" placeholder="openapi: 3.0.0 …"></textarea></label>
+        <div class="row"><button id="imp-go" class="primary">Импортировать</button><span id="imp-st" class="st"></span></div>
+      </div>
+
+      <!-- проект -->
+      <div id="proj" hidden>
+        <div class="ph-head">
+          <div><h2 id="p-title"></h2><div class="muted" id="p-meta"></div></div>
+          <div class="runbar">
+            <span id="p-mode" class="mode"></span>
+            <button id="run" class="primary">▶ Запустить проверки</button>
+            <button id="stop" hidden>■ Стоп</button>
+            <details class="more"><summary>⋯</summary><div class="menu"><button id="p-reimport">⟳ Обновить спецификацию</button><button id="p-dup">⧉ Дублировать проект</button><button id="p-del" class="danger">🗑 Удалить проект</button></div></details>
+          </div>
+        </div>
+        <div class="bar-p" id="prog" hidden><i></i></div>
+        <nav class="sub"><a data-s="env">Окружение</a><a data-s="eps">Эндпоинты <b id="n-eps"></b></a><a data-s="chains">Цепочки <b id="n-ch"></b></a><a data-s="res">Результаты <b id="n-res"></b></a></nav>
+
+        <div class="sp" id="s-env">
+          <div class="card">
+            <h3>Куда отправлять запросы</h3>
+            <label>Базовый адрес API<input id="e-base" list="e-servers" spellcheck="false" placeholder="https://stage.api.site.ru/v1"><datalist id="e-servers"></datalist></label>
+            <label class="ck stand"><input type="checkbox" id="e-stand"><span><b>Это тестовый стенд — можно создавать, изменять и удалять данные</b><small>Без этой галочки выполняются только GET-запросы. POST, PUT, PATCH и DELETE (включая цепочки) — только на стенде. Никогда не включайте на проде.</small></span></label>
+            <div class="row3"><label>Таймаут, с<input id="e-timeout" type="number" min="1" value="15"></label><label>Пауза между запросами, мс<input id="e-delay" type="number" min="0" step="50" value="0"></label><span></span></div>
+          </div>
+          <div class="card">
+            <h3>Авторизация</h3>
+            <div class="row3">
+              <label>Тип<select id="a-type"><option value="none">Без авторизации</option><option value="bearer">Bearer-токен</option><option value="basic">Логин и пароль (Basic)</option><option value="apikey">API-ключ</option><option value="cookie">Cookie браузера (сессия сайта)</option></select></label>
+              <span></span>
+              <div class="from-tab"><button id="a-tab">🔑 Взять из открытой вкладки</button><small>Откройте сайт, войдите — расширение найдёт токен в его запросах.</small></div>
+            </div>
+            <div data-a="bearer"><label>Токен<input id="a-token" type="password" spellcheck="false" placeholder="eyJhbGciOi…"></label></div>
+            <div data-a="basic" class="row3"><label>Логин<input id="a-user" spellcheck="false"></label><label>Пароль<input id="a-pass" type="password"></label><span></span></div>
+            <div data-a="apikey" class="row3"><label>Название<input id="a-name" placeholder="X-API-Key" spellcheck="false"></label><label>Значение<input id="a-key" type="password" spellcheck="false"></label><label>Где<select id="a-where"><option value="header">Заголовок</option><option value="query">Параметр адреса</option></select></label></div>
+            <p data-a="cookie" class="muted">Запросы уйдут с cookie, которые браузер хранит для этого сайта, — войдите на сайт в этом же Chrome.</p>
+            <span id="a-st" class="st"></span>
+          </div>
+          <div class="card two">
+            <label>Дополнительные заголовки <small>по одному в строке: <code>Имя: значение</code></small><textarea id="e-headers" rows="4" spellcheck="false" placeholder="X-Tenant: demo"></textarea></label>
+            <label>Переменные <small><code>имя=значение</code> — подставляются в <code>{{имя}}</code></small><textarea id="e-vars" rows="4" spellcheck="false"></textarea></label>
+          </div>
+        </div>
+
+        <div class="sp" id="s-eps" hidden>
+          <div class="toolbar"><input id="ep-filter" placeholder="Поиск: путь, метод, описание" class="flt"><button id="ep-all">Выбрать все</button><button id="ep-none">Снять все</button><span class="sp2"></span><span class="muted" id="ep-sum"></span></div>
+          <div id="eps"></div>
+        </div>
+
+        <div class="sp" id="s-chains" hidden>
+          <p class="muted">Цепочка — запросы по порядку с передачей данных: id из ответа на создание подставляется в следующие запросы. Последние шаги проверяют «неправильный порядок»: получить, изменить и удалить уже удалённое (ожидается 404, а не 200 или 500). Выполняются только на тестовом стенде.</p>
+          <div class="toolbar"><button id="ch-new">＋ Новая цепочка</button><button id="ch-auto">↻ Пересоздать автоматические</button></div>
+          <div id="chains"></div>
+        </div>
+
+        <div class="sp" id="s-res" hidden>
+          <div id="res"></div>
+        </div>
+      </div>
+
+      <div id="empty" class="card empty-hero">
+        <h2>🔌 Тестирование API по спецификации</h2>
+        <p>Импортируйте Swagger/OpenAPI или коллекцию Postman — и одной кнопкой проверьте все эндпоинты:</p>
+        <ul class="ticks2">
+          <li>✅ правильные запросы — статус, соответствие ответа схеме, время</li>
+          <li>🧩 неполные и неверные данные — нет обязательных полей, не те типы, null, длинные строки, не тот формат, битый JSON (ожидается 400/422, а не 500 и не «сохранил»)</li>
+          <li>🔒 без авторизации и с неверным токеном</li>
+          <li>🔁 цепочки и порядок: создать → получить → изменить → удалить → получить/изменить/удалить удалённое</li>
+          <li>💬 «Что не так с API» — понятные объяснения и как исправить</li>
+        </ul>
+        <button class="primary" id="empty-imp">＋ Импортировать</button>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="vendor/js-yaml.min.js"></script>
+<script src="db.js"></script>
+<script src="docx.js"></script>
+<script src="zip.js"></script>
+<script src="exporters.js"></script>
+<script src="integrations.js"></script>
+<script src="api-core.js"></script>
+<script src="api.js"></script>
+</body></html>

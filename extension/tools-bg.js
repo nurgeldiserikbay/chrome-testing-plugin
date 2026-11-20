@@ -433,6 +433,21 @@ Object.assign(handlers, {
     try { url = (await chrome.tabs.get(m.tabId)).url; } catch (_) {}
     return { ok: true, list, url };
   },
+  'tab-auth': async (m) => {
+    // ищем авторизацию в недавних запросах открытых вкладок к этому API
+    let origin = '';
+    try { origin = new URL(m.baseUrl).origin; } catch (_) {}
+    const all = Object.values(buffers).flatMap((b) => b.network || []).filter((e) => e.reqHeaders && (!origin || e.url.startsWith(origin))).sort((a, b) => b.ts - a.ts);
+    for (const e of all) {
+      const h = Object.fromEntries(Object.entries(e.reqHeaders).map(([k, v]) => [k.toLowerCase(), v]));
+      if (h.authorization && /^bearer\s+/i.test(h.authorization)) return { ok: true, auth: { type: 'bearer', token: h.authorization.replace(/^bearer\s+/i, '') }, from: e.url };
+      if (h.authorization && /^basic\s+/i.test(h.authorization)) { try { const [u, ...p] = atob(h.authorization.slice(6)).split(':'); return { ok: true, auth: { type: 'basic', user: u, pass: p.join(':') }, from: e.url }; } catch (_) {} }
+      const k = Object.keys(h).find((x) => /^(x-api-key|api-key|apikey|x-auth-token|x-access-token|x-token)$/.test(x));
+      if (k) return { ok: true, auth: { type: 'apikey', where: 'header', name: k, key: h[k] }, from: e.url };
+    }
+    if (origin && all.length) return { ok: true, auth: { type: 'cookie' }, from: all[0].url, note: 'Токена в заголовках нет — сайт, похоже, работает через cookie' };
+    return { ok: false, error: origin ? `Не нашёл запросов к ${origin} в открытых вкладках. Откройте сайт, войдите и сделайте пару действий — затем повторите.` : 'Сначала укажите базовый адрес API' };
+  },
   'emu-get': async (m) => ({ ok: true, emu: EMU[m.tabId] || { net: 'none', cpu: 1, device: 'none' }, label: emuLabel(m.tabId), nets: Object.fromEntries(Object.entries(NET_PRESETS).map(([k, v]) => [k, v.label])), cpus: CPU_PRESETS, devices: Object.fromEntries(Object.entries(DEVICES).map(([k, v]) => [k, v.label + (v.w ? ` — ${v.w}×${v.h}` : '')])) }),
   'emu-set': async (m) => { try { return await setEmulation(m.tabId, m.conf); } catch (e) { return { ok: false, error: e.message }; } },
   'emu-clear': async (m) => { await clearEmulation(m.tabId); return { ok: true }; },
