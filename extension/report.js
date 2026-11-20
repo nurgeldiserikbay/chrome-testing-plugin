@@ -40,7 +40,7 @@ function renderList(all) {
     ? all
         .map((r) => {
           const t = (r.fields && r.fields.title) || (r.annotations[0] && r.annotations[0].comment) || r.meta.title || 'Без названия';
-          const d = new Date(r.startTime).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+          const d = new Date(r.startTime).toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU'), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
           return `<a class="item ${r.id === cur ? 'on' : ''}" href="?id=${r.id}"><b>${esc(short(t, 60))}</b><small>${r.active ? '<span class="live">● идёт · </span>' : ''}${d} · ${r.annotations.length} пом.</small><button class="del" data-id="${r.id}" title="Удалить">×</button></a>`;
         })
         .join('')
@@ -144,7 +144,7 @@ function env() {
     ['ОС', os + (R.meta.platform ? ` (${R.meta.platform})` : '')],
     ['Размер окна', vp ? `${vp.w}×${vp.h}, масштаб ${vp.dpr}x` : '—'],
     ['Язык браузера', R.meta.language || ''],
-    ['Начало проверки', new Date(R.startTime).toLocaleString('ru-RU')],
+    ['Начало проверки', new Date(R.startTime).toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU'))],
     ['Длительность проверки', X.fmtDur((R.endTime || Date.now()) - R.startTime)],
     ['User-Agent', R.meta.userAgent || '']
   );
@@ -239,8 +239,8 @@ async function buildModel(o, only) {
   return {
     title: one ? (one.kind === 'remark' ? one.comment || 'Замечание' : one.kind === 'error' ? one.title : 'Запись видео') : only === 'audit' ? 'Автопроверка: ' + (R.meta.title || R.meta.startUrl) : f.title || 'Отчёт о проверке',
     severity: one ? one.sevLabel : '', priority: f.priority, steps: one ? '' : f.steps, expected: one ? '' : f.expected, actual: one ? '' : f.actual, notes: one ? '' : f.notes,
-    createdAt: new Date(st).toLocaleString('ru-RU'),
-    generatedAt: new Date().toLocaleString('ru-RU'),
+    createdAt: new Date(st).toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU')),
+    generatedAt: new Date().toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU')),
     env: one ? env().filter(([k]) => ['Страница', 'Браузер', 'ОС', 'Размер окна', 'Экран', 'Язык браузера'].includes(k)) : env(),
     items,
     audit: (only === 'audit' || (!only && o.audit)) ? auditModel() : [],
@@ -487,7 +487,7 @@ function aiBox(i) {
   if (!ai) return '';
   const cur = itemSev(i);
   return `<div class="aibox">
-    <div class="aih"><b>🤖 Разбор AI</b><span class="muted">${esc(ai.model)} · ${new Date(ai.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+    <div class="aih"><b>🤖 Разбор AI</b><span class="muted">${esc(ai.model)} · ${new Date(ai.at).toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU'), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
       <span class="acts">${ai.severity && ai.severity !== cur ? `<button data-aisev="${i.key}" title="Поставить серьёзность, предложенную AI">${sevLabel(ai.severity)}?</button>` : ''}<button data-aicopy="${i.key}" title="Скопировать пункт вместе с разбором — для задачи в трекере">📋 Копировать как задачу</button><button data-ai="${i.key}" title="Разобрать ещё раз">↻</button><button data-aidel="${i.key}" title="Удалить разбор">✕</button></span></div>
     ${ai.title ? `<div class="ait">${esc(ai.title)}</div>` : ''}
     <div class="aig">
@@ -559,7 +559,7 @@ function renderAISummary() {
   const sm = R.aiSummary;
   el.hidden = !sm;
   if (!sm) return;
-  el.innerHTML = `<div class="aih"><b>🤖 Резюме AI</b><span class="muted">${esc(sm.model)} · ${new Date(sm.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · попадёт в начало выгрузки</span>
+  el.innerHTML = `<div class="aih"><b>🤖 Резюме AI</b><span class="muted">${esc(sm.model)} · ${new Date(sm.at).toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU'), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · попадёт в начало выгрузки</span>
     <span class="acts"><button id="sum-copy">📋 Копировать</button><button id="sum-redo" title="Составить заново">↻</button><button id="sum-del" title="Удалить резюме">✕</button></span></div><div class="sumbody">${X.mdLite(sm.text)}</div>`;
   $('#sum-copy').onclick = async () => { await navigator.clipboard.writeText(sm.text); flash('Резюме скопировано'); };
   $('#sum-redo').onclick = () => runSummary();
@@ -945,7 +945,7 @@ function auditIssues() {
   const dep = new Map();
   R.events.filter((e) => e.kind === 'deprecation' || e.kind === 'intervention').forEach((e) => { const d = e.detail || {}; const k = d.id || d.message; const g = dep.get(k) || { e, d, n: 0 }; g.n++; dep.set(k, g); });
   if (dep.size) add('best', 'trivial', `Браузер предупреждает об устаревших API: ${dep.size}`, 'Эти возможности удалят из браузера в будущих версиях — код перестанет работать.', 'Заменить на современные аналоги (подробности в тексте предупреждения).',
-    [...dep.values()].map((g) => `${short(g.d.message || g.d.id, 180)}${g.d.source ? ' — ' + shortUrl(g.d.source) : ''}${g.d.removal ? ' (удалят ' + new Date(g.d.removal).toLocaleDateString('ru-RU') + ')' : ''}`));
+    [...dep.values()].map((g) => `${short(g.d.message || g.d.id, 180)}${g.d.source ? ' — ' + shortUrl(g.d.source) : ''}${g.d.removal ? ' (удалят ' + new Date(g.d.removal).toLocaleDateString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU')) + ')' : ''}`));
   const hdr = B.find((a) => a.best.headers && /^https:/.test(a.url));
   if (hdr) {
     const h = hdr.best.headers, miss = [];
@@ -1186,7 +1186,7 @@ function renderAll() {
   $('#f-expected').value = f.expected;
   $('#f-actual').value = f.actual;
   $('#f-notes').value = f.notes || '';
-  $('#created').textContent = 'Проверка ' + new Date(R.startTime).toLocaleString('ru-RU') + ' · ' + short(R.meta.startUrl, 80);
+  $('#created').textContent = 'Проверка ' + new Date(R.startTime).toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU')) + ' · ' + short(R.meta.startUrl, 80);
   document.title = (f.title || 'Отчёт о проверке') + ' — QA Bug Recorder';
 
   const warns = [];

@@ -1,0 +1,23 @@
+{
+  "name": {
+    "message": "QA Bug Recorder"
+  },
+  "desc": {
+    "message": "Фиксация багов: пометки на странице, видео, голос, логи консоли, запросы и действия. AI-разбор, экспорт в Word, Google Docs, Markdown, HTML, HAR."
+  },
+  "cmd_found": {
+    "message": "Начать проверку / открыть панель"
+  },
+  "cmd_pick": {
+    "message": "Выбрать элемент для замечания"
+  },
+  "cmd_arrow": {
+    "message": "Нарисовать стрелку"
+  },
+  "cmd_finish": {
+    "message": "Завершить проверку и открыть отчёт"
+  },
+  "title": {
+    "message": "QA Bug Recorder — начать проверку"
+  }
+}

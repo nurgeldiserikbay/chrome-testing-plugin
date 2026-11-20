@@ -167,7 +167,7 @@ async function responsiveShots(tabId) {
 // ================= 🤖 автотесты: запись =================
 const REC = {}; // tabId -> {steps, startUrl, startedAt, lastStepTs, lastUrl}
 async function injectRecorder(tabId) {
-  try { await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, files: ['recorder.js'] }); } catch (_) {}
+  try { await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, files: ['i18n-dict.js', 'i18n.js', 'recorder.js'] }); } catch (_) {}
   pushRec(tabId);
 }
 function pushRec(tabId) {

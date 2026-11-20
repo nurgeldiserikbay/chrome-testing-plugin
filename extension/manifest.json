@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "QA Bug Recorder",
   "short_name": "QA Bug",
-  "description": "Фиксация багов: пометки на странице, видео, голос, логи консоли, запросы и действия. AI-разбор, экспорт в Word, Google Docs, Markdown, HTML, HAR.",
-  "version": "2.0.0",
+  "description": "__MSG_desc__",
+  "version": "2.1.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "tabs",
@@ -24,7 +24,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "QA Bug Recorder",
+    "default_title": "__MSG_title__",
     "default_icon": {
       "16": "icons/16.png",
       "32": "icons/32.png",
@@ -66,29 +66,30 @@
         "default": "Ctrl+Shift+Q",
         "mac": "MacCtrl+Shift+Q"
       },
-      "description": "Начать проверку / открыть панель"
+      "description": "__MSG_cmd_found__"
     },
     "pick-element": {
       "suggested_key": {
         "default": "Alt+Shift+E"
       },
-      "description": "Выбрать элемент для замечания"
+      "description": "__MSG_cmd_pick__"
     },
     "annotate": {
       "suggested_key": {
         "default": "Alt+Shift+A"
       },
-      "description": "Нарисовать стрелку"
+      "description": "__MSG_cmd_arrow__"
     },
     "finish": {
       "suggested_key": {
         "default": "Alt+Shift+S"
       },
-      "description": "Завершить проверку и открыть отчёт"
+      "description": "__MSG_cmd_finish__"
     }
   },
   "options_ui": {
     "page": "settings.html",
     "open_in_tab": true
-  }
+  },
+  "default_locale": "en"
 }

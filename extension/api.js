@@ -4,7 +4,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': 
 const A = globalThis.QAApi;
 const SEV_RU = { critical: '🟠 Критично', major: '🟡 Значительно', minor: '🔵 Незначительно', trivial: '⚪ Мелочь' };
 const V_RU = { pass: '✓ ок', warn: '⚠ замечания', fail: '✗ ошибка', skip: '– пропущено' };
-const fmtDate = (t) => new Date(t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const fmtDate = (t) => new Date(t).toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU'), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 let projects = [], cur = null, sub = 'env', lastRun = null, running = null, openEp = new Set();
 
 async function load() {

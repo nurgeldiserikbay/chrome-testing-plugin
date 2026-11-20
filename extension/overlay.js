@@ -11,6 +11,7 @@
   const host = document.createElement('qa-bug-overlay');
   host.style.cssText = 'all:initial!important;position:fixed!important;inset:0!important;z-index:2147483647!important;pointer-events:none!important;display:block!important;';
   const root = host.attachShadow({ mode: 'closed' });
+  if (globalThis.QAI18N) QAI18N.ready.then(() => QAI18N.watch(root));
   root.innerHTML = `
 <style>
   *{box-sizing:border-box}

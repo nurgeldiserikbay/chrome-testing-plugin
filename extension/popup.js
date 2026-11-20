@@ -179,6 +179,9 @@ async function condInit() {
 recState();
 condInit();
 
+chrome.storage.local.get('qa_lang').then((o) => { $('s-lang').value = o.qa_lang || 'auto'; });
+$('s-lang').onchange = async () => { await chrome.storage.local.set({ qa_lang: $('s-lang').value }); location.reload(); };
+
 showIgnore();
 showShortcut();
 loadSettings();

@@ -675,5 +675,6 @@ ${htmlStorage(m.storage)}
     };
   }
 
-  g.QAExport = { itemText, aiLines, mdLite, exportHTML, exportMarkdown, exportDOCX, exportHAR, describeAction, fmtRel, fmtDur, fmtSize, statusLabel, isErr, LEVEL_RU, KIND_RU };
+  const TR = (f) => (...a) => { const r = f(...a); return typeof r === 'string' && globalThis.QAI18N ? QAI18N.T(r) : r; };
+  g.QAExport = { itemText: TR(itemText), aiLines, mdLite, exportHTML: TR(exportHTML), exportMarkdown: TR(exportMarkdown), exportDOCX, exportHAR, describeAction, fmtRel, fmtDur, fmtSize, statusLabel, isErr, LEVEL_RU, KIND_RU };
 })(typeof window !== 'undefined' ? window : globalThis);

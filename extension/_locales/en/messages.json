@@ -1,0 +1,23 @@
+{
+  "name": {
+    "message": "QA Bug Recorder"
+  },
+  "desc": {
+    "message": "Bug capture: marks on the page, video, voice, console logs, requests and actions. AI analysis, autotests, API tests, export to Word, Google Docs, Markdown, HTML, HAR."
+  },
+  "cmd_found": {
+    "message": "Start check / open panel"
+  },
+  "cmd_pick": {
+    "message": "Select an element for a remark"
+  },
+  "cmd_arrow": {
+    "message": "Draw an arrow"
+  },
+  "cmd_finish": {
+    "message": "Finish the check and open the report"
+  },
+  "title": {
+    "message": "QA Bug Recorder — start check"
+  }
+}

@@ -277,9 +277,10 @@
   let activeMocks = [];
   const mocksFor = (st) => (st.qa_mocks_on === false ? [] : (st.qa_mocks || []).filter((m) => m.on && (!m.host || host === m.host || host.endsWith('.' + m.host))));
   const sendMocks = () => document.dispatchEvent(new CustomEvent(TAG + ':mocks', { detail: JSON.stringify(activeMocks) }));
-  const loadMocks = () => chrome.storage.local.get(['qa_mocks', 'qa_mocks_on']).then((st) => { activeMocks = mocksFor(st); sendMocks(); if (isTop) pill(); }).catch(() => {});
+  let EN = false;
+  const loadMocks = () => chrome.storage.local.get(['qa_mocks', 'qa_mocks_on', 'qa_lang']).then((st) => { EN = (st.qa_lang && st.qa_lang !== 'auto') ? st.qa_lang === 'en' : !/^(ru|uk|be|kk|ky|uz|tg|hy|az)/i.test(chrome.i18n.getUILanguage()); activeMocks = mocksFor(st); sendMocks(); if (isTop) pill(); }).catch(() => {});
   document.addEventListener(TAG + ':mocks-req', sendMocks);
-  chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && (ch.qa_mocks || ch.qa_mocks_on)) loadMocks(); });
+  chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && (ch.qa_mocks || ch.qa_mocks_on || ch.qa_lang)) loadMocks(); });
   loadMocks();
   let pillEl = null, hits = 0;
   function pill() {
@@ -289,12 +290,16 @@
       pillEl = document.createElement('qa-mock-pill');
       pillEl.style.cssText = 'all:initial;position:fixed;left:12px;bottom:12px;z-index:2147483646';
       const sh = pillEl.attachShadow({ mode: 'closed' });
-      sh.innerHTML = '<style>b{font:600 12px/1 system-ui,sans-serif;background:#7c3aed;color:#fff;border-radius:999px;padding:7px 12px;box-shadow:0 6px 18px -6px rgba(0,0,0,.4);cursor:pointer;display:inline-block}</style><b title="Часть ответов сервера подменяется расширением QA Bug Recorder. Нажмите, чтобы открыть правила."></b>';
+      sh.innerHTML = '<style>b{font:600 12px/1 system-ui,sans-serif;background:#7c3aed;color:#fff;border-radius:999px;padding:7px 12px;box-shadow:0 6px 18px -6px rgba(0,0,0,.4);cursor:pointer;display:inline-block}</style><b></b>';
+      sh.querySelector('b').title = EN ? 'Some server responses are being mocked by the QA Bug Recorder extension. Click to open the rules.' : 'Часть ответов сервера подменяется расширением QA Bug Recorder. Нажмите, чтобы открыть правила.';
       sh.querySelector('b').onclick = () => chrome.runtime.sendMessage({ type: 'open-tools', hash: 'mocks' }).catch(() => {});
       pillEl.__b = sh.querySelector('b');
       document.documentElement.appendChild(pillEl);
     }
-    pillEl.__b.textContent = `🧪 Подмена ответов: ${activeMocks.length} ${activeMocks.length === 1 ? 'правило' : activeMocks.length < 5 ? 'правила' : 'правил'}${hits ? ` · сработала ${hits}×` : ''}`;
+    const n = activeMocks.length;
+    pillEl.__b.textContent = EN
+      ? `🧪 Mocked responses: ${n} ${n === 1 ? 'rule' : 'rules'}${hits ? ` · triggered ${hits}×` : ''}`
+      : `🧪 Подмена ответов: ${n} ${n === 1 ? 'правило' : n < 5 ? 'правила' : 'правил'}${hits ? ` · сработала ${hits}×` : ''}`;
   }
   document.addEventListener(TAG + ':mock-hit', () => { hits++; if (isTop) pill(); });
 })();

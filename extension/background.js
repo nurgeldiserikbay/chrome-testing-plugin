@@ -219,7 +219,13 @@ async function deleteError(m) {
 
 // ================= 🩺 автопроверка страницы: доступность (axe-core), изображения, DOM =================
 let axeLocale = null;
+async function uiLang() {
+  const { qa_lang } = await chrome.storage.local.get('qa_lang');
+  if (qa_lang && qa_lang !== 'auto') return qa_lang;
+  return /^(ru|uk|be|kk|ky|uz|tg|hy|az)/i.test(chrome.i18n.getUILanguage()) ? 'ru' : 'en';
+}
 async function getAxeLocale() {
+  if ((await uiLang()) !== 'ru') return null; // у axe по умолчанию английские тексты
   if (!axeLocale) axeLocale = await (await fetch(chrome.runtime.getURL('vendor/axe-ru.json'))).json();
   return axeLocale;
 }
@@ -229,7 +235,7 @@ async function pageAudit(locale) {
   const short = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; };
   try {
     if (window.axe) {
-      try { window.axe.configure({ locale }); } catch (_) {}
+      try { if (locale) window.axe.configure({ locale }); } catch (_) {}
       const r = await window.axe.run(
         { exclude: [['qa-bug-overlay']] },
         { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] }, resultTypes: ['violations'], iframes: false }
@@ -500,7 +506,7 @@ function toast(text, kind = 'info') {
 
 async function injectOverlay(tabId) {
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['bridge.js', 'overlay.js'] });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['bridge.js', 'i18n-dict.js', 'i18n.js', 'overlay.js'] });
   } catch (_) {}
 }
 

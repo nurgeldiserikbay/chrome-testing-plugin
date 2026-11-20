@@ -125,6 +125,7 @@
   const host = document.createElement(HOST_TAG);
   host.style.cssText = 'all:initial;position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:2147483647';
   const sh = host.attachShadow({ mode: 'closed' });
+  if (globalThis.QAI18N) QAI18N.ready.then(() => QAI18N.watch(sh));
   sh.innerHTML = `<style>
     *{box-sizing:border-box;font:13px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
     .bar{display:flex;align-items:center;gap:6px;background:#1f1b2e;color:#fff;border-radius:14px;padding:6px 8px 6px 12px;box-shadow:0 12px 32px -10px rgba(0,0,0,.6)}
