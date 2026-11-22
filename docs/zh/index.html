@@ -31,7 +31,7 @@
 <div class="hero-copy">
 <div class="eyebrow"><span class="dot"></span> Chrome 扩展 · 免费 · 无需注册</div>
 <h1>发现缺陷？<br/>记录下来<br/><em>只需 10 秒</em></h1>
-<p class="lead">开启检查，正常使用网站。控制台错误和失败的请求由扩展自动捕获——附带截图和完整上下文。你用箭头或框标出的问题会成为独立条目。最终报告可导出为 Word、Markdown 或 HTML。</p>
+<p class="lead">像平常一样使用网站。发现缺陷时，点击“🐞 发现缺陷”并选择时段：最近 30 秒、1 分钟或 5 分钟。扩展已经记住了发生过的一切：屏幕回放、操作后的截图、控制台错误和失败的请求。用箭头或框标出的问题会成为独立条目。最终报告可导出为 Word、Markdown 或 HTML。</p>
 <div class="cta">
 <a class="btn btn-red" download="" href="../qa-bug-recorder.zip">
 <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewbox="0 0 24 24" width="18"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"></path></svg>
@@ -90,8 +90,8 @@
 <div class="step">
 <div class="step-text">
 <div class="num">01</div>
-<h3>开启检查，照常工作</h3>
-<p>点击 <b>“▶ 开始检查”</b> 或按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>。一旦控制台出现错误或请求失败，扩展会<b>自动将其保存为独立条目</b>：当时的截图、错误文本、带服务器响应的请求，以及此前你的操作。</p>
+<h3>照常工作——扩展会记住最近几分钟</h3>
+<p>无需提前开启任何功能。发现缺陷时，点击 <b>“🐞 发现缺陷”</b> 或按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd> 并选择时段。报告中会包含<b>屏幕回放和每次操作后的截图</b>、错误、请求和步骤——无需刷新页面，也无需重新复现。控制台错误和失败的请求会自动保存为独立条目：截图、错误文本、带服务器响应的请求以及之前的操作。</p>
 <ul class="ticks">
 <li>同一错误的重复会计数，不会重复记录</li>
 <li>第三方脚本和服务的错误不会保存，多余的错误可以忽略（🙈）</li>
@@ -176,7 +176,7 @@
 <div class="kicker light">测试人员工具</div>
 <h2 class="h2 light">一键回归测试，无需后端即可测试边界情况</h2>
 <div class="fgrid">
-<article><div class="fi">🤖</div><h3>从录制生成自动测试</h3><p>点击“录制自动测试”并走一遍场景：点击、输入、选择。添加 ✓ 检查——“文本出现”、“地址包含 /success”。保存后，每次发布都运行全部场景：哪些通过、哪些失败、失败在哪一步，并附截图。</p></article>
+<article><div class="fi">🤖</div><h3>从录制生成自动测试</h3><p>点击“录制自动测试”并走一遍场景：点击、输入、选择。已经走过了？“🤖 根据最近操作生成自动测试”会根据你在所选时段内的操作生成步骤。添加 ✓ 检查——“文本出现”、“地址包含 /success”。保存后，每次发布都运行全部场景：哪些通过、哪些失败、失败在哪一步，并附截图。</p></article>
 <article><div class="fi">🎭</div><h3>导出为 Playwright</h3><p>每个场景都可下载为带配置的现成 <code>.spec.ts</code> 测试——开发者可以接入 CI。与扩展中一样，控制台错误视为失败。</p></article>
 <article><div class="fi">🔌</div><h3>基于 Swagger 和 Postman 的 API 测试</h3><p>导入规范，扩展会自动检查每个端点：正确、不完整和错误的数据，无令牌，不存在的对象，“创建 → 获取 → 修改 → 删除”链，以及错误的请求顺序。结果是带解释的“API 有什么问题”：500 崩溃、接受损坏数据、不符合 schema、信息泄漏、未授权访问。</p></article>
 <article><div class="fi">🧪</div><h3>API 响应模拟</h3><p>500、401 错误、空列表、5 秒延迟、“无网络”——可用于任意请求。可以拿真实响应修改。模拟的请求会在报告中标记，以免被误认为缺陷。</p></article>
@@ -367,7 +367,7 @@
 <div class="rm-grid">
 <div class="rm"><span>即将</span>MCP 服务器：报告可直接供 Claude Code、Cursor 和 Claude Desktop 使用——“修复最新报告中的错误 3”</div>
 <div class="rm"><span>即将</span>语音 → 文字：用语音识别口述备注</div>
-<div class="rm"><span>想法</span>“最近 30 秒”视频和事后的 DOM 录制（rrweb）</div>
+<div class="rm"><span>想法</span>在报告历史中查找相似缺陷</div>
 <div class="rm"><span>想法</span>截图中的个人数据模糊处理</div>
 <div class="rm"><span>想法</span>按项目定制报告模板和导出 PDF</div>
 </div>

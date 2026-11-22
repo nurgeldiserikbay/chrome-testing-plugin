@@ -2,15 +2,19 @@
 <html lang="ru"><head><script src="i18n.js"></script><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
 <body>
 <header><img src="icons/32.png" alt=""><span>QA Bug Recorder</span></header>
+<div class="per" id="per" title="Сколько последних секунд взять в пункт или автотест"><span>⏪ За последние</span><button data-s="30">30 с</button><button data-s="60">1 мин</button><button data-s="120">2 мин</button><button data-s="300">5 мин</button></div>
 
 <section id="idle" hidden>
-  <button id="found" class="big">▶ Начать проверку</button>
-  <p class="sub">Работайте с сайтом как обычно. Ошибки консоли и запросов сохранятся сами — со скриншотом и контекстом. Ваши замечания (стрелка, область, элемент) — отдельными пунктами.</p>
+  <button id="found" class="big">🐞 Нашёл баг</button>
+  <p class="sub">Заранее ничего включать не нужно: расширение помнит последние минуты на этой вкладке — повтор экрана, скриншоты после действий, действия, запросы и ошибки. Заметили баг — нажмите, и всё за выбранный период станет пунктом отчёта.</p>
   <div class="buf" id="buf"></div>
+  <button id="start" class="sec2" title="Для длинной сессии: один отчёт на много багов">▶ Начать долгую проверку</button>
 
   <details id="settings">
     <label class="row">🌐 Язык / Language <select id="s-lang"></select></label>
     <summary>Настройки</summary>
+    <label><input type="checkbox" id="s-replay"> ⏪ Повтор страницы<small>Незаметно запоминает изменения страницы за последние 10 минут. По кнопке «Нашёл баг» покажет, что было на экране. Пароли и секретные поля скрываются.</small></label>
+    <label><input type="checkbox" id="s-actShots"> 📸 Скриншоты после действий<small>Снимок видимой части страницы после клика, выбора, отправки формы и загрузки страницы. Хранятся только последние 10 минут.</small></label>
     <label><input type="checkbox" id="s-videoOnStart"> Записывать видео автоматически<small>Сразу при начале проверки. По умолчанию выключено: видео включается кнопкой, когда нужно.</small></label>
     <label><input type="checkbox" id="s-tabAudio"> Записывать звук вкладки в видео</label>
     <label><input type="checkbox" id="s-autoAudit"> Проверять каждую открытую страницу<small>Автопроверка: SEO, семантика, доступность, скорость загрузки, безопасность. Идёт в фоне через несколько секунд после загрузки страницы.</small></label>
@@ -45,6 +49,7 @@
     <button id="voice">🎤 Голос</button>
     <button id="video">⏺ Записать видео</button>
   </div>
+  <button id="retro-add" class="sec2" title="Добавить в отчёт ещё один пункт: повтор экрана, скриншоты и данные за выбранный выше период">⏪ Сохранить последние <span class="pl">1 мин</span></button>
   <button id="finish" class="big green">✓ Завершить — открыть отчёт</button>
   <button id="cancel" class="link danger">Отменить проверку и удалить данные</button>
 </section>
@@ -52,6 +57,7 @@
 <section id="xtools">
   <div class="xh">Инструменты</div>
   <div id="rec-on" class="recon" hidden>● Идёт запись автотеста: <b id="rec-n">0</b> <button id="rec-cancel" class="link danger">Отменить</button></div>
+  <div class="tools one"><button id="rtest" title="Шаги автотеста из того, что вы уже сделали на этой вкладке за выбранный период">🤖 Автотест из последних действий · <span class="pl">1 мин</span></button></div>
   <div class="tools two">
     <button id="rec" title="Запишите сценарий на этой странице: клики, ввод, проверки">🤖 Записать автотест</button>
     <button id="tests" title="Сценарии, прогон и результаты">▶ Автотесты</button>
@@ -77,7 +83,7 @@
   <button id="reports" class="link">📁 Мои отчёты</button>
   <button id="donate" class="link" title="Поддержать разработку">❤ Поддержать</button>
   <button id="intg" class="link" title="AI-разбор багов и Google Docs">🔌 Интеграции</button>
-  <button id="keys" class="keys link" title="Настроить горячие клавиши">Ctrl+Shift+Q — начать проверку</button>
+  <button id="keys" class="keys link" title="Настроить горячие клавиши">Ctrl+Shift+Q — нашёл баг</button>
 </footer>
 <script src="popup.js"></script>
 </body></html>

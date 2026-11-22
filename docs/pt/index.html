@@ -31,7 +31,7 @@
 <div class="hero-copy">
 <div class="eyebrow"><span class="dot"></span> Extensão para Chrome · grátis · sem cadastro</div>
 <h1>Achou um bug?<br/>Registre<br/><em>em 10 segundos</em></h1>
-<p class="lead">Ative a verificação e use o site. A extensão captura sozinha erros de console e requisições com falha — com captura de tela e todo o contexto. Suas observações com seta ou moldura viram itens separados. O relatório final sai em Word, Markdown ou HTML.</p>
+<p class="lead">Use o site normalmente. Viu um bug? Clique em “🐞 Achei um bug” e escolha um período: os últimos 30 segundos, um minuto ou 5 minutos. A extensão já lembra o que aconteceu: replay da tela, capturas após as ações, erros de console e requisições com falha. Observações com seta ou moldura viram itens separados. O relatório final sai em Word, Markdown ou HTML.</p>
 <div class="cta">
 <a class="btn btn-red" download="" href="../qa-bug-recorder.zip">
 <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewbox="0 0 24 24" width="18"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"></path></svg>
@@ -90,8 +90,8 @@
 <div class="step">
 <div class="step-text">
 <div class="num">01</div>
-<h3>Ative a verificação e trabalhe normalmente</h3>
-<p>Clique em <b>“▶ Iniciar verificação”</b> ou <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>. Assim que surgir um erro no console ou uma requisição falhar, a extensão <b>salva sozinha um item separado</b>: captura naquele momento, texto do erro, requisição com a resposta do servidor e suas ações antes dele.</p>
+<h3>Trabalhe normalmente — a extensão lembra os últimos minutos</h3>
+<p>Não é preciso ligar nada antes. Viu um bug? Clique em <b>“🐞 Achei um bug”</b> ou <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd> e escolha um período. O relatório recebe <b>o replay da tela e uma captura após cada ação</b>, erros, requisições e passos — sem recarregar a página e sem reproduzir de novo. Erros de console e requisições com falha são salvos sozinhos como itens separados: captura, texto do erro, requisição com a resposta do servidor e suas ações antes dele.</p>
 <ul class="ticks">
 <li>Repetições do mesmo erro são contadas, não duplicadas</li>
 <li>Erros de scripts e serviços de terceiros não são salvos; um desnecessário pode ser ignorado (🙈)</li>
@@ -176,7 +176,7 @@
 <div class="kicker light">Ferramentas do testador</div>
 <h2 class="h2 light">Regressão com um botão e casos-limite sem backend</h2>
 <div class="fgrid">
-<article><div class="fi">🤖</div><h3>Autotestes a partir de uma gravação</h3><p>Clique em “Gravar autoteste” e percorra o cenário: cliques, digitação, seleção. Adicione verificações ✓ — “o texto apareceu”, “o endereço contém /success”. Salve e execute todos os cenários após cada lançamento: o que passou, o que falhou, em qual etapa, com captura.</p></article>
+<article><div class="fi">🤖</div><h3>Autotestes a partir de uma gravação</h3><p>Clique em “Gravar autoteste” e percorra o cenário: cliques, digitação, seleção. Já percorreu? “🤖 Autoteste das últimas ações” monta as etapas a partir do que você fez no período escolhido. Adicione verificações ✓ — “o texto apareceu”, “o endereço contém /success”. Salve e execute todos os cenários após cada lançamento: o que passou, o que falhou, em qual etapa, com captura.</p></article>
 <article><div class="fi">🎭</div><h3>Exportação para Playwright</h3><p>Cada cenário é baixado como teste <code>.spec.ts</code> pronto com configuração — os desenvolvedores o conectam à CI. Erros de console contam como falha, como na extensão.</p></article>
 <article><div class="fi">🔌</div><h3>Testes de API pelo Swagger e Postman</h3><p>Importe uma especificação e a extensão verifica sozinha cada endpoint: dados corretos, incompletos e inválidos, sem token, objetos inexistentes, cadeias “criar → obter → alterar → excluir” e ordem errada de requisições. O resultado: “o que há de errado com a API” com explicações: quedas 500, aceitação de dados quebrados, divergência do schema, vazamentos, acesso sem autorização.</p></article>
 <article><div class="fi">🧪</div><h3>Simulação de respostas da API</h3><p>Erro 500, 401, lista vazia, atraso de 5 segundos, “sem rede” — para qualquer requisição. Dá para pegar a resposta real e editá-la. As requisições simuladas são marcadas no relatório para não serem confundidas com um bug.</p></article>
@@ -367,7 +367,7 @@
 <div class="rm-grid">
 <div class="rm"><span>Em breve</span>Servidor MCP: relatórios disponíveis direto para Claude Code, Cursor e Claude Desktop — “corrija o erro 3 do último relatório”</div>
 <div class="rm"><span>Em breve</span>Voz → texto: ditado de comentários com reconhecimento de fala</div>
-<div class="rm"><span>Ideia</span>Vídeo dos “últimos 30 segundos” e gravação retroativa do DOM (rrweb)</div>
+<div class="rm"><span>Ideia</span>Busca de bugs parecidos no histórico de relatórios</div>
 <div class="rm"><span>Ideia</span>Desfoque de dados pessoais nas capturas</div>
 <div class="rm"><span>Ideia</span>Modelos de relatório por projeto e exportação em PDF</div>
 </div>

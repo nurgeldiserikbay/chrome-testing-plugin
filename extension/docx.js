@@ -85,11 +85,12 @@
       return this;
     }
 
-    /** PNG bytes + размеры в пикселях */
+    /** PNG/JPEG bytes + размеры в пикселях */
     image(bytes, wPx, hPx, maxWidthTwips = TEXT_WIDTH) {
       const id = this.images.length + 1;
       const rid = 'rIdImg' + id;
-      this.images.push({ name: `image${id}.png`, bytes, rid });
+      const ext = bytes && bytes[0] === 0xff && bytes[1] === 0xd8 ? 'jpeg' : 'png';
+      this.images.push({ name: `image${id}.${ext}`, bytes, rid });
       const maxEmu = maxWidthTwips * EMU_PER_TWIP;
       let cx = Math.round(wPx * 9525);
       let cy = Math.round(hPx * 9525);
@@ -101,7 +102,7 @@
         `<wp:docPr id="${id}" name="Picture ${id}"/>` +
         `<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>` +
         `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic>` +
-        `<pic:nvPicPr><pic:cNvPr id="${id}" name="image${id}.png"/><pic:cNvPicPr/></pic:nvPicPr>` +
+        `<pic:nvPicPr><pic:cNvPr id="${id}" name="image${id}.${ext}"/><pic:cNvPicPr/></pic:nvPicPr>` +
         `<pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
         `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
         `</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
@@ -130,7 +131,7 @@
         `</w:styles>`;
       const ct =
         `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
-        `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>` +
+        `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/>` +
         `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
         `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
         `<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`;

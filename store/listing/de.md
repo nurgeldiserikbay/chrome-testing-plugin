@@ -1,6 +1,6 @@
 Bug gefunden? In 10 Sekunden festhalten.
 
-QA Bug Recorder macht aus einem Bug einen fertigen Bericht: Prüfung starten, die Website wie gewohnt nutzen — die Erweiterung sammelt alles, was ein Entwickler braucht.
+Vorher muss nichts eingeschaltet werden: Die Erweiterung merkt sich die letzten Minuten auf dem Tab. Bug bemerkt? „Bug gefunden“ drücken, 30 s, 1, 2 oder 5 Minuten wählen — und Sie erhalten einen Bericht mit Bildschirm-Wiedergabe, Screenshots nach jeder Aktion, Schritten, Anfragen und Konsolenfehlern. Ohne Neuladen, ohne erneutes Reproduzieren.
 
 FEHLER WERDEN AUTOMATISCH ERFASST
 • Ein Konsolenfehler oder eine fehlgeschlagene Anfrage wird ein eigener Punkt: Screenshot, Fehlertext, Anfrage mit Serverantwort und Ihre Aktionen davor.

@@ -30,10 +30,11 @@
   const hdrText = (h) => Object.entries(h || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
   const short = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) + '…' : s; };
 
+  const fmtPeriod = (ms) => { const s = Math.round(ms / 1000); return s < 60 ? `${s} с` : `${Math.round(s / 60)} мин`; };
   function describeAction(a) {
     const t = a.text ? `«${a.text}»` : a.selector ? `\`${short(a.selector, 60)}\`` : a.tag;
     switch (a.kind) {
-      case 'click': return `Клик: ${t}${a.tag && a.tag !== 'a' && a.tag !== 'button' ? ` (${a.tag})` : ''}`;
+      case 'click': return a.tag === 'input' && /^(checkbox|radio)$/i.test(a.type || '') && a.desc ? `Клик: ${a.desc}` : `Клик: ${t}${a.tag && a.tag !== 'a' && a.tag !== 'button' ? ` (${a.tag})` : ''}`;
       case 'input': return `Ввод в поле «${a.label || a.selector}»: ${a.value === '' ? '(пусто)' : `«${a.value}»`}`;
       case 'select': return `Выбор в «${a.label || a.selector}»: «${a.value}»`;
       case 'toggle': return `Переключение «${a.label || a.selector}»: ${a.value}`;
@@ -100,7 +101,8 @@
       h3{font-size:15px;margin:20px 0 8px} .sub2{display:block;color:var(--muted);font-family:ui-monospace,Consolas,monospace;font-size:11.5px;white-space:pre-wrap}
       .item .ih{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px} .item img{width:100%;border:1px solid var(--line);border-radius:8px;margin:6px 0}
       .errcard{border-left:4px solid var(--red)} .ih.error .num{background:#c2410c} .ih.recording .num{background:#1f2937}
-      ol{padding-left:22px} .foot{color:var(--muted);font-size:12px;margin-top:40px;text-align:center}`;
+      ol{padding-left:22px} .foot{color:var(--muted);font-size:12px;margin-top:40px;text-align:center}
+      .story{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:8px 0} .story figure{margin:0} .story img{margin:0!important} .story figcaption{font-size:12px;color:var(--muted)} .rrp{margin:8px 0;overflow:auto}`;
     const tblEnv = `<table>${m.env.map(([k, v]) => `<tr><th style="width:220px">${escH(k)}</th><td class="u">${escH(v)}</td></tr>`).join('')}</table>`;
 
     const block = (lbl, txt) => (txt ? `<div class="card"><div class="label">${lbl}</div><div class="pre">${escH(txt)}</div></div>` : '');
@@ -178,7 +180,7 @@ ${htmlPerf(m.perf)}
 ${m.events && m.events.length ? `<h2>События страницы (${m.events.length})</h2><table><tr><th style="width:80px">Время</th><th style="width:110px">Тип</th><th>Событие</th></tr>${m.events.map((e) => `<tr class="${e.level === 'error' ? 'err' : e.level === 'warn' ? 'warn' : ''}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.cat)}</td><td>${escH(e.text)}</td></tr>`).join('')}</table>` : ''}
 ${htmlStorage(m.storage)}
 <p class="foot">Сформировано расширением QA Bug Recorder · ${escH(m.generatedAt)}</p>
-</div></body></html>`;
+</div>${rrScript(media)}</body></html>`;
   }
 
   // ---------------- Markdown ----------------
@@ -258,12 +260,20 @@ ${htmlStorage(m.storage)}
     return md;
   }
 
+  // ⏪ плеер повтора внутри HTML-отчёта (только если повтор встроен)
+  function rrScript(media) {
+    const rr = media && media.__rr;
+    if (!rr) return '';
+    const safe = (x) => JSON.stringify(x).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+    return `<style>${rr.css}</style><script>${rr.js.replace(/<\/script/gi, '<\\/script')}<\/script><script>(function(){var R=${safe(rr.events)};document.querySelectorAll('.rrp[data-f]').forEach(function(el){var x=R[el.getAttribute('data-f')];if(!x)return;var w=Math.min(el.clientWidth||900,1060);var p=new rrwebPlayer({target:el,props:{events:x.ev,width:w,height:Math.round(w*0.56),autoPlay:false,skipInactive:true}});if(x.off>500)setTimeout(function(){try{p.goto(x.off,false)}catch(e){}},50);});})();<\/script>`;
+  }
+
   // ================= пункты: замечание / ошибка / запись =================
   const ITEM_RU = { remark: 'Замечание', error: 'Ошибка', recording: 'Запись видео' };
   const itemTitle = (it) =>
     it.kind === 'remark' ? `💬 Замечание ${it.n}: ${short(it.comment || '(без комментария)', 90)}`
       : it.kind === 'error' ? `⚠ Ошибка ${it.n}: ${short(it.title, 110)}`
-        : `🎬 Запись ${it.n} · ${fmtDur(it.durationMs)}`;
+        : it.retro ? `⏪ Нашёл баг · последние ${fmtPeriod(it.durationMs)}` : `🎬 Запись ${it.n} · ${fmtDur(it.durationMs)}`;
   const reqLine = (e) => `${e.method} ${statusLabel(e)} ${e.url}${e.duration != null ? ` · ${fmtDur(e.duration)}` : ''}${e.error ? ` — ${e.error}` : ''}`;
 
   // ---------- 🤖 разбор AI ----------
@@ -330,7 +340,9 @@ ${htmlStorage(m.storage)}
       });
       if (it.before.length) { L.push('', 'Шаги перед ошибкой:'); it.before.slice(-8).forEach((b, i) => L.push(`${i + 1}. ${b.text}`)); }
     } else {
-      L.push(`🎬 **Запись видео** · ${fmtDur(it.durationMs)} (видео — отдельным файлом)`);
+      L.push(it.retro ? `⏪ **Нашёл баг · последние ${fmtPeriod(it.durationMs)}**${it.replayN ? ' (повтор экрана — отдельным файлом)' : ''}` : `🎬 **Запись видео** · ${fmtDur(it.durationMs)} (видео — отдельным файлом)`);
+      if (it.url) L.push(`Страница: ${it.url}`);
+      if (it.cond) L.push(`Условия: ${it.cond}`);
       sevLine();
       const bad = it.timeline.filter((e) => e.level === 'error' || e.level === 'warn');
       const reqBad = it.requests.filter(isErr);
@@ -374,8 +386,10 @@ ${htmlStorage(m.storage)}
           ${it.requestsNear.length ? `<h3>Запросы рядом</h3>${tbl(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], it.requestsNear.map((e) => `<tr class="${isErr(e) ? 'err' : ''}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.method)}</td><td>${escH(statusLabel(e))}</td><td class="u mono">${escH(short(e.url, 200))}</td><td>${fmtDur(e.duration)}</td></tr>`))}` : ''}
         </div>`;
       }
+      const retroTop = it.retro ? `${it.replayN ? (media.__rr ? `<div class="rrp" data-f="${escH(it.replayFile)}"></div>` : `<p class="meta">⏪ Повтор экрана: файл <b>${escH(it.replayFile)}</b> прикладывается отдельно — откройте его в браузере.</p>`) : ''}
+        ${(it.story || []).length ? `<h3>Скриншоты после действий</h3><div class="story">${it.story.map((x) => `<figure>${x.dataUrl ? `<img src="${x.dataUrl}" alt="">` : ''}<figcaption><b>${fmtRel(x.rel)}</b> ${escH(x.label)}</figcaption></figure>`).join('')}</div>` : ''}` : '';
       return `<div class="card item">${head}
-        ${media[it.file] ? `<video controls preload="metadata" src="${media[it.file]}"></video>` : it.link ? `<p>🎬 Видео в Google Drive: <a href="${escH(it.link)}">${escH(it.link)}</a></p>` : `<p class="meta">Видео: файл <b>${escH(it.file)}</b> (${fmtSize(it.size)}) прикладывается отдельно.</p>`}
+        ${it.retro ? retroTop : media[it.file] ? `<video controls preload="metadata" src="${media[it.file]}"></video>` : it.link ? `<p>🎬 Видео в Google Drive: <a href="${escH(it.link)}">${escH(it.link)}</a></p>` : `<p class="meta">Видео: файл <b>${escH(it.file)}</b> (${fmtSize(it.size)}) прикладывается отдельно.</p>`}
         ${aiHTML(it.ai)}
         ${it.timeline.length ? `<h3>Что происходило во время записи</h3>${tbl(['Время', 'Тип', 'Событие'], it.timeline.map((e) => `<tr class="${lvlCls(e.level)}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.cat)}</td><td>${escH(e.text)}</td></tr>`))}` : ''}
         ${it.requests.length ? `<h3>Запросы</h3>${tbl(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], it.requests.map((e) => `<tr class="${isErr(e) ? 'err' : ''}"><td class="mono">${fmtRel(e.rel)}</td><td>${escH(e.method)}</td><td>${escH(statusLabel(e))}</td><td class="u mono">${escH(short(e.url, 200))}</td><td>${fmtDur(e.duration)}</td></tr>`))}${it.requests.filter((e) => isErr(e) && (e.body || e.postData || hasH(e.reqHeaders))).map(reqDetails).join('')}` : ''}
@@ -398,7 +412,7 @@ ${htmlStorage(m.storage)}
       return s + '\n';
     };
     m.items.forEach((it) => {
-      md += `### ${itemTitle(it)}\n\n${it.sevLabel ? `**${it.sevLabel}** · ` : ''}_${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}${it.url ? ` · ${it.url}` : ''}_\n\n${it.cond ? `📶 Условия: ${it.cond}\n\n` : ''}`;
+      md += `### ${itemTitle(it)}\n\n${it.sevLabel ? `**${it.sevLabel}** · ` : ''}_${(it.retro ? 'Последние минуты' : ITEM_RU[it.kind])} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}${it.url ? ` · ${it.url}` : ''}_\n\n${it.cond ? `📶 Условия: ${it.cond}\n\n` : ''}`;
       if (it.kind === 'remark') {
         if (it.comment && it.comment.includes('\n')) md += it.comment + '\n\n';
         if (it.element) md += `Элемент: \`${it.element.selector}\` — <${it.element.tag}>, ${Math.round(it.element.rect.w)}×${Math.round(it.element.rect.h)}\n\n`;
@@ -413,7 +427,10 @@ ${htmlStorage(m.storage)}
         if (it.consoleNear.length) md += '**Консоль рядом**\n\n' + mdTable(['Время', 'Уровень', 'Сообщение'], it.consoleNear.map((c) => [fmtRel(c.rel), LEVEL_RU[c.level] || c.level, mdCell(c.text, 500)])) + '\n';
         if (it.requestsNear.length) md += '**Запросы рядом**\n\n' + mdTable(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], it.requestsNear.map((e) => [fmtRel(e.rel), e.method, (isErr(e) ? '🔴 ' : '') + statusLabel(e), mdCell(e.url, 200), fmtDur(e.duration)])) + '\n';
       } else {
-        md += `🎬 [Видео](${it.link || it.file}) — ${fmtDur(it.durationMs)}, ${fmtSize(it.size)}\n\n`;
+        if (it.retro) {
+          if (it.replayN) md += `⏪ [Повтор экрана](${it.replayFile}) — откройте файл в браузере\n\n`;
+          if ((it.story || []).length) md += '**Скриншоты после действий**\n\n' + it.story.map((x) => `${fmtRel(x.rel)} — ${x.label}\n\n![${mdCell(x.label, 80)}](${x.file})`).join('\n\n') + '\n\n';
+        } else md += `🎬 [Видео](${it.link || it.file}) — ${fmtDur(it.durationMs)}, ${fmtSize(it.size)}\n\n`;
         if (it.timeline.length) md += '**Что происходило во время записи**\n\n' + mdTable(['Время', 'Тип', 'Событие'], it.timeline.map((e) => [fmtRel(e.rel), e.cat, (e.level === 'error' ? '🔴 ' : e.level === 'warn' ? '🟡 ' : '') + mdCell(e.text, 300)])) + '\n';
         if (it.requests.length) md += '**Запросы**\n\n' + mdTable(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], it.requests.map((e) => [fmtRel(e.rel), e.method, (isErr(e) ? '🔴 ' : '') + statusLabel(e), mdCell(e.url, 200), fmtDur(e.duration)])) + '\n' + it.requests.filter((e) => isErr(e) && (e.body || e.postData)).map(reqMD).join('');
         if (it.console.length) md += '**Консоль**\n\n' + mdTable(['Время', 'Уровень', 'Сообщение'], it.console.map((c) => [fmtRel(c.rel), LEVEL_RU[c.level] || c.level, mdCell(c.text, 500)])) + '\n';
@@ -439,7 +456,7 @@ ${htmlStorage(m.storage)}
     const lvlFill = (l) => (l === 'error' ? 'FEF2F2' : l === 'warn' ? 'FFFBEB' : undefined);
     m.items.forEach((it) => {
       d.h(itemTitle(it), 2);
-      d.p([it.sevLabel ? d.run(it.sevLabel + ' · ', { bold: true, size: 18 }) : '', d.run(`${ITEM_RU[it.kind]} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}`, { color: '6B7280', size: 18 }), it.url ? d.run(' · ' + it.url, { color: '6B7280', size: 18 }) : '']);
+      d.p([it.sevLabel ? d.run(it.sevLabel + ' · ', { bold: true, size: 18 }) : '', d.run(`${(it.retro ? 'Последние минуты' : ITEM_RU[it.kind])} · ${fmtRel(it.rel)}${it.count > 1 ? ` · повторялась ${it.count} раз` : ''}`, { color: '6B7280', size: 18 }), it.url ? d.run(' · ' + it.url, { color: '6B7280', size: 18 }) : '']);
       if (it.cond) d.p(`📶 Условия: ${it.cond}`, { run: { color: '6D28D9', size: 18 } });
       if (it.kind === 'remark') {
         if (it.comment && it.comment.includes('\n')) d.p(it.comment);
@@ -455,7 +472,10 @@ ${htmlStorage(m.storage)}
         if (it.consoleNear.length) { d.h('Консоль рядом', 3); d.table([['Время', 'Уровень', 'Сообщение'], ...it.consoleNear.map((c) => [{ text: fmtRel(c.rel), fill: lvlFill(c.level) }, { text: LEVEL_RU[c.level] || c.level, fill: lvlFill(c.level) }, { text: short(c.text, 1500), mono: true, fill: lvlFill(c.level) }])], { widths: [1000, 1300, W - 2300] }); }
         if (it.requestsNear.length) { d.h('Запросы рядом', 3); d.table([['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], ...it.requestsNear.map((e) => { const f = isErr(e) ? 'FEF2F2' : undefined; return [{ text: fmtRel(e.rel), fill: f }, { text: e.method, fill: f }, { text: statusLabel(e), fill: f, bold: isErr(e) }, { text: short(e.url, 250), mono: true, fill: f }, { text: fmtDur(e.duration), fill: f }]; })], { widths: [950, 800, 850, W - 3500, 900] }); }
       } else {
-        d.p(it.link ? `🎬 Видео в Google Drive (${fmtDur(it.durationMs)}): ${it.link}` : `🎬 Видео: файл «${it.file.split('/').pop()}», ${fmtDur(it.durationMs)}, ${fmtSize(it.size)}. Прикладывается отдельным файлом.`);
+        if (it.retro) {
+          if (it.replayN) d.p(`⏪ Повтор экрана: файл «${it.replayFile.split('/').pop()}» прикладывается отдельно — откройте его в браузере.`);
+          if ((it.story || []).length) { d.h('Скриншоты после действий', 3); it.story.forEach((x) => { d.p(`${fmtRel(x.rel)} — ${x.label}`, { run: { size: 18, color: '6B7280' } }); if (x.bytes && x.w) d.image(x.bytes, x.w, x.h); }); }
+        } else d.p(it.link ? `🎬 Видео в Google Drive (${fmtDur(it.durationMs)}): ${it.link}` : `🎬 Видео: файл «${it.file.split('/').pop()}», ${fmtDur(it.durationMs)}, ${fmtSize(it.size)}. Прикладывается отдельным файлом.`);
         if (it.timeline.length) { d.h('Что происходило во время записи', 3); d.table([['Время', 'Тип', 'Событие'], ...it.timeline.map((e) => [{ text: fmtRel(e.rel), fill: lvlFill(e.level) }, { text: e.cat, fill: lvlFill(e.level) }, { text: e.text, fill: lvlFill(e.level) }])], { widths: [1000, 1500, W - 2500] }); }
         if (it.requests.length) { d.h('Запросы', 3); d.table([['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], ...it.requests.map((e) => { const f = isErr(e) ? 'FEF2F2' : undefined; return [{ text: fmtRel(e.rel), fill: f }, { text: e.method, fill: f }, { text: statusLabel(e), fill: f, bold: isErr(e) }, { text: short(e.url, 250), mono: true, fill: f }, { text: fmtDur(e.duration), fill: f }]; })], { widths: [950, 800, 850, W - 3500, 900] }); it.requests.filter((e) => isErr(e) && (e.body || e.postData)).forEach(reqDoc); }
         if (it.console.length) { d.h('Консоль', 3); d.table([['Время', 'Уровень', 'Сообщение'], ...it.console.map((c) => [{ text: fmtRel(c.rel), fill: lvlFill(c.level) }, { text: LEVEL_RU[c.level] || c.level, fill: lvlFill(c.level) }, { text: short(c.text, 1500), mono: true, fill: lvlFill(c.level) }])], { widths: [1000, 1300, W - 2300] }); }
@@ -676,5 +696,5 @@ ${htmlStorage(m.storage)}
   }
 
   const TR = (f) => (...a) => { const r = f(...a); return typeof r === 'string' && globalThis.QAI18N ? QAI18N.T(r) : r; };
-  g.QAExport = { itemText: TR(itemText), aiLines, mdLite, exportHTML: TR(exportHTML), exportMarkdown: TR(exportMarkdown), exportDOCX, exportHAR, describeAction, fmtRel, fmtDur, fmtSize, statusLabel, isErr, LEVEL_RU, KIND_RU };
+  g.QAExport = { itemText: TR(itemText), aiLines, mdLite, exportHTML: TR(exportHTML), exportMarkdown: TR(exportMarkdown), exportDOCX, exportHAR, describeAction, fmtRel, fmtDur, fmtPeriod, fmtSize, statusLabel, isErr, LEVEL_RU, KIND_RU };
 })(typeof window !== 'undefined' ? window : globalThis);

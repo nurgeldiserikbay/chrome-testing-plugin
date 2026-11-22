@@ -31,7 +31,7 @@
 <div class="hero-copy">
 <div class="eyebrow"><span class="dot"></span> Chrome extension · free · no sign-up</div>
 <h1>Found a bug —<br/>capture it<br/><em>in 10 seconds</em></h1>
-<p class="lead">Turn on the check and use the site. The extension catches console errors and failed requests by itself — with a screenshot and full context. Your remarks with an arrow or a frame become separate items. The finished report goes to Word, Markdown or HTML.</p>
+<p class="lead">Work with the site as usual. Noticed a bug — press “🐞 Found a bug” and choose a period: the last 30 seconds, a minute or 5 minutes. The extension already remembers what happened: screen replay, screenshots after actions, console errors and failed requests. Remarks with an arrow or a frame become separate items. The finished report goes to Word, Markdown or HTML.</p>
 <div class="cta">
 <a class="btn btn-red" download="" href="../qa-bug-recorder.zip">
 <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewbox="0 0 24 24" width="18"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"></path></svg>
@@ -90,8 +90,8 @@
 <div class="step">
 <div class="step-text">
 <div class="num">01</div>
-<h3>Turn on the check and work as usual</h3>
-<p>Click <b>“▶ Start check”</b> or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>. As soon as an error appears in the console or a request fails, the extension <b>saves it as a separate item by itself</b>: a screenshot at that moment, the error text, the request with the server response and your actions before it.</p>
+<h3>Work as usual — the extension remembers the last minutes</h3>
+<p>Nothing needs to be turned on in advance. Noticed a bug — press <b>“🐞 Found a bug”</b> or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd> and choose a period. The report gets <b>a screen replay and screenshots after every action</b>, errors, requests and steps — no page reload and no reproducing it again. Console errors and failed requests are saved as separate items by themselves: a screenshot, the error text, the request with the server response and your actions before it.</p>
 <ul class="ticks">
 <li>Repeats of the same error are counted, not duplicated</li>
 <li>Errors of third-party scripts and services are not saved, an unwanted one can be ignored (🙈)</li>
@@ -176,7 +176,7 @@
 <div class="kicker light">Tester tools</div>
 <h2 class="h2 light">Regression with one button and edge cases without the backend</h2>
 <div class="fgrid">
-<article><div class="fi">🤖</div><h3>Autotests from a recording</h3><p>Click “Record autotest” and go through the scenario: clicks, typing, selection. Add ✓ checks — “text appeared”, “URL contains /success”. Save it — and run all scenarios after every release: what passed, what failed, at which step, with a screenshot.</p></article>
+<article><div class="fi">🤖</div><h3>Autotests from a recording</h3><p>Click “Record autotest” and go through the scenario: clicks, typing, selection. Already went through it? “🤖 Autotest from recent actions” builds the steps from what you did during the chosen period. Add ✓ checks — “text appeared”, “URL contains /success”. Save it — and run all scenarios after every release: what passed, what failed, at which step, with a screenshot.</p></article>
 <article><div class="fi">🎭</div><h3>Export to Playwright</h3><p>Every scenario downloads as a ready <code>.spec.ts</code> test with a config — developers plug it into CI. Console errors count as a failure, just like in the extension.</p></article>
 <article><div class="fi">🔌</div><h3>API tests from Swagger and Postman</h3><p>Import a specification — the extension checks every endpoint by itself: valid, incomplete and invalid data, no token, non-existent objects, “create → get → update → delete” chains and wrong request order. The result is “what is wrong with the API” with explanations: 500 crashes, accepting broken data, schema mismatches, leaks, access without authorization.</p></article>
 <article><div class="fi">🧪</div><h3>API response mocking</h3><p>Error 500, 401, an empty list, a 5-second delay, “no network” — for any request. You can take the real response and edit it. Mocked requests are marked in the report so they are not mistaken for a bug.</p></article>
@@ -367,7 +367,7 @@
 <div class="rm-grid">
 <div class="rm"><span>Soon</span>MCP server: reports available to Claude Code, Cursor and Claude Desktop directly — “fix error 3 from the latest report”</div>
 <div class="rm"><span>Soon</span>Voice → text: dictating a comment with speech recognition</div>
-<div class="rm"><span>Idea</span>“Last 30 seconds” video and retroactive DOM recording (rrweb)</div>
+<div class="rm"><span>Idea</span>Finding similar bugs in the report history</div>
 <div class="rm"><span>Idea</span>Blurring personal data on screenshots</div>
 <div class="rm"><span>Idea</span>Per-project report templates and PDF export</div>
 </div>

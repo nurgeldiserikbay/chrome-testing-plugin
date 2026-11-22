@@ -6,7 +6,7 @@
     "message": "Bug reports with marks, video, voice, console, requests and actions. Site audit, AI analysis, autotests, API tests, export."
   },
   "cmd_found": {
-    "message": "Start check / open panel"
+    "message": "Found a bug (last minute) / open panel"
   },
   "cmd_pick": {
     "message": "Select an element for a remark"

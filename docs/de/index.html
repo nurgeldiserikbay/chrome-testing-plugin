@@ -31,7 +31,7 @@
 <div class="hero-copy">
 <div class="eyebrow"><span class="dot"></span> Chrome-Erweiterung · kostenlos · ohne Registrierung</div>
 <h1>Bug gefunden?<br/>Festhalten<br/><em>in 10 Sekunden</em></h1>
-<p class="lead">Starten Sie die Prüfung und nutzen Sie die Website. Konsolenfehler und fehlgeschlagene Anfragen fängt die Erweiterung selbst ab — mit Screenshot und vollem Kontext. Ihre Anmerkungen mit Pfeil oder Rahmen werden zu eigenen Punkten. Der fertige Bericht geht nach Word, Markdown oder HTML.</p>
+<p class="lead">Nutzen Sie die Website wie gewohnt. Bug bemerkt? Drücken Sie „🐞 Bug gefunden“ und wählen Sie einen Zeitraum: die letzten 30 Sekunden, eine Minute oder 5 Minuten. Die Erweiterung weiß bereits, was passiert ist: Bildschirm-Wiedergabe, Screenshots nach Aktionen, Konsolenfehler und fehlgeschlagene Anfragen. Anmerkungen mit Pfeil oder Rahmen werden eigene Punkte. Der fertige Bericht geht nach Word, Markdown oder HTML.</p>
 <div class="cta">
 <a class="btn btn-red" download="" href="../qa-bug-recorder.zip">
 <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewbox="0 0 24 24" width="18"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"></path></svg>
@@ -90,8 +90,8 @@
 <div class="step">
 <div class="step-text">
 <div class="num">01</div>
-<h3>Prüfung starten und wie gewohnt arbeiten</h3>
-<p>Klicken Sie auf <b>„▶ Prüfung starten“</b> oder <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>. Sobald in der Konsole ein Fehler erscheint oder eine Anfrage fehlschlägt, <b>speichert die Erweiterung ihn selbst als eigenen Punkt</b>: Screenshot in diesem Moment, Fehlertext, Anfrage mit Serverantwort und Ihre Aktionen davor.</p>
+<h3>Wie gewohnt arbeiten — die Erweiterung merkt sich die letzten Minuten</h3>
+<p>Vorher muss nichts eingeschaltet werden. Bug bemerkt? Drücken Sie <b>„🐞 Bug gefunden“</b> oder <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd> und wählen Sie einen Zeitraum. In den Bericht kommen <b>Bildschirm-Wiedergabe und Screenshots nach jeder Aktion</b>, Fehler, Anfragen und Schritte — ohne Neuladen und ohne erneutes Reproduzieren. Konsolenfehler und fehlgeschlagene Anfragen werden von selbst als eigene Punkte gespeichert: Screenshot, Fehlertext, Anfrage mit Serverantwort und Ihre Aktionen davor.</p>
 <ul class="ticks">
 <li>Wiederholungen desselben Fehlers werden gezählt, nicht dupliziert</li>
 <li>Fehler fremder Skripte und Dienste werden nicht gespeichert, unnötige lassen sich ignorieren (🙈)</li>
@@ -176,7 +176,7 @@
 <div class="kicker light">Werkzeuge für Tester</div>
 <h2 class="h2 light">Regression per Knopfdruck und Grenzfälle ohne Backend</h2>
 <div class="fgrid">
-<article><div class="fi">🤖</div><h3>Autotests aus einer Aufnahme</h3><p>Klicken Sie auf „Autotest aufnehmen“ und durchlaufen Sie das Szenario: Klicks, Eingaben, Auswahl. Setzen Sie ✓-Prüfungen — „Text erschienen“, „Adresse enthält /success“. Speichern — und nach jedem Release alle Szenarien ausführen: was bestanden, was fehlgeschlagen ist, bei welchem Schritt, mit Screenshot.</p></article>
+<article><div class="fi">🤖</div><h3>Autotests aus einer Aufnahme</h3><p>Klicken Sie auf „Autotest aufnehmen“ und durchlaufen Sie das Szenario: Klicks, Eingaben, Auswahl. Schon durchlaufen? „🤖 Autotest aus letzten Aktionen“ erstellt die Schritte aus dem, was Sie im gewählten Zeitraum getan haben. Setzen Sie ✓-Prüfungen — „Text erschienen“, „Adresse enthält /success“. Speichern — und nach jedem Release alle Szenarien ausführen: was bestanden, was fehlgeschlagen ist, bei welchem Schritt, mit Screenshot.</p></article>
 <article><div class="fi">🎭</div><h3>Export nach Playwright</h3><p>Jedes Szenario wird als fertiger <code>.spec.ts</code>-Test mit Konfiguration heruntergeladen — Entwickler binden ihn in die CI ein. Konsolenfehler gelten als Fehlschlag, wie in der Erweiterung.</p></article>
 <article><div class="fi">🔌</div><h3>API-Tests aus Swagger und Postman</h3><p>Spezifikation importieren — die Erweiterung prüft jeden Endpunkt selbst: gültige, unvollständige und ungültige Daten, ohne Token, nicht vorhandene Objekte, Ketten „erstellen → abrufen → ändern → löschen“ und falsche Reihenfolge der Anfragen. Ergebnis: „Was mit der API nicht stimmt“ mit Erklärungen: 500er-Abstürze, Annahme kaputter Daten, Schema-Abweichungen, Lecks, Zugriff ohne Autorisierung.</p></article>
 <article><div class="fi">🧪</div><h3>Mocking von API-Antworten</h3><p>Fehler 500, 401, leere Liste, 5 Sekunden Verzögerung, „kein Netzwerk“ — für jede Anfrage. Die echte Antwort lässt sich übernehmen und bearbeiten. Gemockte Anfragen sind im Bericht markiert, damit sie nicht für einen Bug gehalten werden.</p></article>
@@ -367,7 +367,7 @@
 <div class="rm-grid">
 <div class="rm"><span>Bald</span>MCP-Server: Berichte direkt verfügbar für Claude Code, Cursor und Claude Desktop — „behebe Fehler 3 aus dem letzten Bericht“</div>
 <div class="rm"><span>Bald</span>Stimme → Text: Diktieren eines Kommentars mit Spracherkennung</div>
-<div class="rm"><span>Idee</span>Video der „letzten 30 Sekunden“ und rückwirkende DOM-Aufzeichnung (rrweb)</div>
+<div class="rm"><span>Idee</span>Suche nach ähnlichen Bugs im Berichtsverlauf</div>
 <div class="rm"><span>Idee</span>Unkenntlichmachen persönlicher Daten auf Screenshots</div>
 <div class="rm"><span>Idee</span>Berichtsvorlagen pro Projekt und PDF-Export</div>
 </div>

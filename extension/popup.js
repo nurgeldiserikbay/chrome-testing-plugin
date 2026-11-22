@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
-const DEF = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true };
+const DEF = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true, replay: true, actShots: true, retroSec: 60 };
+let retroSec = 60;
 let st = null;
 
 const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
@@ -9,7 +10,9 @@ function showErr(t) { $('err').textContent = t; $('err').hidden = !t; }
 async function loadSettings() {
   const { qa_settings } = await chrome.storage.local.get('qa_settings');
   const s = Object.assign({}, DEF, qa_settings);
-  ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders', 'autoErrors', 'ownOnly', 'autoAudit'].forEach((k) => {
+  retroSec = s.retroSec || 60;
+  showPer();
+  ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders', 'autoErrors', 'ownOnly', 'autoAudit', 'replay', 'actShots'].forEach((k) => {
     $('s-' + k).checked = !!s[k];
     $('s-' + k).onchange = save;
   });
@@ -33,6 +36,9 @@ async function save(e) {
       ownOnly: $('s-ownOnly').checked,
       autoAudit: $('s-autoAudit').checked,
       bufferMin: +$('s-bufferMin').value,
+      replay: $('s-replay').checked,
+      actShots: $('s-actShots').checked,
+      retroSec,
     },
   });
 }
@@ -65,17 +71,50 @@ async function bufferInfo() {
     if (!b) { $('buf').innerHTML = '<span>Буфер пуст — обновите страницу, чтобы начать сбор</span>'; return; }
     const errs = b.console.filter((c) => c.level === 'error').length;
     const netErr = b.network.filter((n) => n.failed || n.status >= 400).length;
+    const ri = await send({ type: 'retro-info', tabId: tab.id }).catch(() => null);
+    const mins = ri && ri.replayFrom ? Math.max(1, Math.round((Date.now() - ri.replayFrom) / 60000)) : 0;
     $('buf').innerHTML = `<span>${b.actions.length} действий</span><span>${b.network.length} запросов</span><span>${b.console.length} логов</span>` +
-      (errs + netErr ? `<span class="bad">${errs + netErr} ошибок</span>` : '');
+      (errs + netErr ? `<span class="bad">${errs + netErr} ошибок</span>` : '') +
+      (ri && ri.replay && mins ? `<span>⏪ повтор ~${mins} мин</span>` : '') + (ri && ri.shots ? `<span>📸 ${ri.shots}</span>` : '');
   } catch (_) {}
 }
+
+// ⏪ период «за последние …»
+const perLabel = (s) => (s < 60 ? `${s} с` : `${s / 60} мин`);
+function showPer() {
+  document.querySelectorAll('#per [data-s]').forEach((b) => b.classList.toggle('on', +b.dataset.s === retroSec));
+  document.querySelectorAll('.pl').forEach((x) => (x.textContent = perLabel(retroSec)));
+}
+document.querySelectorAll('#per [data-s]').forEach((b) => (b.onclick = () => { retroSec = +b.dataset.s; showPer(); save(); }));
 
 $('found').onclick = async () => {
   showErr('');
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   $('found').disabled = true;
-  const r = await send({ type: 'start-bug', tabId: tab.id });
+  const r = await send({ type: 'found-bug', tabId: tab.id, sec: retroSec });
   $('found').disabled = false;
+  if (r && r.ok === false) { showErr(r.error); return; }
+  window.close();
+};
+$('start').onclick = async () => {
+  showErr('');
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const r = await send({ type: 'start-bug', tabId: tab.id });
+  if (r && r.ok === false) { showErr(r.error); return; }
+  window.close();
+};
+$('retro-add').onclick = async () => {
+  showErr('');
+  $('retro-add').disabled = true;
+  const r = await send({ type: 'retro-add', sec: retroSec });
+  $('retro-add').disabled = false;
+  if (r && r.ok === false) { showErr(r.error); return; }
+  window.close();
+};
+$('rtest').onclick = async () => {
+  showErr('');
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const r = await send({ type: 'retro-test', tabId: tab.id, sec: retroSec });
   if (r && r.ok === false) { showErr(r.error); return; }
   window.close();
 };
@@ -114,7 +153,7 @@ async function showShortcut() {
   try {
     const c = (await chrome.commands.getAll()).find((x) => x.name === 'found-bug');
     const k = $('keys');
-    if (c && c.shortcut) { k.textContent = `${c.shortcut} — начать проверку`; k.classList.remove('warn'); }
+    if (c && c.shortcut) { k.textContent = `${c.shortcut} — нашёл баг`; k.classList.remove('warn'); }
     else { k.textContent = '⚠ Горячая клавиша не назначена — настроить'; k.classList.add('warn'); }
   } catch (_) {}
 }
@@ -189,7 +228,7 @@ recState();
 condInit();
 
 $('s-lang').innerHTML = [['auto', 'Как в браузере / Browser']].concat(Object.entries(QAI18N.LANGS)).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-chrome.storage.local.get(['qa_lang', 'qa_consent']).then((o) => { $('s-lang').value = o.qa_lang || 'auto'; $('consent').hidden = !!o.qa_consent; });
+chrome.storage.local.get(['qa_lang', 'qa_consent']).then((o) => { $('s-lang').value = o.qa_lang || 'auto'; $('consent').hidden = !!(o.qa_consent && o.qa_consent.v >= 2); });
 $('consent-open').onclick = $('donate').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') }); window.close(); };
 $('s-lang').onchange = async () => { await chrome.storage.local.set({ qa_lang: $('s-lang').value }); location.reload(); };
 

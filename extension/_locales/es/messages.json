@@ -6,7 +6,7 @@
     "message": "Informes de bugs con marcas, vídeo, voz, consola y peticiones. Auditoría del sitio, análisis IA, autotests, tests de API."
   },
   "cmd_found": {
-    "message": "Iniciar comprobación / abrir panel"
+    "message": "Encontré un bug (último minuto) / abrir panel"
   },
   "cmd_pick": {
     "message": "Seleccionar un elemento para una observación"

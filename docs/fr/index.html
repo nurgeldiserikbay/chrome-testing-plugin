@@ -31,7 +31,7 @@
 <div class="hero-copy">
 <div class="eyebrow"><span class="dot"></span> Extension Chrome · gratuite · sans inscription</div>
 <h1>Un bug trouvé —<br/>capturez-le<br/><em>en 10 secondes</em></h1>
-<p class="lead">Lancez la vérification et utilisez le site. L'extension intercepte d'elle-même les erreurs de console et les requêtes échouées — avec une capture d'écran et tout le contexte. Vos remarques avec une flèche ou un cadre deviennent des éléments séparés. Le rapport final part vers Word, Markdown ou HTML.</p>
+<p class="lead">Utilisez le site normalement. Un bug ? Appuyez sur « 🐞 Bug trouvé » et choisissez une période : les 30 dernières secondes, une minute ou 5 minutes. L'extension se souvient déjà de ce qui s'est passé : replay de l'écran, captures après les actions, erreurs de console et requêtes échouées. Les remarques avec une flèche ou un cadre deviennent des éléments séparés. Le rapport final part vers Word, Markdown ou HTML.</p>
 <div class="cta">
 <a class="btn btn-red" download="" href="../qa-bug-recorder.zip">
 <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewbox="0 0 24 24" width="18"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"></path></svg>
@@ -90,8 +90,8 @@
 <div class="step">
 <div class="step-text">
 <div class="num">01</div>
-<h3>Lancez la vérification et travaillez normalement</h3>
-<p>Cliquez sur <b>« ▶ Lancer la vérification »</b> ou <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>. Dès qu'une erreur apparaît dans la console ou qu'une requête échoue, l'extension <b>l'enregistre d'elle-même comme élément séparé</b> : capture à ce moment-là, texte de l'erreur, requête avec la réponse du serveur et vos actions précédentes.</p>
+<h3>Travaillez normalement — l'extension garde en mémoire les dernières minutes</h3>
+<p>Rien à activer à l'avance. Un bug ? Appuyez sur <b>« 🐞 Bug trouvé »</b> ou <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd> et choisissez une période. Le rapport reçoit <b>le replay de l'écran et une capture après chaque action</b>, les erreurs, les requêtes et les étapes — sans recharger la page ni reproduire le bug. Les erreurs de console et les requêtes échouées sont enregistrées d'elles-mêmes en éléments séparés : capture, texte de l'erreur, requête avec la réponse du serveur et vos actions précédentes.</p>
 <ul class="ticks">
 <li>Les répétitions d'une même erreur sont comptées, pas dupliquées</li>
 <li>Les erreurs des scripts et services tiers ne sont pas enregistrées, une erreur inutile peut être ignorée (🙈)</li>
@@ -176,7 +176,7 @@
 <div class="kicker light">Outils du testeur</div>
 <h2 class="h2 light">Régression en un clic et cas limites sans backend</h2>
 <div class="fgrid">
-<article><div class="fi">🤖</div><h3>Autotests à partir d'un enregistrement</h3><p>Cliquez sur « Enregistrer un autotest » et parcourez le scénario : clics, saisie, sélection. Ajoutez des vérifications ✓ — « texte apparu », « l'adresse contient /success ». Enregistrez — et lancez tous les scénarios après chaque mise en production : ce qui passe, ce qui échoue, à quelle étape, avec capture.</p></article>
+<article><div class="fi">🤖</div><h3>Autotests à partir d'un enregistrement</h3><p>Cliquez sur « Enregistrer un autotest » et parcourez le scénario : clics, saisie, sélection. Déjà parcouru ? « 🤖 Autotest depuis les dernières actions » construit les étapes à partir de ce que vous avez fait pendant la période choisie. Ajoutez des vérifications ✓ — « texte apparu », « l'adresse contient /success ». Enregistrez — et lancez tous les scénarios après chaque mise en production : ce qui passe, ce qui échoue, à quelle étape, avec capture.</p></article>
 <article><div class="fi">🎭</div><h3>Export vers Playwright</h3><p>Chaque scénario se télécharge comme test <code>.spec.ts</code> prêt avec sa configuration — les développeurs l'intègrent à la CI. Les erreurs de console comptent comme un échec, comme dans l'extension.</p></article>
 <article><div class="fi">🔌</div><h3>Tests d'API depuis Swagger et Postman</h3><p>Importez une spécification — l'extension vérifie elle-même chaque endpoint : données valides, incomplètes et invalides, sans jeton, objets inexistants, chaînes « créer → lire → modifier → supprimer » et mauvais ordre des requêtes. Résultat : « ce qui ne va pas avec l'API », avec explications : plantages 500, acceptation de données cassées, non-conformité au schéma, fuites, accès sans autorisation.</p></article>
 <article><div class="fi">🧪</div><h3>Simulation des réponses d'API</h3><p>Erreur 500, 401, liste vide, délai de 5 secondes, « pas de réseau » — pour n'importe quelle requête. On peut prendre la vraie réponse et la modifier. Les requêtes simulées sont marquées dans le rapport pour ne pas être prises pour un bug.</p></article>
@@ -367,7 +367,7 @@
 <div class="rm-grid">
 <div class="rm"><span>Bientôt</span>Serveur MCP : rapports accessibles directement à Claude Code, Cursor et Claude Desktop — « corrige l'erreur 3 du dernier rapport »</div>
 <div class="rm"><span>Bientôt</span>Voix → texte : dictée d'un commentaire avec reconnaissance vocale</div>
-<div class="rm"><span>Idée</span>Vidéo des « 30 dernières secondes » et enregistrement rétroactif du DOM (rrweb)</div>
+<div class="rm"><span>Idée</span>Recherche de bugs similaires dans l'historique des rapports</div>
 <div class="rm"><span>Idée</span>Floutage des données personnelles sur les captures</div>
 <div class="rm"><span>Idée</span>Modèles de rapport par projet et export PDF</div>
 </div>

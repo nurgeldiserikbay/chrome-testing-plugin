@@ -1,6 +1,6 @@
-Found a bug — capture it in 10 seconds.
+Found a bug — capture it in 10 seconds, after the fact.
 
-QA Bug Recorder turns a bug into a ready report: start a check, use the site as usual, and the extension collects everything a developer needs.
+Nothing to turn on in advance: the extension remembers the last minutes on the tab. Noticed a bug — press “Found a bug”, choose 30 s, 1, 2 or 5 minutes, and get a report with a screen replay, screenshots after every action, steps, requests and console errors. No reload, no reproducing.
 
 ERRORS ARE CAUGHT AUTOMATICALLY
 • A console error or a failed request becomes a separate report item: a screenshot at that moment, the error text, the request with the server response and your actions before it.
@@ -20,7 +20,7 @@ SITE AUTO-CHECK
 SEO, load speed, accessibility (axe-core), semantics, best practices and security, unnecessary re-renders — with scores, explanations and how to fix.
 
 TESTER TOOLS
-• Autotests from a recording, run after every release, export to Playwright.
+• Autotests from a recording — or from what you have already done in the last minutes; run after every release, export to Playwright.
 • API tests from Swagger/OpenAPI and Postman: valid, incomplete and invalid data, no token, chains and wrong order — with an explanation of what is wrong with the API.
 • API response mocking: errors, empty lists, delays, offline.
 • Slow network and CPU, device emulation, screenshots at 375–1920 px.

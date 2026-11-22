@@ -35,6 +35,8 @@ showTab();
 const STEP_RU = { click: 'Клик', fill: 'Ввод', select: 'Выбор', check: 'Отметка', press: 'Клавиша', goto: 'Переход', assertVisible: '✓ Виден', assertText: '✓ Текст', assertValue: '✓ Значение', assertUrl: '✓ Адрес', assertHidden: '✓ Скрыт' };
 const EDITABLE = { fill: 'value', select: 'value', assertText: 'value', assertValue: 'value', assertUrl: 'value', goto: 'url' };
 let tests = [], runs = [], RUN = null, openIds = new Set(), shownRun = null;
+const openParam = params.get('open');
+if (openParam) openIds.add(openParam);
 const getTests = async () => ((await chrome.storage.local.get('qa_tests')).qa_tests || []);
 async function saveTests() { await chrome.storage.local.set({ qa_tests: tests }); }
 async function loadAll() {
@@ -82,6 +84,7 @@ function renderTests() {
       <span class="meta">${plural(t.steps.length, 'шаг', 'шага', 'шагов')} · ${plural(t.steps.filter((s) => /^assert/.test(s.type)).length, 'проверка', 'проверки', 'проверок')}</span>
       ${lastBadge(t)}
       <span class="acts"><button data-a="run" title="Запустить">▶</button><button data-a="edit" title="Шаги и редактирование">${openIds.has(t.id) ? '▴ Шаги' : '▾ Шаги'}</button><button data-a="dup" title="Дублировать">⧉</button><button data-a="pw" title="Скачать тест Playwright">⬇ .spec</button><button data-a="del" title="Удалить">🗑</button></span></div>
+    ${openIds.has(t.id) && t.fromBuffer && t.id === openParam ? `<div class="fresh">🤖 Сценарий собран из ваших действий за последние ${t.fromBuffer.sec < 60 ? t.fromBuffer.sec + ' с' : t.fromBuffer.sec / 60 + ' мин'}. Проверьте начальную страницу, удалите лишние шаги (✕) и добавьте проверки ниже — без них автотест только повторяет клики.${t.fromBuffer.skipped ? ` Пропущено действий: ${t.fromBuffer.skipped} (загрузка файлов или записанные до обновления расширения).` : ''}</div>` : ''}
     ${openIds.has(t.id) ? `<div class="steps">
       <label style="margin:0 0 8px">Название<input class="name-in" value="${esc(t.name)}"></label>
       <div class="st-r"><span class="i">0</span><span class="k">Открыть</span><span class="d" title="${esc(t.startUrl)}">${esc(t.startUrl)}</span><input data-start value="${esc(t.startUrl)}"><span></span></div>
@@ -89,6 +92,7 @@ function renderTests() {
         <span class="d" title="${esc((s.loc || []).map((l) => l.css || 'текст: ' + l.text).join('\n'))}">${esc(stepDesc(s))}${s.loc && s.loc[0] ? `<br><span class="loc">${esc(s.loc[0].css || 'текст «' + s.loc[0].text + '»')}</span>` : ''}</span>
         ${EDITABLE[s.type] ? `<input data-v="${EDITABLE[s.type]}" type="${s.secret ? 'password' : 'text'}" value="${esc(s[EDITABLE[s.type]])}">` : '<span></span>'}
         <span class="x"><button data-s="up" title="Выше">↑</button><button data-s="down" title="Ниже">↓</button><button data-s="off" title="${s.off ? 'Включить шаг' : 'Пропускать шаг'}">${s.off ? '▶' : '⏸'}</button><button data-s="del" title="Удалить шаг">✕</button></span></div>`).join('')}
+      <div class="add-as"><span>Добавить в конец:</span><button data-add="assertText">+ ✓ На странице есть текст</button><button data-add="assertUrl">+ ✓ Адрес содержит</button></div>
     </div>` : ''}
   </div>`).join('');
 }
@@ -98,6 +102,17 @@ $('#tests-list').addEventListener('click', async (e) => {
   const t = tests.find((x) => x.id === tc.dataset.id);
   const a = e.target.closest('[data-a]');
   const sb = e.target.closest('[data-s]');
+  const ad = e.target.closest('[data-add]');
+  if (ad) {
+    const type = ad.dataset.add;
+    t.steps.push(type === 'assertUrl' ? { type, value: '', desc: 'адрес содержит' } : { type, value: '', desc: 'на странице есть текст' });
+    t.updated = Date.now();
+    await saveTests();
+    renderTests();
+    const rows = document.querySelectorAll(`.tc[data-id="${t.id}"] .st-r input[data-v]`);
+    if (rows.length) rows[rows.length - 1].focus();
+    return;
+  }
   if (a) {
     const act = a.dataset.a;
     if (act === 'run') return run([t.id]);

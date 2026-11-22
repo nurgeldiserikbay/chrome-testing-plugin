@@ -1,6 +1,6 @@
 Achou um bug? Registre em 10 segundos.
 
-O QA Bug Recorder transforma um bug em um relatório pronto: inicie a verificação, use o site normalmente e a extensão coleta tudo o que o desenvolvedor precisa.
+Não é preciso ligar nada antes: a extensão lembra os últimos minutos da aba. Viu um bug? Clique em “Achei um bug”, escolha 30 s, 1, 2 ou 5 minutos e receba um relatório com replay da tela, capturas após cada ação, passos, requisições e erros de console. Sem recarregar nem reproduzir de novo.
 
 ERROS SÃO CAPTURADOS SOZINHOS
 • Um erro de console ou uma requisição com falha vira um item separado: captura, texto do erro, requisição com a resposta do servidor e suas ações antes dele.

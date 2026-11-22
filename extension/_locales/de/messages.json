@@ -6,7 +6,7 @@
     "message": "Bug-Berichte mit Markierungen, Video, Stimme, Konsole, Anfragen. Website-Audit, KI-Analyse, Autotests, API-Tests, Export."
   },
   "cmd_found": {
-    "message": "Prüfung starten / Panel öffnen"
+    "message": "Bug gefunden (letzte Minute) / Panel öffnen"
   },
   "cmd_pick": {
     "message": "Element für eine Anmerkung auswählen"

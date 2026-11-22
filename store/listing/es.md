@@ -1,6 +1,6 @@
 ¿Encontraste un bug? Regístralo en 10 segundos.
 
-QA Bug Recorder convierte un bug en un informe listo: inicia la comprobación, usa el sitio como siempre y la extensión recopila todo lo que necesita el desarrollador.
+No hay que activar nada de antemano: la extensión recuerda los últimos minutos de la pestaña. ¿Viste un bug? Pulsa «Encontré un bug», elige 30 s, 1, 2 o 5 minutos y obtén un informe con repetición de pantalla, capturas tras cada acción, pasos, peticiones y errores de consola. Sin recargar ni volver a reproducir.
 
 LOS ERRORES SE CAPTURAN SOLOS
 • Un error de consola o una petición fallida se convierte en un elemento aparte: captura, texto del error, petición con la respuesta del servidor y tus acciones previas.

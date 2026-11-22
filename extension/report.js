@@ -6,6 +6,8 @@ const short = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? 
 let R = null; // текущий отчёт
 let shots = {}; // n -> dataURL
 let mediaBlobs = {}; // key -> Blob
+let retroShots = {}; // n записи «⏪» -> [{ts, label, url, dataUrl}]
+let replays = {}; // n записи «⏪» -> события rrweb
 let tab = 'timeline';
 let filters = { console: 'all', network: 'all', timeline: 'important' };
 
@@ -23,6 +25,12 @@ async function init() {
   for (const a of R.annotations) shots[a.n] = await QADB.get('blobs', a.shotKey);
   for (const x of R.errors) if (x.shotKey) shots['e' + x.n] = await QADB.get('blobs', x.shotKey);
   for (const v of [...R.videos, ...R.voice]) {
+    if (v.retro) {
+      retroShots[v.n] = [];
+      for (const x of v.shots || []) { const d = await QADB.get('blobs', x.key).catch(() => null); if (d) retroShots[v.n].push({ ...x, dataUrl: d }); }
+      if (v.replayKey) { const ev = await QADB.get('blobs', v.replayKey).catch(() => null); if (ev && ev.length) replays[v.n] = ev; }
+      continue;
+    }
     const b = await QADB.get('blobs', v.key);
     if (b) mediaBlobs[v.key] = b;
   }
@@ -270,7 +278,7 @@ function itemList() {
   const list = [];
   R.annotations.forEach((a) => list.push({ kind: 'remark', key: 'r' + a.n, ts: a.ts, a }));
   (R.errors || []).forEach((x) => list.push({ kind: 'error', key: 'e' + x.n, ts: x.ts, x }));
-  R.videos.filter((v) => mediaBlobs[v.key]).forEach((v) => list.push({ kind: 'recording', key: 'v' + v.n, ts: v.start, v }));
+  R.videos.filter((v) => v.retro || mediaBlobs[v.key]).forEach((v) => list.push({ kind: 'recording', key: 'v' + v.n, ts: v.retro ? v.end : v.start, v }));
   return list.sort((a, b) => a.ts - b.ts);
 }
 const between = (arr, from, to) => arr.filter((e) => e.ts >= from && e.ts <= to);
@@ -293,7 +301,7 @@ function errorCtx(x) {
 /** контекст пункта «Запись»: всё за время записи + 1–2 минуты до неё */
 function recCtx(v) {
   const pre = ((R.options && R.options.bufferMin) || 2) * 60000;
-  const from = v.start - Math.min(pre, 120000), to = v.end || Date.now();
+  const from = v.retro ? v.start : v.start - Math.min(pre, 120000), to = v.end || Date.now();
   const tl = timelineItems('important').filter((x) => x.ts >= from && x.ts <= to && x.cat !== 'net' && x.cat !== 'console');
   return {
     from, to,
@@ -330,7 +338,7 @@ function renderItems() {
   const dl = (key) => `<details class="dl"><summary>⬇ Скачать пункт</summary><div class="menu"><button data-dl="${key}" data-f="docx">📄 Word</button><button data-dl="${key}" data-f="md">📝 Markdown (.zip)</button><button data-dl="${key}" data-f="html">🌐 HTML</button><button data-dl="${key}" data-f="gdocs">📄 Google Docs</button></div></details>`;
   const cp = (i) => `<details class="dl"><summary>📋 Копировать</summary><div class="menu"><button data-cp="${i.key}" data-w="text">📝 Текст для задачи</button>${i.kind !== 'recording' ? `<button data-cp="${i.key}" data-w="img">🖼 Скриншот</button><button data-cp="${i.key}" data-w="both">📄 Текст + скриншот<br><small>для Google Docs, Word, Notion</small></button>` : ''}</div></details>`;
   const sevSel = (i) => { const v = itemSev(i); return `<select class="isev s-${v}" data-sev="${i.key}" title="Серьёзность${i.kind === 'error' && !i.x.severity ? ' (подобрана автоматически)' : ''}">${SEV.map((x) => `<option value="${x.id}" ${x.id === v ? 'selected' : ''}>${x.icon} ${x.name}</option>`).join('')}</select>`; };
-  const head = (i, num, title, extra = '') => `<div class="it-h"><span class="ic">${ITEM_ICON[i.kind]} ${num}</span>${sevSel(i)}<b>${esc(title)}</b><span class="chip time" data-ts="${i.ts}" title="Перейти к моменту в видео">${X.fmtRel(i.ts - R.startTime)}</span>${extra}<span class="acts"><button class="aib" data-ai="${i.key}" title="AI оформит баг и подскажет причину">🤖 AI</button>${cp(i)}${dl(i.key)}${i.kind === 'error' ? `<button data-ign="${i.key}" title="Удалить и больше не сохранять такие ошибки">🙈</button>` : ''}<button data-del="${i.key}" title="Удалить пункт">🗑</button></span></div>`;
+  const head = (i, num, title, extra = '') => `<div class="it-h"><span class="ic">${i.v && i.v.retro ? '⏪' : ITEM_ICON[i.kind]} ${num}</span>${sevSel(i)}<b>${esc(title)}</b><span class="chip time" data-ts="${i.ts}" title="Перейти к моменту в видео">${X.fmtRel(i.ts - R.startTime)}</span>${extra}<span class="acts"><button class="aib" data-ai="${i.key}" title="AI оформит баг и подскажет причину">🤖 AI</button>${cp(i)}${dl(i.key)}${i.kind === 'error' ? `<button data-ign="${i.key}" title="Удалить и больше не сохранять такие ошибки">🙈</button>` : ''}<button data-del="${i.key}" title="Удалить пункт">🗑</button></span></div>`;
   const tbl = (head2, rows) => (rows.length ? `<table><tr>${head2.map((h) => `<th>${h}</th>`).join('')}</tr>${rows.join('')}</table>` : '<div class="zero">Нет данных</div>');
   const cls = (l) => (l === 'error' ? 'err' : l === 'warn' ? 'warn' : '');
   const reqRows = (arr) => arr.map((e) => `<tr class="${netErr(e) ? 'err' : ''}">${relCell(e.ts)}<td>${esc(e.method)}</td><td><b>${esc(X.statusLabel(e))}</b></td><td class="u mono">${esc(short(e.url, 180))}</td><td>${X.fmtDur(e.duration)}</td></tr>`);
@@ -393,6 +401,13 @@ function renderItems() {
       ['Консоль', tbl(['Время', 'Уровень', 'Сообщение'], conRows(c.console))],
       c.perf.length ? ['Производительность', tbl(['Время', 'Событие'], c.perf.map((e) => `<tr class="${cls(e.level)}">${relCell(e.ts)}<td>${esc(e.text)}</td></tr>`))] : null,
     ];
+    if (v.retro) {
+      const sh = retroShots[v.n] || [];
+      return `<div class="it recording retro">${head(i, v.n, `⏪ Нашёл баг · последние ${X.fmtPeriod(v.end - v.start)}`, `<span class="muted">${replays[v.n] ? 'повтор экрана · ' : ''}скриншотов: ${sh.length} · действия, запросы, консоль</span>`)}
+        ${replays[v.n] ? `<div class="rrp" data-n="${v.n}"></div>` : '<div class="it-b one muted" style="padding:10px 16px">Повтор экрана не записан: он включается в настройках (⏪ Повтор страницы) и начинается после загрузки страницы.</div>'}
+        ${sh.length ? `<div class="story">${sh.map((x, k) => `<figure data-ts="${x.ts}"><img src="${x.dataUrl}" data-k="${k}" alt=""><figcaption><b>${X.fmtRel(x.ts - R.startTime)}</b> ${esc(x.label || '')}</figcaption></figure>`).join('')}</div>` : ''}
+        ${aiBox(i)}${mini(i.key, tabs)}</div>`;
+    }
     return `<div class="it recording">${head(i, v.n, `Запись видео · ${X.fmtDur((v.end || Date.now()) - v.start)}`, `<span class="muted">${X.fmtSize(mediaBlobs[v.key].size)} · данные за ${Math.round((v.start - c.from) / 1000)} с до начала и во время записи</span>`)}
       <div class="it-b one"><video controls preload="metadata" data-key="${v.key}" data-start="${v.start}"></video></div>
       ${aiBox(i)}${mini(i.key, tabs)}</div>`;
@@ -407,6 +422,8 @@ function renderItems() {
     });
   });
   $('#items').querySelectorAll('img').forEach((im) => (im.onclick = () => { $('#lightbox img').src = im.src; $('#lightbox').hidden = false; }));
+  $('#items').querySelectorAll('.rrp[data-n]').forEach((el) => mountReplay(el, +el.dataset.n));
+  $('#items').querySelectorAll('.story figure').forEach((f) => f.addEventListener('dblclick', () => seekTo(+f.dataset.ts)));
   $('#items').querySelectorAll('[data-c]').forEach((t) => (t.oninput = () => {
     const a = R.annotations.find((x) => x.n === +t.dataset.c);
     a.comment = t.value;
@@ -471,8 +488,13 @@ function renderItems() {
     } else {
       const v = R.videos.find((y) => y.n === n);
       R.videos = R.videos.filter((y) => y !== v);
-      await QADB.del('blobs', v.key).catch(() => {});
-      delete mediaBlobs[v.key];
+      if (v.retro) {
+        for (const k of [v.replayKey, ...(v.shots || []).map((x) => x.key)]) if (k) await QADB.del('blobs', k).catch(() => {});
+        delete replays[v.n]; delete retroShots[v.n];
+      } else {
+        await QADB.del('blobs', v.key).catch(() => {});
+        delete mediaBlobs[v.key];
+      }
     }
     saveR();
     renderItems();
@@ -657,6 +679,23 @@ async function itemModel(i, o) {
   }
   const v = i.v;
   const c = recCtx(v);
+  if (v.retro) {
+    const story = [];
+    for (const [k, x] of (retroShots[v.n] || []).entries()) {
+      const t = { rel: x.ts - st, label: o.mask ? maskS(x.label || '') : x.label || '' };
+      await shot(x.dataUrl, `screenshots/zapis-${v.n}-shag-${String(k + 1).padStart(2, '0')}.jpg`, t);
+      story.push(t);
+    }
+    return {
+      kind: 'recording', retro: true, ai: v.ai, key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: v.n, rel: v.end - st, durationMs: v.end - v.start, size: 0,
+      url: o.mask ? maskS(v.url || '') : v.url || '', cond: v.cond || '', story,
+      replayN: replays[v.n] ? v.n : null, replayFile: replays[v.n] ? `replay/povtor-${v.n}.html` : null,
+      timeline: c.timeline.map((x) => ({ rel: x.ts - st, cat: CAT_RU[x.cat] || x.cat, level: x.level, text: o.mask ? maskS(x.text) : x.text })),
+      requests: c.requests.map(m),
+      console: c.console.map((cc) => ({ rel: cc.ts - st, level: cc.level, text: o.mask ? maskS(cc.text) : cc.text })),
+      perf: c.perf.map((e) => ({ rel: e.ts - st, text: e.text })),
+    };
+  }
   return {
     kind: 'recording', ai: v.ai, key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: v.n, rel: v.start - st, durationMs: (v.end || Date.now()) - v.start, size: mediaBlobs[v.key].size,
     file: `media/video-${v.n}.webm`, videoKey: v.key,
@@ -1078,8 +1117,34 @@ const blobBytes = async (b) => new Uint8Array(await b.arrayBuffer());
 function consoleTxt(m) {
   return m.console.map((c) => `[${X.fmtRel(c.rel)}] ${c.level.toUpperCase()} ${c.text}${c.loc ? '  @ ' + c.loc : ''}`).join('\n');
 }
-async function mediaFiles(m) {
+// ---------- ⏪ повтор страницы в выгрузках: отдельный HTML с плеером ----------
+let rrAssets = null;
+async function rrAsset() {
+  if (!rrAssets) {
+    const get = async (f) => (await fetch(chrome.runtime.getURL('vendor/rrweb/' + f))).text();
+    rrAssets = { js: await get('rrweb-player.min.js'), css: await get('rrweb-player.min.css') };
+  }
+  return rrAssets;
+}
+const jsonForScript = (x) => JSON.stringify(x).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+async function replayHtml(n, title) {
+  const a = await rrAsset();
+  const v = R.videos.find((x) => x.n === n);
+  const ev = replays[n] || [];
+  const off = v ? Math.max(0, v.start - (ev[0] ? ev[0].timestamp : v.start)) : 0;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${a.css}\nbody{margin:0;font-family:system-ui,sans-serif;background:#f3f4f6}h1{font-size:16px;margin:16px}#p{margin:0 16px}</style></head><body><h1>${esc(title)}</h1><div id="p"></div><script>${a.js.replace(/<\/script/gi, '<\\/script')}<\/script><script>(function(){var E=${jsonForScript(ev)};var w=Math.min(innerWidth-40,1200);var p=new rrwebPlayer({target:document.getElementById('p'),props:{events:E,width:w,height:Math.round(w*0.56),autoPlay:false,skipInactive:true}});${off > 500 ? `setTimeout(function(){try{p.goto(${off},false)}catch(e){}},50);` : ''}})();<\/script></body></html>`;
+}
+async function retroFiles(m) {
   const files = [];
+  for (const it of m.items) {
+    if (!it.retro) continue;
+    if (it.replayN) files.push({ name: it.replayFile, data: await replayHtml(it.replayN, `Повтор экрана — запись ${it.n}`) });
+    for (const x of it.story || []) if (x.bytes) files.push({ name: x.file, data: x.bytes });
+  }
+  return files;
+}
+async function mediaFiles(m) {
+  const files = [...(await retroFiles(m))];
   for (const it of m.items) {
     if (it.kind === 'recording' && mediaBlobs[it.videoKey]) files.push({ name: it.file, data: await blobBytes(mediaBlobs[it.videoKey]) });
     for (const v of it.voice || []) if (mediaBlobs[v.key]) files.push({ name: v.file, data: await blobBytes(mediaBlobs[v.key]) });
@@ -1089,6 +1154,10 @@ async function mediaFiles(m) {
 }
 async function embedMedia(m) {
   const media = {};
+  if (m.items.some((it) => it.replayN)) {
+    const a = await rrAsset();
+    media.__rr = { js: a.js, css: a.css, events: Object.fromEntries(m.items.filter((it) => it.replayN).map((it) => { const v = R.videos.find((x) => x.n === it.replayN); const ev = replays[it.replayN]; return [it.replayFile, { ev, off: Math.max(0, v.start - ev[0].timestamp) }]; })) };
+  }
   for (const it of m.items) {
     if (it.kind === 'recording' && mediaBlobs[it.videoKey]) media[it.file] = await blobToDataUrl(mediaBlobs[it.videoKey]);
     for (const v of it.voice || []) if (mediaBlobs[v.key]) media[v.file] = await blobToDataUrl(mediaBlobs[v.key]);
@@ -1108,7 +1177,7 @@ async function doExport(kind, only) {
     const m = await buildModel(o, only);
     if (!m.items.length && !m.appendix && !m.audit.length) { st.textContent = 'Нечего выгружать: нет пунктов выбранных видов. Отметьте их в «⚙ Что включать в отчёт».'; return; }
     const base = baseName() + (only === 'audit' ? '_avtoproverka' : only ? '_' + ({ r: 'zamechanie', e: 'oshibka', v: 'zapis' }[only[0]]) + '-' + only.slice(1) : '');
-    const hasMedia = m.items.some((it) => it.kind === 'recording' || (it.voice || []).length) || m.voice.length;
+    const hasMedia = m.items.some((it) => (it.kind === 'recording' && (!it.retro || it.replayN)) || (it.voice || []).length) || m.voice.length;
     if (kind === 'docx') {
       if (hasMedia) {
         const files = [{ name: 'report.docx', data: await blobBytes(X.exportDOCX(m)) }, ...(await mediaFiles(m))];
@@ -1244,7 +1313,32 @@ function renderMedia() {
   $('#media').querySelectorAll('[data-dl]').forEach((b) => (b.onclick = () => download(mediaBlobs[b.dataset.dl], baseName() + '_' + b.dataset.name)));
 }
 
+// ⏪ повтор страницы (rrweb-player)
+const players = {}; // n -> { player, t0, v }
+function mountReplay(el, n) {
+  const ev = replays[n];
+  const v = R.videos.find((x) => x.n === n);
+  if (!ev || !v || typeof rrwebPlayer !== 'function') return;
+  el.innerHTML = '';
+  const w = Math.max(320, Math.min((el.clientWidth || 900) - 34, 1100));
+  try {
+    const player = new rrwebPlayer({ target: el, props: { events: ev, width: w, height: Math.round(w * 0.56), autoPlay: false, skipInactive: true, showController: true, mouseTail: false } });
+    const t0 = ev[0].timestamp;
+    players[n] = { player, t0, v };
+    const off = Math.max(0, v.start - t0);
+    if (off > 500) setTimeout(() => { try { player.goto(off, false); } catch (_) {} }, 50);
+  } catch (e) {
+    el.innerHTML = `<div class="muted" style="padding:10px 16px">Не удалось показать повтор: ${esc(e.message)}</div>`;
+  }
+}
 function seekTo(ts) {
+  for (const p of Object.values(players)) {
+    if (ts >= p.v.start - 1000 && ts <= p.v.end + 1000) {
+      try { p.player.goto(Math.max(0, ts - p.t0 - 1500), true); } catch (_) {}
+      document.querySelector(`.rrp[data-n="${p.v.n}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return true;
+    }
+  }
   const vids = [...document.querySelectorAll('video[data-start]')];
   const v = vids.find((el) => {
     const rec = R.videos.find((x) => x.key === el.dataset.key);

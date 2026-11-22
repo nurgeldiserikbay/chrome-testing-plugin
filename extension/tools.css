@@ -99,3 +99,7 @@ textarea{display:block;width:100%;margin-top:5px;padding:9px 11px;border:1px sol
 
 [hidden]{display:none!important}
 .filebtn input{display:none}
+.fresh{margin:0 14px 8px;padding:10px 12px;border-radius:10px;background:#f5f3ff;border:1px solid #ddd6fe;color:#4c1d95;font-size:13px;line-height:1.45}
+.add-as{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0 2px;font-size:12.5px;color:#6b7280}
+.add-as button{border:1px dashed #c4b5fd;background:#fff;color:#5b21b6;border-radius:8px;padding:5px 10px;font:600 12.5px/1 inherit;cursor:pointer}
+.add-as button:hover{background:#f5f3ff}

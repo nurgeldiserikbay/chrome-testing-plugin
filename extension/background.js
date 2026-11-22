@@ -1,7 +1,7 @@
 importScripts('db.js');
 
 // ================= настройки и лимиты =================
-const DEFAULT_SETTINGS = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true };
+const DEFAULT_SETTINGS = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true, replay: true, actShots: true, retroSec: 60 };
 const BUF_LIM = { console: 800, network: 500, actions: 300, nav: 100, events: 1500, samples: 60, resources: 400 };
 const SES_LIM = { console: 5000, network: 3000, actions: 2000, nav: 500, events: 10000, samples: 2000, resources: 3000 };
 const BUF_BODY = 4000;
@@ -519,7 +519,7 @@ async function injectOverlay(tabId) {
   } catch (_) {}
 }
 
-async function startBug(tabId) {
+async function startBug(tabId, opts = {}) {
   await ready;
   // сначала пользователь должен прочитать, какие данные собираются
   if (!(await chrome.storage.local.get('qa_consent')).qa_consent) {
@@ -537,7 +537,7 @@ async function startBug(tabId) {
   if (!/^(https?|file):/.test(tab.url || '')) throw new Error('На служебных страницах Chrome фиксация недоступна. Откройте тестируемый сайт.');
   const st = await getSettings();
   const now = Date.now();
-  const from = now - st.bufferMin * 60 * 1000;
+  const from = now - Math.max(st.bufferMin * 60, opts.retroSec || 0) * 1000;
   const b = getBuf(tabId);
   const within = (arr) => arr.filter((e) => e.ts >= from).map((e) => ({ ...e }));
   S = {
@@ -993,7 +993,7 @@ chrome.commands.onCommand.addListener(async (cmd, tab) => {
   try {
     const t = tab || (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
     if (!t) return;
-    if (cmd === 'found-bug') await startBug(t.id);
+    if (cmd === 'found-bug') { if (S && S.active && S.tabId === t.id) await startBug(t.id); else await foundBug(t.id); }
     else if (cmd === 'finish') await finishBug({ open: true });
     else if (cmd === 'pick-element' || cmd === 'annotate') {
       if (!S || !S.active) await startBug(t.id);
@@ -1077,7 +1077,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 // после установки — страница с описанием данных и согласием
-chrome.runtime.onInstalled.addListener((d) => { if (d.reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') }); });
+chrome.runtime.onInstalled.addListener(async (d) => {
+  if (d.reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+  // в 2.3 расширение начало помнить последние минуты (повтор, скриншоты) — показываем, что изменилось
+  if (d.reason === 'update') { const c = (await chrome.storage.local.get('qa_consent')).qa_consent; if (c && !(c.v >= 2)) chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') }); }
+});
 
 // отладка вкладки — необязательное разрешение: обработчики подключаются, когда оно выдано
 let dbgHooked = false;
@@ -1092,5 +1096,5 @@ chrome.permissions.onAdded.addListener(() => hookDebugger());
 const hasDebugger = () => chrome.permissions.contains({ permissions: ['debugger'] });
 
 // инструменты: автотесты, условия, скриншоты экранов
-importScripts('tools-bg.js');
+importScripts('tools-bg.js', 'retro-bg.js');
 hookDebugger();

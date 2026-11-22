@@ -84,6 +84,56 @@
         SENSITIVE.test(el.getAttribute('autocomplete') || '')
       );
     },
+    // устойчивые локаторы для «автотеста из последних действий» (те же правила, что в recorder.js)
+    locators(el) {
+      try {
+        const TA = ['data-testid', 'data-test', 'data-qa', 'data-cy', 'data-test-id', 'data-automation-id'];
+        const esc = (v) => CSS.escape(v);
+        const qv = (v) => '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+        const norm = (x) => String(x || '').replace(/\s+/g, ' ').trim();
+        const genId = (id) => /\d{3,}|^:r|^(ember|react|radix|headlessui|mui|rc_|downshift|chakra)/i.test(id) || id.length > 40;
+        const textOf = (e) => norm(e.innerText || e.textContent || e.value || '');
+        const unique = (css) => { try { const l = document.querySelectorAll(css); return l.length === 1 && l[0] === el; } catch (_) { return false; } };
+        const path = () => {
+          const parts = [];
+          for (let e = el; e && e.nodeType === 1 && e !== document.body && parts.length < 6; e = e.parentElement) {
+            if (e.id && !genId(e.id)) { parts.unshift('#' + esc(e.id)); break; }
+            const ta = TA.find((a) => e.getAttribute(a));
+            if (ta) { parts.unshift(`[${ta}=${qv(e.getAttribute(ta))}]`); break; }
+            let p = e.tagName.toLowerCase();
+            const sib = e.parentElement ? [...e.parentElement.children].filter((c) => c.tagName === e.tagName) : [];
+            if (sib.length > 1) p += `:nth-of-type(${sib.indexOf(e) + 1})`;
+            parts.unshift(p);
+          }
+          return parts.join(' > ');
+        };
+        const tag = el.tagName.toLowerCase();
+        const L = [];
+        const add = (css) => { if (css && unique(css) && !L.some((x) => x.css === css)) L.push({ css }); };
+        TA.forEach((a) => el.getAttribute(a) && add(`[${a}=${qv(el.getAttribute(a))}]`));
+        if (el.id && !genId(el.id)) add('#' + esc(el.id));
+        if (el.getAttribute('name')) add(`${tag}[name=${qv(el.getAttribute('name'))}]`);
+        if (el.getAttribute('aria-label')) add(`${tag}[aria-label=${qv(el.getAttribute('aria-label'))}]`);
+        if (el.getAttribute('placeholder')) add(`${tag}[placeholder=${qv(el.getAttribute('placeholder'))}]`);
+        const t = textOf(el);
+        if (t && t.length <= 60 && /^(a|button|summary|label|li|option|h[1-6]|span|div|td|th|p)$/.test(tag)) {
+          if ([...document.querySelectorAll(tag)].filter((e) => textOf(e) === t).length === 1) L.push({ text: t, tag });
+        }
+        if (tag === 'a' && el.getAttribute('href') && !/^(#|javascript:)/.test(el.getAttribute('href'))) add(`a[href=${qv(el.getAttribute('href'))}]`);
+        add(path());
+        if (!L.length) L.push({ css: path() });
+        return L.slice(0, 4);
+      } catch (_) { return [{ css: U.cssPath(el) }]; }
+    },
+    stepDesc(el) {
+      const norm = (x) => String(x || '').replace(/\s+/g, ' ').trim();
+      const tag = el.tagName.toLowerCase();
+      const field = /^(input|textarea|select)$/.test(tag);
+      const lbl = field && el.labels && el.labels[0] ? norm(el.labels[0].innerText || el.labels[0].textContent) : '';
+      const t = (field ? lbl || el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.getAttribute('name') : norm(el.innerText || el.textContent || el.value)).slice(0, 50) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.getAttribute('name') || el.getAttribute('title') || '';
+      const kind = tag === 'a' ? 'ссылка' : tag === 'button' || el.getAttribute('role') === 'button' ? 'кнопка' : tag === 'input' ? 'поле' : tag === 'select' ? 'список' : tag === 'textarea' ? 'поле' : 'элемент';
+      return t ? `${kind} «${t}»` : `${kind} ${tag}`;
+    },
     describe(el) {
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
@@ -195,6 +245,41 @@
 
   if (!isTop) return; // действия пользователя пишем только в основном фрейме
 
+  // ---------- ⏪ повтор страницы (rr.js в MAIN-мире) → фон ----------
+  let rrQueue = [], rrBytes = 0, rrOn = false;
+  const rrFlush = () => {
+    if (!rrQueue.length || dead) return;
+    const chunks = rrQueue; rrQueue = []; rrBytes = 0;
+    try { chrome.runtime.sendMessage({ type: 'rr', chunks, url: location.href }).catch(() => {}); } catch (_) { dead = true; }
+  };
+  document.addEventListener(TAG + ':rr', (e) => {
+    if (!rrOn || typeof e.detail !== 'string') return;
+    rrQueue.push(e.detail); rrBytes += e.detail.length;
+    if (rrBytes > 4e6) rrFlush();
+  });
+  setInterval(rrFlush, 2500);
+  window.addEventListener('pagehide', rrFlush);
+  const rrCtl = () => document.dispatchEvent(new CustomEvent(TAG + ':rr-ctl', { detail: JSON.stringify({ on: rrOn }) }));
+  document.addEventListener(TAG + ':rr-ready', rrCtl);
+  const rrCheck = () => chrome.storage.local.get(['qa_settings', 'qa_consent']).then((st) => {
+    const on = !!(st.qa_consent && st.qa_consent.v >= 2) && !(st.qa_settings && st.qa_settings.replay === false);
+    if (on !== rrOn) { rrOn = on; rrCtl(); }
+  }).catch(() => {});
+  chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && (ch.qa_settings || ch.qa_consent)) rrCheck(); });
+  rrCheck();
+
+  // ---------- 📸 скриншот после действия (кольцевой буфер в фоне) ----------
+  let lastShot = 0;
+  function actShot(label) {
+    if (dead || document.visibilityState !== 'visible') return;
+    const now = Date.now();
+    if (now - lastShot < 700) return;
+    lastShot = now;
+    try { chrome.runtime.sendMessage({ type: 'act-shot', label, url: location.href }).catch(() => {}); } catch (_) {}
+  }
+  const loadShot = () => setTimeout(() => actShot('Страница открыта: ' + (document.title || location.pathname).slice(0, 80)), 600);
+  if (document.readyState === 'complete') loadShot(); else window.addEventListener('load', loadShot, { once: true });
+
   const fromOverlay = (e) => e.composedPath().some((n) => n && (n.tagName === OVERLAY_TAG || n.tagName === 'QA-MOCK-PILL' || n.tagName === 'QA-REC-BAR'));
 
   document.addEventListener(
@@ -213,14 +298,20 @@
         if (!pointer) return;
       } else el = target;
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) && !['checkbox', 'radio', 'submit', 'button', 'reset', 'file'].includes(el.type)) return;
+      const desc = U.stepDesc(el);
       q('action', {
         kind: 'click',
         tag: el.tagName.toLowerCase(),
+        type: el.type || '',
         role: el.getAttribute('role') || '',
         text: U.text(el) || (el.tagName === 'INPUT' ? U.label(el) : ''),
         selector: U.cssPath(el),
+        loc: U.locators(el),
+        desc,
+        forCheck: !!(el.tagName === 'LABEL' && el.control && /^(checkbox|radio)$/i.test(el.control.type)),
         href: el.href || '',
       });
+      actShot('Клик: ' + desc);
     },
     true
   );
@@ -237,13 +328,21 @@
       else if (el.type === 'checkbox' || el.type === 'radio') value = el.checked ? 'включено' : 'выключено';
       else if (el.type === 'file') value = [...(el.files || [])].map((f) => f.name).join(', ');
       else value = String(el.value || '').slice(0, 200);
+      const kind = el.tagName === 'SELECT' ? 'select' : el.type === 'checkbox' || el.type === 'radio' ? 'toggle' : 'input';
       q('action', {
-        kind: el.tagName === 'SELECT' ? 'select' : el.type === 'checkbox' || el.type === 'radio' ? 'toggle' : 'input',
+        kind,
         tag: el.tagName.toLowerCase(),
+        type: el.type || '',
         label: U.label(el),
         value,
+        optValue: el.tagName === 'SELECT' ? el.value : undefined,
+        checked: el.type === 'checkbox' || el.type === 'radio' ? el.checked : undefined,
+        secret: U.isSensitive(el) || undefined,
         selector: U.cssPath(el),
+        loc: U.locators(el),
+        desc: U.stepDesc(el),
       });
+      if (kind !== 'input') actShot((kind === 'select' ? 'Выбор: ' : 'Отметка: ') + U.stepDesc(el));
     },
     true
   );
@@ -254,6 +353,7 @@
       if (!e.isTrusted) return;
       const f = e.target;
       q('action', { kind: 'submit', tag: 'form', selector: U.cssPath(f), text: f.getAttribute('name') || f.id || f.getAttribute('action') || '' });
+      actShot('Отправка формы');
     },
     true
   );
@@ -265,7 +365,8 @@
       if (e.key === 'Enter' || e.key === 'Escape') {
         const el = e.target;
         if (el instanceof Element && (el.tagName === 'INPUT' || el.isContentEditable)) {
-          q('action', { kind: 'key', key: e.key, tag: el.tagName.toLowerCase(), label: U.label(el), selector: U.cssPath(el) });
+          q('action', { kind: 'key', key: e.key, tag: el.tagName.toLowerCase(), label: U.label(el), selector: U.cssPath(el), loc: U.locators(el), desc: U.stepDesc(el) });
+          if (e.key === 'Enter') actShot('Enter в ' + U.stepDesc(el));
         }
       }
     },

@@ -31,7 +31,7 @@
 <div class="hero-copy">
 <div class="eyebrow"><span class="dot"></span> Extensión para Chrome · gratis · sin registro</div>
 <h1>¿Encontraste un bug?<br/>Regístralo<br/><em>en 10 segundos</em></h1>
-<p class="lead">Activa la comprobación y usa el sitio. La extensión captura sola los errores de consola y las peticiones fallidas — con captura de pantalla y todo el contexto. Tus observaciones con flecha o marco se convierten en elementos separados. El informe final sale en Word, Markdown o HTML.</p>
+<p class="lead">Usa el sitio como siempre. ¿Viste un bug? Pulsa «🐞 Encontré un bug» y elige un periodo: los últimos 30 segundos, un minuto o 5 minutos. La extensión ya recuerda lo que pasó: repetición de pantalla, capturas tras las acciones, errores de consola y peticiones fallidas. Las observaciones con flecha o marco se convierten en elementos separados. El informe final sale en Word, Markdown o HTML.</p>
 <div class="cta">
 <a class="btn btn-red" download="" href="../qa-bug-recorder.zip">
 <svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewbox="0 0 24 24" width="18"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"></path></svg>
@@ -90,8 +90,8 @@
 <div class="step">
 <div class="step-text">
 <div class="num">01</div>
-<h3>Activa la comprobación y trabaja como siempre</h3>
-<p>Pulsa <b>«▶ Iniciar comprobación»</b> o <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>. En cuanto aparezca un error en la consola o una petición falle, la extensión <b>lo guardará sola como elemento separado</b>: captura en ese momento, texto del error, petición con la respuesta del servidor y tus acciones previas.</p>
+<h3>Trabajas como siempre — la extensión recuerda los últimos minutos</h3>
+<p>No hay que activar nada de antemano. ¿Viste un bug? Pulsa <b>«🐞 Encontré un bug»</b> o <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd> y elige un periodo. Al informe llegan <b>la repetición de pantalla y una captura tras cada acción</b>, errores, peticiones y pasos, sin recargar la página ni volver a reproducir el bug. Los errores de consola y las peticiones fallidas se guardan solos como elementos separados: captura, texto del error, petición con la respuesta del servidor y tus acciones previas.</p>
 <ul class="ticks">
 <li>Las repeticiones del mismo error se cuentan, no se duplican</li>
 <li>Los errores de scripts y servicios de terceros no se guardan; uno innecesario se puede ignorar (🙈)</li>
@@ -176,7 +176,7 @@
 <div class="kicker light">Herramientas del tester</div>
 <h2 class="h2 light">Regresión con un botón y casos límite sin backend</h2>
 <div class="fgrid">
-<article><div class="fi">🤖</div><h3>Autotests a partir de una grabación</h3><p>Pulsa «Grabar autotest» y recorre el escenario: clics, escritura, selección. Añade comprobaciones ✓ — «apareció el texto», «la dirección contiene /success». Guárdalo y ejecuta todos los escenarios tras cada lanzamiento: qué pasó, qué falló, en qué paso, con captura.</p></article>
+<article><div class="fi">🤖</div><h3>Autotests a partir de una grabación</h3><p>Pulsa «Grabar autotest» y recorre el escenario: clics, escritura, selección. ¿Ya lo recorriste? «🤖 Autotest de las últimas acciones» crea los pasos con lo que hiciste en el periodo elegido. Añade comprobaciones ✓ — «apareció el texto», «la dirección contiene /success». Guárdalo y ejecuta todos los escenarios tras cada lanzamiento: qué pasó, qué falló, en qué paso, con captura.</p></article>
 <article><div class="fi">🎭</div><h3>Exportación a Playwright</h3><p>Cada escenario se descarga como test <code>.spec.ts</code> listo con su configuración — los desarrolladores lo conectan a la CI. Los errores de consola cuentan como fallo, igual que en la extensión.</p></article>
 <article><div class="fi">🔌</div><h3>Tests de API desde Swagger y Postman</h3><p>Importa una especificación y la extensión comprobará sola cada endpoint: datos correctos, incompletos e incorrectos, sin token, objetos inexistentes, cadenas «crear → obtener → modificar → eliminar» y orden incorrecto de peticiones. El resultado: «qué está mal en la API» con explicaciones: caídas 500, aceptación de datos rotos, incumplimiento del esquema, fugas, acceso sin autorización.</p></article>
 <article><div class="fi">🧪</div><h3>Simulación de respuestas de la API</h3><p>Error 500, 401, lista vacía, retraso de 5 segundos, «sin red» — para cualquier petición. Puedes tomar la respuesta real y editarla. Las peticiones simuladas se marcan en el informe para que no se confundan con un bug.</p></article>
@@ -367,7 +367,7 @@
 <div class="rm-grid">
 <div class="rm"><span>Pronto</span>Servidor MCP: informes disponibles directamente para Claude Code, Cursor y Claude Desktop — «arregla el error 3 del último informe»</div>
 <div class="rm"><span>Pronto</span>Voz → texto: dictado de comentarios con reconocimiento de voz</div>
-<div class="rm"><span>Idea</span>Vídeo de «los últimos 30 segundos» y grabación retroactiva del DOM (rrweb)</div>
+<div class="rm"><span>Idea</span>Búsqueda de bugs parecidos en el historial de informes</div>
 <div class="rm"><span>Idea</span>Difuminado de datos personales en las capturas</div>
 <div class="rm"><span>Idea</span>Plantillas de informe por proyecto y exportación a PDF</div>
 </div>

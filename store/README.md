@@ -37,14 +37,14 @@
 | Permission | Justification |
 |---|---|
 | `tabs` | Needed to find the tab under test, open the report and tools pages, and attach the bug panel to the tab the user is testing. |
-| `activeTab` | Takes a screenshot of the current tab when the user marks a bug or starts a check from the toolbar icon or a hotkey. |
+| `activeTab` | Takes a screenshot of the current tab when the user marks a bug or presses “Found a bug” from the toolbar icon or a hotkey. |
 | `scripting` | Injects the bug-marking panel and the autotest recorder into the page under test only after the user starts a check or a recording. |
 | `storage` | Stores settings, the user's consent, autotest scenarios, mocking rules and API test projects locally. |
 | `unlimitedStorage` | Bug reports contain screenshots and tab video, which are stored locally in IndexedDB and can exceed the default quota. |
 | `tabCapture` | Records video of the tab under test when the user clicks “Record video”. |
 | `offscreen` | Runs the MediaRecorder for tab video and microphone voice comments, which is not available in the service worker. |
 | `identity` | Optional Google sign-in, used only if the user connects Google Docs to export a report to their own Google Drive (drive.file scope — only files created by the extension). |
-| Host permission `<all_urls>` | The user may test any website: the extension captures console errors, network requests and actions on the page under test, shows the marking panel there and runs the site audit. Nothing is collected until the user starts a check. |
+| Host permission `<all_urls>` | The user may test any website. After the user accepts the disclosure on the first-run page, the extension keeps a rolling 10-minute buffer of actions, network requests, console messages, a page replay and screenshots after actions on website tabs, so a bug can be reported retroactively with “Found a bug”. The buffer is stored locally only, erased when the tab is closed, and replay/screenshots can be turned off in settings. It also shows the marking panel and runs the site audit. |
 | `debugger` (optional) | Requested at runtime only when the user turns on network/CPU throttling, device emulation, multi-width screenshots or full network capture. Not granted at install. |
 
 ### Remote code
@@ -57,7 +57,7 @@
 
 - **Website content** — скриншоты, видео вкладки, текст и HTML отмеченных элементов.
 - **Web history** — адреса страниц, которые открывались во время проверки.
-- **User activity** — клики, ввод, переходы на проверяемой странице (значения паролей, карт и токенов не записываются).
+- **User activity** — клики, ввод, переходы на страницах сайтов; последние 10 минут хранятся в браузере для «Нашёл баг» (значения паролей, карт и токенов не записываются).
 - **Authentication information** — может попасть в записанные заголовки запросов; при экспорте скрывается по умолчанию. Если в форме требуется — отметить.
 
 Подтвердить все три пункта:
@@ -68,7 +68,7 @@
 
 Пояснение для проверяющих (поле «Notes» / при запросе):
 
-> All data stays in the user's browser (IndexedDB / chrome.storage). The extension has no backend. Data leaves the browser only when the user explicitly downloads or copies a report, or presses the AI analysis / Google Docs button for a service they configured with their own key or account. A first-run page (welcome.html) discloses what is collected and requires consent before the first check.
+> All data stays in the user's browser (IndexedDB / chrome.storage). The extension has no backend. The rolling 10-minute buffer (actions, requests, console, page replay, screenshots after actions) exists only so a tester can report a bug after noticing it; it is erased when the tab closes, secret fields are masked, and replay/screenshots can be disabled. Data leaves the browser only when the user explicitly downloads or copies a report, or presses the AI analysis / Google Docs button for a service they configured with their own key or account. A first-run page (welcome.html) discloses what is collected and requires consent before the first check.
 
 ## 4. Проверка перед отправкой
 

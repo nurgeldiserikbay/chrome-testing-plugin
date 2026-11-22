@@ -1,6 +1,6 @@
 Un bug trouvé ? Capturez-le en 10 secondes.
 
-QA Bug Recorder transforme un bug en rapport prêt à l'emploi : lancez une vérification, utilisez le site normalement, l'extension collecte tout ce dont le développeur a besoin.
+Rien à activer à l'avance : l'extension garde en mémoire les dernières minutes de l'onglet. Un bug ? Appuyez sur « Bug trouvé », choisissez 30 s, 1, 2 ou 5 minutes et obtenez un rapport avec replay de l'écran, captures après chaque action, étapes, requêtes et erreurs de console. Sans recharger ni reproduire.
 
 LES ERREURS SONT CAPTURÉES AUTOMATIQUEMENT
 • Une erreur de console ou une requête échouée devient un élément séparé : capture, texte de l'erreur, requête avec la réponse du serveur et vos actions précédentes.

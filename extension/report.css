@@ -269,3 +269,13 @@ td .sub{display:block;color:#6b7280;font-size:11.5px;margin-top:2px;font-family:
 
 /* скриншоты экранов: не растягивать узкую длинную картинку */
 .it-b img.scr{max-height:620px;width:auto;max-width:100%;object-fit:contain;object-position:top;justify-self:center;background:#f9fafb}
+/* ⏪ последние минуты: повтор экрана и раскадровка */
+.it.retro{border-left-color:#7c3aed}
+.it.retro .it-h .ic{background:#7c3aed}
+.rrp{padding:12px 16px 0;overflow:auto}
+.rrp .rr-player{box-shadow:none;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;float:none}
+.story{display:flex;gap:10px;overflow-x:auto;padding:12px 16px}
+.story figure{margin:0;flex:0 0 200px;cursor:zoom-in}
+.story img{width:200px;height:125px;object-fit:cover;object-position:top;border:1px solid #e5e7eb;border-radius:8px;display:block}
+.story figcaption{font-size:11.5px;color:#4b5563;margin-top:4px;line-height:1.35}
+.story figcaption b{color:#111827;margin-right:4px}
