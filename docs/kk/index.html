@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+
+<html lang="kk">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>QA Bug Recorder — тікелей Chrome-да 10 секундта баг-репорт</title>
+<meta content="Тестілеушілерге арналған тегін Chrome кеңейтімі: элементті белгілеңіз, көрсеткі салыңыз, дауыспен айтыңыз. Консоль логтары, сұраулар және қайталау қадамдары өздігінен жиналады. Word, Markdown, HTML және HAR-ға экспорт." name="description"/>
+<meta content="QA Bug Recorder — 10 секундта баг-репорт" property="og:title"/>
+<meta content="Беттегі белгілер, бейне, дауыс, консоль, желі және автоқадамдар. Word, Markdown, HTML-ге экспорт." property="og:description"/>
+<meta content="../img/report.webp" property="og:image"/>
+<link href="../img/logo.png" rel="icon"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&amp;family=Manrope:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="../style.css" rel="stylesheet"/>
+<!--lang--><link rel="alternate" hreflang="ru" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/index.html"><link rel="alternate" hreflang="en" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/en/index.html"><link rel="alternate" hreflang="zh-Hans" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/zh/index.html"><link rel="alternate" hreflang="es" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/es/index.html"><link rel="alternate" hreflang="pt-BR" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/pt/index.html"><link rel="alternate" hreflang="fr" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/fr/index.html"><link rel="alternate" hreflang="de" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/de/index.html"><link rel="alternate" hreflang="kk" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/kk/index.html"><link rel="alternate" hreflang="x-default" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/index.html"><!--/lang--></head>
+<body>
+<header class="nav">
+<div class="wrap nav-in">
+<a class="brand" href="#"><img alt="" src="../img/logo.png"/><span>QA Bug Recorder</span></a>
+<nav><a href="#how">Қалай жұмыс істейді</a> <a href="#items">Тармақтар</a> <a href="#tools">Автотестер</a> <a href="#audit">Автотексеру</a> <a href="#devtools">DevTools</a> <a href="#features">Мүмкіндіктер</a> <a href="#report">Есеп</a> <a href="#install">Орнату</a> <a href="#faq">FAQ</a></nav><!--lang--><select class="lang-sel" data-noi18n aria-label="Language" onchange="try{localStorage.setItem('qa_land_lang',this.value)}catch(e){};location.href=(this.value==='ru'?'../':'../'+this.value+'/')+'index.html'+location.hash"><option value="ru">Русский</option><option value="en">English</option><option value="zh">中文</option><option value="es">Español</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="kk" selected>Қазақша</option></select><!--/lang-->
+<a class="btn btn-red sm" download="" href="../qa-bug-recorder.zip">Жүктеу</a>
+</div>
+</header>
+<main>
+<!-- ============ HERO ============ -->
+<section class="hero">
+<div aria-hidden="true" class="grid-bg"></div>
+<div class="wrap hero-in">
+<div class="hero-copy">
+<div class="eyebrow"><span class="dot"></span> Chrome кеңейтімі · тегін · тіркелусіз</div>
+<h1>Баг таптыңыз ба?<br/>Оны тіркеңіз<br/><em>10 секундта</em></h1>
+<p class="lead">Тексеруді қосып, сайтты пайдаланыңыз. Консоль қателері мен сәтсіз сұрауларды кеңейтім өзі ұстайды — скриншотпен және толық контекспен. Көрсеткі немесе жиекпен белгілеген ескертулеріңіз жеке тармақтарға айналады. Дайын есеп — Word, Markdown немесе HTML форматында.</p>
+<div class="cta">
+<a class="btn btn-red" download="" href="../qa-bug-recorder.zip">
+<svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewbox="0 0 24 24" width="18"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"></path></svg>
+          Кеңейтімді жүктеу
+        </a>
+<a class="btn btn-ghost" href="#how">Қалай жұмыс істейтінін көру</a>
+</div>
+<div class="hero-meta"><span>Chrome · Edge · Яндекс Браузер</span><span>Деректер браузерден шықпайды</span><span>DevTools ашудың қажеті жоқ</span></div>
+</div>
+<div class="hero-shot">
+<div class="browser">
+<div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
+<img alt="Сайт үстіндегі баг тіркеу панелі: «Төлеу» элементі таңдалған, түсініктеме ашық" height="1125" sizes="(max-width: 900px) 100vw, 600px" src="../img/panel-element.webp" srcset="../img/panel-element-sm.webp 900w, ../img/panel-element.webp 1800w" width="1800"/>
+</div>
+<div class="chip c1"><b>console.error</b> TypeError: Cannot read properties of null</div>
+<div class="chip c2"><b class="red">POST 501</b> /api/orders</div>
+<div class="chip c3"><b>⚠ Тармақ сақталды</b> скриншотпен және сұраумен</div>
+</div>
+</div>
+</section>
+<!-- ============ PROBLEM ============ -->
+<section class="pain">
+<div class="wrap">
+<h2 class="h2">«Қайталанбайды» — әзірлеудегі ең қымбат сөз</h2>
+<p class="sub">Тестілеуші багты бір секундта көреді, содан кейін 15 минутты скриншоттарға, логтарды көшіруге және қадамдарды есіне түсіруге жұмсайды. Әзірлеуші контекссіз есеп алып, тағы бір сағат жоғалтады.</p>
+<div class="pain-grid">
+<div class="pain-card">
+<div class="pc-before">Бұрын</div>
+<h3>«Бұған дейін не бастым?»</h3>
+<p>Қадамдар есте қалғаны бойынша қалпына келтіріледі, жартысы жоғалады.</p>
+<div class="pc-after">Енді</div>
+<p class="ok">Шертулер, енгізу және өтулер өздігінен жазылады. Қайталау қадамдары автоматты жиналады.</p>
+</div>
+<div class="pain-card">
+<div class="pc-before">Бұрын</div>
+<h3>Контекссіз скриншот</h3>
+<p>Неге қарау керек, кодтағы қай батырма екені түсініксіз.</p>
+<div class="pc-after">Енді</div>
+<p class="ok">Көрсеткі, жиек және түсініктеме тікелей скриншотта, оған қоса элементтің CSS селекторы, HTML және стильдері.</p>
+</div>
+<div class="pain-card">
+<div class="pc-before">Бұрын</div>
+<h3>«DevTools-ты ашып, логтарды жібер»</h3>
+<p>Қате болып қойды, консоль тазартылды, сұрауды қайталау мүмкін емес.</p>
+<div class="pc-after">Енді</div>
+<p class="ok">Соңғы 5 минуттағы консоль мен желі буферде тұр, батырманы басқанға дейін болғандары да.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ HOW ============ -->
+<section class="how" id="how">
+<div class="wrap">
+<div class="kicker">Қалай жұмыс істейді</div>
+<h2 class="h2">Тексеруден есепке дейін үш қадам</h2>
+<div class="step">
+<div class="step-text">
+<div class="num">01</div>
+<h3>Тексеруді қосып, әдеттегідей жұмыс істейсіз</h3>
+<p><b>«▶ Тексеруді бастау»</b> батырмасын немесе <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd> басыңыз. Консольде қате пайда болса немесе сұрау қатемен оралса, кеңейтім <b>оны өзі жеке тармақ ретінде сақтайды</b>: сол сәттегі скриншот, қате мәтіні, сервер жауабы бар сұрау және одан бұрынғы әрекеттеріңіз.</p>
+<ul class="ticks">
+<li>Бір қатенің қайталануы саналады, көшірмесі жасалмайды</li>
+<li>Бөгде скрипттер мен қызметтердің қателері сақталмайды, артығын елемеуге болады (🙈)</li>
+<li>Құпиясөздер, карта нөмірлері және CVV жазылмайды</li>
+</ul>
+</div>
+<div class="step-img popup-pair">
+<img alt="Кеңейтім терезесі: «Тексеруді бастау» батырмасы" height="665" loading="lazy" src="../img/popup-idle.webp" width="680"/>
+</div>
+</div>
+<div class="step rev">
+<div class="step-text">
+<div class="num">02</div>
+<h3>Мәселені көресіз — белгілейсіз</h3>
+<p>Беттің төменгі жағындағы панельден құралды таңдаңыз. Әр ескерту — <b>жеке тармақ: белгіленген скриншот және сіздің мәтініңіз</b>, артық логтарсыз. Сценарийді көрсету керек болса — бейне жазуды қосыңыз, оған оқиғалар мен сұраулар тіркеледі.</p>
+<div class="tools">
+<div><span>🎯</span><b>Элемент</b>меңзерді апарып басыңыз, есепке селектор, мәтін, өлшемдер, стильдер түседі</div>
+<div><span>➚</span><b>Көрсеткі</b>бос жерден мәселеге қарай тартыңыз</div>
+<div><span>▭</span><b>Аймақ</b>интерфейстің бір бөлігін қоршаңыз</div>
+<div><span>💬</span><b>Жазба</b>бүкіл экран скриншоты бар түсініктеме</div>
+<div><span>🎤</span><b>Дауыс</b>жазу ұзаққа созылса, айтып беріңіз</div>
+<div><span>⏺</span><b>Бейне</b>қойындыны дауысыңызбен жазу</div>
+</div>
+<ul class="ticks" style="margin-top:14px">
+<li>Белгілер элементтерге жабысып, айналдырғанда бірге жылжиды</li>
+<li>Тыныш күйде жартылай мөлдір және кедергі жасамайды, меңзер апарғанда жарқырайды</li>
+<li>Кез келген белгіні өзгертуге немесе жоюға болады, тізім 📋 батырмасымен ашылады</li>
+</ul>
+</div>
+<div class="step-img">
+<div class="switch" data-switch="">
+<div class="sw-tabs"><button class="on" data-i="0">Элемент</button><button data-i="1">Көрсеткі</button><button data-i="2">Аймақ</button></div>
+<div class="browser small">
+<div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
+<img alt="Беттегі элементті таңдау, көрсеткі және аймақ" data-src="../img/element-hover.webp|../img/arrow.webp|../img/area.webp" height="1125" loading="lazy" sizes="(max-width: 900px) 100vw, 600px" src="../img/element-hover.webp" srcset="../img/element-hover-sm.webp 900w, ../img/element-hover.webp 1800w" width="1800"/>
+</div>
+</div>
+</div>
+</div>
+<div class="step">
+<div class="step-text">
+<div class="num">03</div>
+<h3>Дайын есепті экспорттайсыз</h3>
+<p><b>«✓ Дайын»</b> басыңыз. Есеп — ретімен тізілген тармақтар: қателер, ескертулер, жазбалар. Әрқайсысында тек өз деректері. Экспорт: <b>Word</b>, <b>Markdown</b>, <b>HTML</b>, <b>HAR</b> немесе бәрі бір архивте.</p>
+<ul class="ticks">
+<li>Кез келген тармақты көшіруге (📋) немесе бөлек жүктеуге болады — бір тармаққа трекерде бір тапсырма</li>
+<li>Сессияның барлық деректері жиналған қосымшада, қажет болса</li>
+<li>Экспорт кезінде токендер, cookie және құпиясөздер жасырылады</li>
+</ul>
+</div>
+<div class="step-img">
+<div class="browser small">
+<div class="browser-bar"><i></i><i></i><i></i><span>Тексеру есебі</span></div>
+<img alt="Есеп: тармақтар тізімі — ескерту, жазба, қате" height="1250" loading="lazy" sizes="(max-width: 900px) 100vw, 600px" src="../img/report.webp" srcset="../img/report-sm.webp 900w, ../img/report.webp 1800w" width="1800"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ ITEMS ============ -->
+<section class="items-sec" id="items">
+<div class="wrap">
+<div class="kicker">Есеп тармақтары</div>
+<h2 class="h2">Тармақтың үш түрі — әрқайсысында тек қажетті деректер</h2>
+<p class="sub">Әр тармақтың өз маңыздылығы бар — 🔴 бұғаттаушыдан ⚪ болмашыға дейін; қателер үшін ол автоматты таңдалады. Есеп логтар үйіндісіне айналмайды. Беттеу туралы ескерту — жай скриншот пен мәтін. Қате — әзірлеушіге оны түзетуге қажеттінің бәрі. Жазба — бейне және сол уақытта болғанның бәрі.</p>
+<div class="it-grid">
+<div class="itc err"><div class="itl"><span>⚠</span>Қате — автоматты</div>
+<p>Консоль қатесі немесе қатемен оралған сұрау → тармақ өзі жасалады: сол сәттегі скриншот, қате мәтіні, денесі мен сервер жауабы бар сұрау, қатеге дейінгі әрекеттер, айналадағы консоль мен сұраулар.</p>
+<img alt="«Қате» тармағы: скриншот, JS қатесі, сұрау, қатеге дейінгі әрекеттер" height="1305" loading="lazy" sizes="(max-width: 900px) 100vw, 400px" src="../img/item-error.webp" srcset="../img/item-error-sm.webp 900w, ../img/item-error.webp 1800w" width="1600"/></div>
+<div class="itc rem"><div class="itl"><span>💬</span>Ескерту — өзіңіз белгілейсіз</div>
+<p>Элемент, көрсеткі, аймақ немесе жазба → белгіленген скриншот, мәтініңіз және дауысыңыз. Техникалық логтарсыз — бұл жерде олар қажет емес.</p>
+<img alt="«Ескерту» тармағы: белгіленген скриншот және мәтін" height="649" loading="lazy" sizes="(max-width: 900px) 100vw, 400px" src="../img/item-remark.webp" srcset="../img/item-remark-sm.webp 900w, ../img/item-remark.webp 1800w" width="1600"/></div>
+<div class="itc rec"><div class="itl"><span>🎬</span>Жазба — бейнені қосқанда</div>
+<p>Қойынды бейнесі, оған қоса жазу кезіндегі және одан 1–2 минут бұрынғы әрекеттер, оқиғалар, сұраулар және консоль.</p>
+<img alt="«Жазба» тармағы: жазу кезіндегі бейне мен оқиғалар" height="987" loading="lazy" sizes="(max-width: 900px) 100vw, 400px" src="../img/item-recording.webp" srcset="../img/item-recording-sm.webp 900w, ../img/item-recording.webp 1800w" width="1600"/></div>
+</div>
+</div>
+</section>
+<!-- ============ AUDIT ============ -->
+<section class="features" id="tools">
+<div class="wrap">
+<div class="kicker light">Тестілеуші құралдары</div>
+<h2 class="h2 light">Бір батырмамен регрессия және бэкендсіз шекті жағдайлар</h2>
+<div class="fgrid">
+<article><div class="fi">🤖</div><h3>Жазбадан автотестер</h3><p>«Автотест жазу» батырмасын басып, сценарийден өтіңіз: шертулер, енгізу, таңдау. ✓ тексерулер қойыңыз — «мәтін пайда болды», «мекенжайда /success бар». Сақтаңыз — және әр релизден кейін барлық сценарийді іске қосыңыз: не өтті, не сәтсіз болды, қай қадамда, скриншотпен.</p></article>
+<article><div class="fi">🎭</div><h3>Playwright-қа экспорт</h3><p>Әр сценарий конфигурациясы бар дайын <code>.spec.ts</code> тесті ретінде жүктеледі — әзірлеушілер оны CI-ға қосады. Консоль қателері кеңейтімдегідей сәтсіздік болып саналады.</p></article>
+<article><div class="fi">🔌</div><h3>Swagger және Postman бойынша API-тестер</h3><p>Спецификацияны импорттаңыз — кеңейтім әр эндпоинтты өзі тексереді: дұрыс, толық емес және қате деректер, токенсіз, жоқ объектілер, «құру → алу → өзгерту → жою» тізбектері және сұраулардың қате реті. Нәтижесінде — түсіндірмесі бар «API-да не дұрыс емес»: 500 құлаулары, бұзық деректерді қабылдау, схемаға сәйкес келмеу, ағып кетулер, авторизациясыз қол жеткізу.</p></article>
+<article><div class="fi">🧪</div><h3>API жауаптарын алмастыру</h3><p>500, 401 қатесі, бос тізім, 5 секунд кідіріс, «желі жоқ» — кез келген сұрау үшін. Нақты жауапты алып, түзетуге болады. Алмастырылған сұраулар баг деп қабылданбас үшін есепте белгіленеді.</p></article>
+<article><div class="fi">📶</div><h3>Баяу желі және әлсіз телефон</h3><p>3G, баяу 3G, желісіз; процессор 4–6 есе баяу; iPhone, Android, iPad. Шарттар есептің әр тармағына жазылады.</p></article>
+<article><div class="fi">📐</div><h3>Барлық экрандағы скриншоттар</h3><p>Бір батырма — бүкіл бет 375, 768, 1280 және 1920 px енінде, есептегі тармақтар ретінде. Беттеудің қай жерде бұзылғаны бірден көрінеді.</p></article>
+</div>
+</div>
+</section>
+<section class="audit-sec" id="audit">
+<div class="wrap audit-in">
+<div>
+<div class="kicker">🩺 Автотексеру</div>
+<h2 class="h2">Тестілеп жатқанда сайт аудиті</h2>
+<p class="sub">Әр ашылған бет фонда өздігінен тексеріледі. Есепте — бағыттар бойынша бағалар және нені жақсарту керегінің тізімі: маңыздылығы, неге нашар, қалай түзету керек және нақты элементтер.</p>
+<ul class="ticks">
+<li><b>SEO:</b> noindex және жабық robots.txt, title және description (жоқ, ұзындығы, беттер арасындағы көшірмелер), h1, canonical, viewport, Open Graph, schema.org, favicon</li>
+<li><b>Жүктелу жылдамдығы:</b> сызуды бұғаттайтын ресурстар, сығу мен кэштеу жоқ, ауыр JS, font-display жоқ қаріптер, суреттерді кейінге қалдырып жүктеу, HTTP/1.1, бөгде қызметтер</li>
+<li><b>Семантика және формалар:</b> батырмалардың орнына басылатын div, бос сілтемелер, формалардағы type жоқ батырмалар, type="text" бар email/телефон өрістері</li>
+<li><b>Тәжірибелер және қауіпсіздік:</b> бұзылған сілтемелер мен ресурстар, HTTPS және аралас мазмұн, қауіпсіздік тақырыптары, ескірген API</li>
+<li><b>Желі:</b> қайталанатын сұраулар, форманы қайта жіберу, N+1, тым жиі сұрау, баяу және ауыр жауаптар</li>
+<li><b>Кез келген сайттағы артық қайта сызулар:</b> өзгеріссіз қайта жасалатын элементтер, бос DOM жаңартулары, үнемі өзгеретін аймақтар; React үшін — компоненттер бойынша есептегіш те</li>
+<li><b>Қолжетімділік:</b> axe-core қозғалтқышы (Lighthouse-тағыдай) интерфейс тіліндегі сипаттамалармен — alt, өріс белгілері, контраст, құрылым</li>
+<li><b>Суреттер:</b> экрандағыдан бірнеше есе үлкен суреттер және ауыр файлдар</li>
+<li><b>Ескертулер:</b> тізімдерде key жоқ, ажыратылғаннан кейін жаңарту, шексіз циклдар</li>
+<li><b>Өнімділік:</b> Web Vitals, қатулар, баяу шертулер</li>
+</ul>
+<p class="muted" style="margin-top:14px">Автотексеру есебін бөлек жүктеп, әзірлеушіге немесе SEO маманына беруге болады.</p>
+</div>
+<div class="browser small"><div class="browser-bar"><i></i><i></i><i></i><span>🩺 Автотексеру</span></div><img alt="Сайтты автотексеру: SEO, жылдамдық, қолжетімділік, семантика және қауіпсіздік бағалары" height="865" loading="lazy" src="../img/audit.webp" width="1170"/></div>
+</div>
+</section>
+<!-- ============ DEVTOOLS ============ -->
+<section class="devtools" id="devtools">
+<div class="wrap">
+<div class="kicker">DevTools сияқты, бірақ түсінікті</div>
+<h2 class="h2">DevTools-тағы барлығы — DevTools-сыз</h2>
+<p class="sub">Тестілеушіге DevTools-тағы Performance қойындысының қайда екенін білудің қажеті жоқ. Кеңейтім әзірлеуші әдетте іздейтін нәрселерді өзі жазып, ретке келтіреді: алдымен негізгісі, толығы шерткенде.</p>
+<div class="dt-grid">
+<div class="dt-list">
+<div class="dt-item on" data-go="0"><span>🔎</span><div><b>Мәселелер жиынтығы</b>JS және сұрау қателері, экрандағы қате хабарламалары, қатулар, нашар метрикалар: есептің жоғарғы жағында карточкалармен.</div></div>
+<div class="dt-item" data-go="1"><span>🕒</span><div><b>Уақыт сызығы</b>Шертулер, енгізу, сұраулар, қателер, қайта сызулар және DOM өзгерістері бір уақыт шкаласында. Багтан бір секунд бұрын не болғаны көрінеді.</div></div>
+<div class="dt-item" data-go="2"><span>⚡</span><div><b>Өнімділік</b>Web Vitals (LCP, INP, CLS, FCP, TTFB), кінәлі скрипті бар ұзақ кадрлар, баяу шертулер, FPS, жад, DOM түйіндері.</div></div>
+<div class="dt-item" data-go="2"><span>🔁</span><div><b>Артық қайта сызулар</b>Кез келген сайтта — қарапайым HTML, React, Vue, Angular: не өзгеріссіз қайта жасалатыны және бос жаңартулар қайда екені. React үшін — компоненттер бойынша есептегіш.</div></div>
+<div class="dt-item" data-go="1"><span>🧩</span><div><b>DOM және бет оқиғалары</b>Пайда болған тосттар мен модальдар, форма валидациясының қателері, alert/confirm, айналдыру, желінің үзілуі, WebSocket.</div></div>
+<div class="dt-item" data-go="3"><span>🍪</span><div><b>Cookies және қойма</b>Баг сәтіндегі cookies, localStorage және sessionStorage суреті және тест кезіндегі барлық өзгерістер.</div></div>
+</div>
+<div class="switch dt" data-switch="">
+<div class="sw-tabs"><button class="on" data-i="0">Жиынтық</button><button data-i="1">Уақыт сызығы</button><button data-i="2">Өнімділік</button><button data-i="3">Қойма</button></div>
+<div class="browser small">
+<div class="browser-bar"><i></i><i></i><i></i><span>QA Bug Recorder · есеп</span></div>
+<img alt="Есептегі жиынтық, уақыт сызығы, өнімділік және қойма" data-src="../img/summary.webp|../img/timeline.webp|../img/perf.webp|../img/storage.webp" height="469" loading="lazy" src="../img/summary.webp" width="1800"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ FEATURES ============ -->
+<section class="features" id="features">
+<div class="wrap">
+<div class="kicker light">Мүмкіндіктер</div>
+<h2 class="h2 light">Әзірлеушіге бірінші реттен түзету үшін қажеттінің бәрі</h2>
+<div class="fgrid">
+<article><div class="fi">⚠️</div><h3>Қателер өздігінен ұсталады</h3><p>Консоль қатесі немесе сәтсіз сұрау → скриншоты, сұрауы, сервер жауабы және қатеге дейінгі қадамдары бар тармақ.</p></article>
+<article><div class="fi">🎯</div><h3>Элементті таңдау</h3><p><code>data-testid</code> басымдығы бар CSS селекторы, мәтін, өлшемдер, есептелген стильдер және HTML үзіндісі.</p></article>
+<article><div class="fi">✍️</div><h3>Скриншоттағы белгілер</h3><p>Көрсеткі, жиек, нөмірлеу және түсініктеме тікелей суретте салынған.</p></article>
+<article><div class="fi">🎤</div><h3>Дауыстық түсініктеме</h3><p>Микрофоннан жазу қалғанымен қатар: жеке файл ретінде және бейненің дыбыс жолында.</p></article>
+<article><div class="fi">🎬</div><h3>Қойынды бейнесі</h3><p>Кез келген сәтте қосылады. Белгі уақытын басқанда бейне сол сәтке ауысады.</p></article>
+<article><div class="fi">🧭</div><h3>Автоқадамдар</h3><p>«Email өрісіне енгізу», «Шерту: Төлеу», «/checkout бетіне өту»: қадамдар нақты әрекеттерден жиналады.</p></article>
+<article><div class="fi">🖥️</div><h3>Консоль және JS қателері</h3><p><code>console.*</code>, өңделмеген ерекшеліктер, қабылданбаған промистер, жүктелмеген ресурстар.</p></article>
+<article><div class="fi">🔌</div><h3>Желі және HAR</h3><p>Әдіс, күй, уақыт, тақырыптар, сұрау мен жауап денелері. HAR DevTools → Network → Import арқылы ашылады.</p></article>
+<article><div class="fi">🔒</div><h3>Деректерді қорғау</h3><p>Құпиясөздер мүлде жазылмайды. Экспорт кезінде <code>Authorization</code>, cookie, URL мен JSON-дағы токендер жасырылады.</p></article>
+<article><div class="fi">🗂️</div><h3>Есептер тарихы</h3><p>Барлық есептер жергілікті сақталады. Кез келгеніне оралып, толықтырып, қайта экспорттауға болады.</p></article>
+<article><div class="fi">📋</div><h3>Тапсырмаға көшіру</h3><p>Тармақ буферге көшіріледі: Jira, Telegram, Slack үшін мәтін, скриншот немесе Google Docs пен Notion үшін бәрі бірге.</p></article>
+<article><div class="fi">🙈</div><h3>Шусыз</h3><p>Бөгде скрипттердің (аналитика, жарнама, виджеттер) қателері сақталмайды. Артық қатені біржола елемеуге болады.</p></article>
+<article><div class="fi">⌨️</div><h3>Пернелер тіркесімі</h3><p>Тексеруді бастау, элемент таңдау, көрсеткі, дайын: тінтуірсіз және артық шертусіз.</p></article>
+<article><div class="fi">🕒</div><h3>Біртұтас уақыт сызығы</h3><p>Әрекеттер, желі, консоль, DOM және сызулар бір шкалада. «Маңызды» сүзгісі шуды алып тастайды.</p></article>
+<article><div class="fi">⚡</div><h3>Web Vitals және қатулар</h3><p>«Жақсы/нашар» бағасы бар LCP, INP, CLS, кінәлі скрипті бар ұзақ кадрлар, FPS құлдырауы.</p></article>
+<article><div class="fi">🔁</div><h3>Артық қайта сызулар</h3><p>Кез келген сайтта жұмыс істейді: өзгеріссіз қайта жасалған элементтер, бос DOM жаңартулары. React үшін — компоненттер бойынша.</p></article>
+<article><div class="fi">🤖</div><h3>Багты AI-талдау</h3><p>Тармақтағы 🤖 батырмасы: атауы, қадамдар, күтілген / нақты, ықтимал себеп (фронт немесе бэк) және нені тексеру керек. Бүкіл есептің қорытындысы. Claude, ChatGPT немесе кез келген үйлесімді қызмет — өз кілтіңізбен.</p></article>
+<article><div class="fi">🧪</div><h3>DevTools режимі</h3><p>Қалауыңыз бойынша: CORS қателері, браузер ескертулері және DevTools метрикалары (макет пен стильдерді қайта есептеу, JS уақыты).</p></article>
+</div>
+</div>
+</section>
+<!-- ============ REPORT SHOWCASE ============ -->
+<section class="showcase" id="report">
+<div class="wrap">
+<div class="kicker">Есеп</div>
+<h2 class="h2">Бір экран: не бұзылды, қайда және неге</h2>
+<p class="sub">Бұл тест дүкенінде түсірілген есептің нақты скриншоттары. Қойындыларды ауыстырып көріңіз.</p>
+<div class="switch big" data-switch="">
+<div class="sw-tabs">
+<button class="on" data-i="0">Есеп</button>
+<button data-i="1">Белгілер</button>
+<button data-i="2">Желі</button>
+<button data-i="3">Консоль</button>
+<button data-i="4">Word</button>
+</div>
+<div class="browser">
+<div class="browser-bar"><i></i><i></i><i></i><span>QA Bug Recorder · есеп</span></div>
+<img alt="QA Bug Recorder есебі" data-src="../img/report.webp|../img/report-annotations.webp|../img/report-network.webp|../img/report-console.webp|../img/word-1.webp" height="1250" loading="lazy" src="../img/report.webp" width="1800"/>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ FORMATS ============ -->
+<section class="formats">
+<div class="wrap">
+<div class="kicker">Экспорт</div>
+<h2 class="h2">Трекеріңіз қабылдайтын формат</h2>
+<div class="fmt-grid">
+<div class="fmt"><div class="ext">.docx</div><h3>Word</h3><p>Тапсырыс беруші мен құжаттама үшін. Скриншоттары бар тармақтар, сұраулары мен қадамдары бар қателер, орта.</p></div>
+<div class="fmt"><div class="ext">.md</div><h3>Markdown</h3><p>GitLab, Jira, Notion және басқа трекерлер үшін. Архив: <code>report.md</code>, скриншоттар қалтасы, медиа, HAR.</p></div>
+<div class="fmt"><div class="ext">G Docs</div><h3>Google Docs</h3><p>Есеп немесе бір тармақ — бірден Google-құжат ретінде, скриншоттары Дискіңіздегі қалтада. Бейне мен дауыс жанына жүктеледі.</p></div>
+<div class="fmt"><div class="ext">.html</div><h3>HTML</h3><p>Кез келген браузерде ашылатын бір файл. Бейне мен дауыс ішіне ендіріледі.</p></div>
+<div class="fmt"><div class="ext">.har</div><h3>HAR</h3><p>Әзірлеуші үшін: DevTools, Charles, Fiddler немесе Postman-ға импорт.</p></div>
+<div class="fmt wide"><div class="ext">.zip</div><h3>Барлығы бір архивте</h3><p>Word + HTML + Markdown + скриншоттар + бейне + дауыс + HAR + <code>console.log</code>. Тапсырмаға тіркедіңіз — дайын.</p></div>
+</div>
+</div>
+</section>
+<!-- ============ AUDIENCE ============ -->
+<section class="who">
+<div class="wrap who-grid">
+<div><div class="who-i">🧪</div><h3>Тестілеушілерге</h3><p>Күнделікті жұмыс аз, табылған баг көп. «Сен не бастың?» деген сұрақсыз есеп.</p></div>
+<div><div class="who-i">👩‍💻</div><h3>Әзірлеушілерге</h3><p>Селектор, қате стегі, сервер жауабының денесі және HAR бірден тапсырмада.</p></div>
+<div><div class="who-i">📋</div><h3>Менеджерлер мен тапсырыс берушілерге</h3><p>Қабылдау тестілеуі: техникадан алыс адам да дауыс пен көрсеткі арқылы түсінікті есеп жібереді.</p></div>
+</div>
+</section>
+<!-- ============ PRIVACY ============ -->
+<section class="privacy">
+<div class="wrap priv-in">
+<div class="lock">🔒</div>
+<div>
+<h2 class="h2 light">Деректеріңіз өзіңізде қалады</h2>
+<p>Кеңейтімнің сервері жоқ және интернетке ештеңе жібермейді. Барлығы браузерде жергілікті сақталады (IndexedDB) және тек есепті өзіңіз жүктегенде ғана одан шығады. Құпиясөз, карта және токен өрістерінің мәндері мүлде жазылмайды, ал авторизация тақырыптары мен cookie әдепкі бойынша экспорт кезінде жасырылады.</p>
+</div>
+</div>
+</section>
+<!-- ============ INSTALL ============ -->
+<section class="install" id="install">
+<div class="wrap">
+<div class="kicker">Орнату</div>
+<h2 class="h2">Екі минут, кеңейтімдер дүкенінсіз</h2>
+<div class="inst-grid">
+<ol class="inst">
+<li><b>Архивті жүктеп</b>, тұрақты қалтаға ашыңыз.<br/><a class="btn btn-red sm" download="" href="../qa-bug-recorder.zip">qa-bug-recorder.zip жүктеу</a></li>
+<li><code>chrome://extensions</code> ашып, оң жақ жоғарғы бұрышта <b>«Әзірлеуші режимін»</b> қосыңыз.</li>
+<li><b>«Ашылған кеңейтімді жүктеу»</b> батырмасын басып, <code>qa-bug-recorder</code> қалтасын таңдаңыз.</li>
+<li>🐞 белгішесін браузер тақтасына бекітіп, тексерілетін сайттың <b>қойындыларын жаңартыңыз</b>.</li>
+</ol>
+<div class="keys">
+<h3>Пернелер тіркесімі</h3>
+<table>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd></td><td>Тексеруді бастау / панельді ашу</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Элементті таңдау</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Көрсеткі</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>Дайын, есепті ашу</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Белгіні сақтау</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Құралды болдырмау</td></tr>
+</table>
+<p class="muted">Қайта тағайындау: <code>chrome://extensions/shortcuts</code></p>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ FAQ ============ -->
+<section class="faq" id="faq">
+<div class="wrap narrow">
+<div class="kicker">FAQ</div>
+<h2 class="h2">Жиі қойылатын сұрақтар</h2>
+<details><summary>Кеңейтім сайтты баяулата ма?</summary><p>Іс жүзінде жоқ. Консоль мен сұрауларды ұстау — стандартты функциялардың үстіндегі жеңіл орауыштар, DOM өзгерістері мен сызулар секундына бір рет топтап саналады, ал деректер тек соңғы минуттар үшін сақталады. Бейне тек сіз қосқанда жазылады.</p></details>
+<details><summary>Кеңейтім артық қайта сызуларды қалай табады?</summary><p>Кез келген сайт үшін — HTML өзгерістері бойынша: элемент жойылып, сол мазмұнмен қайта қойылса немесе атрибутқа сол мән жазылса, бұл браузер үшін артық жұмыс. React үшін қосымша компонент сызулары саналады — React DevTools қолданатын механизм арқылы. React 16–19 сайттарында, оның ішінде продакшн-жинақтарда жұмыс істейді. Егер сізде React DevTools кеңейтімі орнатылса, QA Bug Recorder баптауларында «React қайта сызуларын санау» тармағын өшіріңіз: екі есептегіш бір-біріне кедергі жасайды.</p></details>
+<details><summary>Кеңейтім қандай тілдерде жұмыс істейді?</summary><p>Орыс, ағылшын, қытай, испан, португал, француз, неміс және қазақ тілдерінде. Тіл браузер тілі бойынша автоматты түрде немесе кеңейтім баптауларында қолмен таңдалады. Есептер де таңдалған тілде жасалады — багтарды шетелдегі әріптестер немесе тапсырыс беруші оқыса, ыңғайлы.</p></details>
+<details><summary>AI-талдау кезінде деректер қайда кетеді?</summary><p>Тек сіз таңдаған қызметке (Claude, OpenAI немесе басқа) және тек 🤖 басқанда. Кілт браузеріңізде сақталады. Сұраулардағы токендер, cookie және құпиясөздер жіберер алдында жасырылады, скриншот жіберуді өшіруге болады. Кілтсіз батырма чатқа қолмен қою үшін дайын промптты көшіреді.</p></details>
+<details><summary>Google Docs-ты қалай қосамын?</summary><p>Баптаусыз «Google Docs» батырмасы есепті көшіріп, жаңа құжат ашады — тек Ctrl+V басу қалады. Бір шертумен экспорттау үшін Google Cloud-тан Client ID керек: оны командадағы біреу «🔌 Интеграциялар» бөліміндегі қадамдық нұсқаулық бойынша бір рет жасайды. Кеңейтім тек өзі жасаған файлдарға қол жеткізеді.</p></details>
+<details><summary>Буфер неге бос?</summary><p>Жинау бет жүктелгенде басталады. Кеңейтімді орнатқаннан кейін сайт қойындысын жаңартыңыз (F5). <code>chrome://</code> қызметтік беттерінде және кеңейтімдер дүкенінде Chrome кеңейтімдердің жұмысына тыйым салады.</p></details>
+<details><summary>Неге Chrome бейне үшін растау сұрайды?</summary><p>Chrome қойындыны тек пайдаланушының анық әрекетінен кейін жазуға рұқсат береді. Егер багты белгіше немесе пернелер тіркесімі арқылы бастасаңыз, бейне беттегі панельден қосылады. Одан кейін басқа бетке өтсеңіз, белгішені басыңыз → «⏺ Бейне».</p></details>
+<details><summary>Дауыстық түсініктеме қалай жұмыс істейді?</summary><p>🎤 алғаш басқанда микрофонға рұқсат сұрайтын қойынды ашылады: бұл бір рет қажет. Дауыс жеке файлға жазылады және бейне қосулы болса, оған араластырылады.</p></details>
+<details><summary>«Желіні толық жазу» дегеніміз не?</summary><p>DevTools хаттамасы арқылы жұмыс істейтін режим: барлық ресурстарды (суреттер, скрипттер, стильдер), CORS қателерін және браузер ескертулерін жазады. Бұл кезде Chrome «Кеңейтім осы браузерді отладкалап жатыр» жолағын көрсетеді, бұл қалыпты. Кеңейтім баптауларында қосылады.</p></details>
+<details><summary>Бейне қандай форматта?</summary><p>WebM (VP9/VP8 + Opus). Chrome, Firefox, VLC, Windows 10+ және macOS 13+ ойнатқыштарында ашылады. Word-қа бейне ендірілмейді: HTML немесе архивті пайдаланыңыз.</p></details>
+<details><summary>Edge, Яндекс Браузер, Opera-да пайдалануға бола ма?</summary><p>Иә, 116 және одан жаңа нұсқадағы кез келген Chromium браузерінде. Орнату бірдей — кеңейтімдер беті мен әзірлеуші режимі арқылы.</p></details>
+</div>
+</section>
+<!-- ============ ROADMAP ============ -->
+<section class="roadmap">
+<div class="wrap">
+<div class="kicker">Әрі қарай</div>
+<h2 class="h2">Жоспарда</h2>
+<div class="rm-grid">
+<div class="rm"><span>Жақында</span>MCP-сервер: есептер Claude Code, Cursor және Claude Desktop-қа тікелей қолжетімді — «соңғы есептегі 3-қатені түзет»</div>
+<div class="rm"><span>Жақында</span>Дауыс → мәтін: сөзді тану арқылы түсініктемені айтып жазу</div>
+<div class="rm"><span>Идея</span>«Соңғы 30 секунд» бейнесі және DOM-ды кейіннен жазу (rrweb)</div>
+<div class="rm"><span>Идея</span>Скриншоттағы жеке деректерді бұлыңғырлау</div>
+<div class="rm"><span>Идея</span>Жобаға арналған есеп үлгілері және PDF-ке экспорт</div>
+</div>
+</div>
+</section>
+<section class="final">
+<div class="wrap final-in">
+<h2>Келесі багты 10 секундта тіркеңіз</h2>
+<div class="cta center"><a class="btn btn-red" download="" href="../qa-bug-recorder.zip">Кеңейтімді жүктеу</a></div>
+</div>
+</section>
+</main>
+<section class="donate" id="donate">
+<div class="wrap donate-in">
+<div>
+<div class="kicker">Жобаны қолдау</div>
+<h2 class="h2">Кеңейтім тегін және жарнамасыз</h2>
+<p class="sub">Егер ол сізге және командаңызға уақыт үнемдесе, жаңа мүмкіндіктерді әзірлеуді картаға аударыммен қолдаңыз.</p>
+</div>
+<div class="card-num">
+<span class="lbl">Карта нөмірі</span>
+<code id="card">5269 8800 8898 3051</code>
+<button class="btn btn-red" id="copy-card" type="button">📋 Нөмірді көшіру</button>
+<span class="copied" hidden="" id="copied">✓ Көшірілді</span>
+</div>
+</div>
+</section>
+<footer class="foot">
+<div class="wrap foot-in"><span><img alt="" src="../img/logo.png"/> QA Bug Recorder</span> <span>Жергілікті жұмыс істейді · Manifest V3 · Chrome 116+ · MIT лицензиясы · <a href="../privacy.html">Құпиялылық саясаты</a> · <a href="#donate">❤ Қолдау</a></span></div>
+</footer>
+<script>
+  // копирование номера карты
+  (function () {
+    var b = document.getElementById('copy-card');
+    if (!b) return;
+    b.addEventListener('click', function () {
+      var n = document.getElementById('card').textContent.replace(/\s/g, '');
+      (navigator.clipboard ? navigator.clipboard.writeText(n) : Promise.reject()).then(function () {
+        var c = document.getElementById('copied'); c.hidden = false; setTimeout(function () { c.hidden = true; }, 2000);
+      }).catch(function () { window.prompt('Карта нөмірі', n); });
+    });
+  })();
+  // переключатели скриншотов
+  document.querySelectorAll('[data-switch]').forEach(function (sw) {
+    var img = sw.querySelector('img[data-src]');
+    var srcs = img.dataset.src.split('|');
+    srcs.forEach(function (s) { var i = new Image(); if (img.srcset) { i.sizes = img.sizes; i.srcset = s.replace('.webp', '-sm.webp') + ' 900w, ' + s + ' 1800w'; } i.src = s; }); // предзагрузка
+    sw.querySelectorAll('.sw-tabs button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        sw.querySelectorAll('.sw-tabs button').forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        img.classList.add('fade');
+        setTimeout(function () {
+          var nx = srcs[+b.dataset.i];
+          if (img.srcset) img.srcset = nx.replace('.webp', '-sm.webp') + ' 900w, ' + nx + ' 1800w';
+          img.src = nx;
+          img.classList.toggle('portrait', /word/.test(img.src));
+          img.classList.remove('fade');
+        }, 150);
+      });
+    });
+  });
+  // клик по пункту списка DevTools-данных переключает скриншот
+  document.querySelectorAll('.dt-item[data-go]').forEach(function (it) {
+    it.addEventListener('click', function () {
+      var b = document.querySelector('.switch.dt .sw-tabs button[data-i="' + it.dataset.go + '"]');
+      if (b) b.click();
+      document.querySelectorAll('.dt-item').forEach(function (x) { x.classList.toggle('on', x === it); });
+    });
+  });
+</script>
+</body>
+</html>

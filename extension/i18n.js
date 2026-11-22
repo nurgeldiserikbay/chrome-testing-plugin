@@ -1,13 +1,16 @@
 // Перевод интерфейса. Исходные строки расширения — русские; при английском языке
-// они заменяются по словарю (i18n-dict.js) на лету: в DOM страниц расширения, в панели
+// они заменяются по словарю (i18n/<язык>.js) на лету: в DOM страниц расширения, в панели
 // на сайте (shadow DOM) и в выгрузках через T(). Тексты пользователя и сайта не трогаются:
 // фраза переводится, только если целиком есть в словаре.
 (function (g) {
   if (g.QAI18N) return;
-  const D = g.QA_I18N_DICT || {};
-  const DL = {};
-  for (const k of Object.keys(D)) DL[k.toLowerCase()] = D[k];
+  const LANGS = { ru: 'Русский', en: 'English', zh: '中文（简体）', es: 'Español', pt: 'Português', fr: 'Français', de: 'Deutsch', kk: 'Қазақша' };
+  const LOCALE = { ru: 'ru-RU', en: 'en-GB', zh: 'zh-CN', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', de: 'de-DE', kk: 'kk-KZ' };
+  const AI_LANG = { en: 'English', zh: 'Simplified Chinese', es: 'Spanish', pt: 'Portuguese (Brazil)', fr: 'French', de: 'German', kk: 'Kazakh' };
+  const isExtPage = typeof location !== 'undefined' && location.protocol === 'chrome-extension:';
+  let D = {}, DL = {};
   let lang = 'ru';
+  const setDict = (d) => { D = d || {}; DL = {}; for (const k of Object.keys(D)) DL[k.toLowerCase()] = D[k]; };
   const RUN = /[А-Яа-яЁё][А-Яа-яЁё\s ,.:;!?«»()\-–—/%№’]*/g;
   const SEP = /(\s*[:—·«»\n]\s*|\.\s+|\s+–\s+|\(\s*|\s*\)|;\s*|!\s+|\?\s+)/;
   const EDGE = /^[\s ,.:;!?«»()\-–—/%№’]+|[\s ,.:;!?«»()\-–—/%№’]+$/g;
@@ -33,11 +36,12 @@
     [/\bResponse mocking API\b/g, 'API response mocking'], [/\bMocking API\b/g, 'API mocking'],
     [/\bAPI-tests\b/g, 'API tests'], [/\btests by Swagger\b/g, 'tests from Swagger'],
     [/\bCORS-errors\b/g, 'CORS errors'], [/ — is a failure\b/g, ' count as failures'],
-    [/\bAutotests from recording\b/g, 'Autotests from recordings'],
+    [/\bAutotests from recording\b/g, 'Autotests from recordings'], [/\bor a collection Postman\b/g, 'or a Postman collection'], [/\ba collection Postman\b/g, 'a Postman collection'],
   ];
   function T(s) {
     if (lang === 'ru' || typeof s !== 'string' || !/[А-Яа-яЁё]/.test(s)) return s;
     let out = s.replace(RUN, (run) => run.split(SEP).map((part, i) => (i % 2 ? part : trPiece(part))).join(''));
+    if (lang !== 'en') return out;
     for (const [re, to] of FIX) out = out.replace(re, to);
     out = out.replace(/(^|[^\d.,])1 (steps|items|requests|pages|cases|errors|rules|seconds|minutes|checks|times|elements|domains|scenarios|endpoints|remarks|records|actions|problems|issues|nodes|mismatches|images|updates)\b/g, (m, a, w) => `${a}1 ${SING[w]}`);
     return out;
@@ -86,14 +90,33 @@
   }
 
   // ---------- язык ----------
-  const RU_UI = /^(ru|uk|be|kk|ky|uz|tg|hy|az)/i;
-  const autoLang = () => { try { return RU_UI.test(chrome.i18n.getUILanguage()) ? 'ru' : 'en'; } catch (_) { return RU_UI.test(navigator.language || '') ? 'ru' : 'en'; } };
-  const isExtPage = typeof location !== 'undefined' && location.protocol === 'chrome-extension:';
+  const fromUi = (ui) => {
+    ui = String(ui || '').toLowerCase();
+    if (/^kk/.test(ui)) return 'kk';
+    if (/^(ru|uk|be|ky|uz|tg|hy|az)/.test(ui)) return 'ru';
+    const two = ui.slice(0, 2);
+    return LANGS[two] ? two : 'en';
+  };
+  const autoLang = () => { try { return fromUi(chrome.i18n.getUILanguage()); } catch (_) { return fromUi(navigator.language); } };
+  const loadDict = (l) => new Promise((res) => {
+    const have = g.QA_I18N_DICTS && g.QA_I18N_DICTS[l];
+    if (have || !isExtPage) return res(have || null);
+    const sc = document.createElement('script');
+    sc.src = chrome.runtime.getURL(`i18n/${l}.js`);
+    sc.onload = () => res((g.QA_I18N_DICTS || {})[l] || null);
+    sc.onerror = () => res(null);
+    (document.head || document.documentElement).appendChild(sc);
+  });
   if (isExtPage && document.documentElement) document.documentElement.style.visibility = 'hidden';
   const ready = (async () => {
     let pref = 'auto';
     try { pref = (await chrome.storage.local.get('qa_lang')).qa_lang || 'auto'; } catch (_) {}
-    lang = pref === 'auto' ? autoLang() : pref;
+    lang = pref === 'auto' ? autoLang() : LANGS[pref] ? pref : 'ru';
+    if (lang !== 'ru') {
+      const d = await loadDict(lang);
+      if (!d) lang = 'ru';
+      else setDict(d);
+    }
     if (lang !== 'ru') {
       // alert/confirm/prompt наших скриптов
       for (const f of ['alert', 'confirm', 'prompt']) {
@@ -103,7 +126,7 @@
     }
     if (isExtPage) {
       const go = () => {
-        if (lang !== 'ru') { document.documentElement.lang = 'en'; document.title = T(document.title); watch(document.documentElement); }
+        if (lang !== 'ru') { document.documentElement.lang = lang; document.title = T(document.title); watch(document.documentElement); }
         document.documentElement.style.visibility = '';
       };
       document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', go, { once: true }) : go();
@@ -114,7 +137,9 @@
   g.QAI18N = {
     T, watch, ready,
     get lang() { return lang; },
-    locale: () => (lang === 'ru' ? 'ru-RU' : 'en-GB'),
+    locale: () => LOCALE[lang] || 'ru-RU',
+    LANGS, AI_LANG, fromUi,
+    aiLang: () => AI_LANG[lang] || '',
     setLang: (l) => chrome.storage.local.set({ qa_lang: l }),
   };
 })(globalThis);

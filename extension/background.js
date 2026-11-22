@@ -202,7 +202,7 @@ async function flushAuto() {
   S.errors.push(item);
   await saveSessionNow();
   pushOverlayState();
-  toast(`⚠ Поймана ${item.kind === 'js' ? 'ошибка JavaScript' : 'ошибка запроса'} — сохранена отдельным пунктом${item.shotKey ? ' со скриншотом' : ''}. Лишняя? Нажмите ⚠ на панели → 🙈`, 'warn');
+  toast(`⚠ ${item.kind === 'js' ? 'Ошибка JavaScript' : 'Ошибка запроса'} — сохранена отдельным пунктом${item.shotKey ? ' (со скриншотом)' : ''}. Лишняя? Нажмите ⚠ на панели → 🙈`, 'warn');
 }
 
 async function deleteError(m) {
@@ -219,15 +219,24 @@ async function deleteError(m) {
 
 // ================= 🩺 автопроверка страницы: доступность (axe-core), изображения, DOM =================
 let axeLocale = null;
+const UI_LANGS = ['ru', 'en', 'zh', 'es', 'pt', 'fr', 'de', 'kk'];
 async function uiLang() {
   const { qa_lang } = await chrome.storage.local.get('qa_lang');
-  if (qa_lang && qa_lang !== 'auto') return qa_lang;
-  return /^(ru|uk|be|kk|ky|uz|tg|hy|az)/i.test(chrome.i18n.getUILanguage()) ? 'ru' : 'en';
+  if (qa_lang && qa_lang !== 'auto' && UI_LANGS.includes(qa_lang)) return qa_lang;
+  const ui = chrome.i18n.getUILanguage().toLowerCase();
+  if (/^kk/.test(ui)) return 'kk';
+  if (/^(ru|uk|be|ky|uz|tg|hy|az)/.test(ui)) return 'ru';
+  return UI_LANGS.includes(ui.slice(0, 2)) ? ui.slice(0, 2) : 'en';
 }
+// словарь для скриптов на странице (панель, запись автотеста)
+const i18nFiles = async () => { const l = await uiLang(); return l === 'ru' ? ['i18n.js'] : [`i18n/${l}.js`, 'i18n.js']; };
+const AXE_LOCALE = { ru: 'vendor/axe-ru.json', kk: 'vendor/axe-ru.json', de: 'vendor/axe-locales/de.json', es: 'vendor/axe-locales/es.json', fr: 'vendor/axe-locales/fr.json', pt: 'vendor/axe-locales/pt_BR.json', zh: 'vendor/axe-locales/zh_CN.json' };
 async function getAxeLocale() {
-  if ((await uiLang()) !== 'ru') return null; // у axe по умолчанию английские тексты
-  if (!axeLocale) axeLocale = await (await fetch(chrome.runtime.getURL('vendor/axe-ru.json'))).json();
-  return axeLocale;
+  const f = AXE_LOCALE[await uiLang()];
+  if (!f) return null; // у axe по умолчанию английские тексты
+  if (!axeLocale || axeLocale.__f !== f) { axeLocale = await (await fetch(chrome.runtime.getURL(f))).json(); axeLocale.__f = f; }
+  const { __f, ...loc } = axeLocale;
+  return loc;
 }
 // выполняется на странице (изолированный мир), должна быть самодостаточной
 async function pageAudit(locale) {
@@ -506,12 +515,17 @@ function toast(text, kind = 'info') {
 
 async function injectOverlay(tabId) {
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['bridge.js', 'i18n-dict.js', 'i18n.js', 'overlay.js'] });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['bridge.js', ...(await i18nFiles()), 'overlay.js'] });
   } catch (_) {}
 }
 
 async function startBug(tabId) {
   await ready;
+  // сначала пользователь должен прочитать, какие данные собираются
+  if (!(await chrome.storage.local.get('qa_consent')).qa_consent) {
+    chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+    return { ok: false, error: 'Сначала прочитайте, какие данные использует расширение, и нажмите «Понятно, начать работу».' };
+  }
   if (S && S.active) {
     if (S.tabId === tabId) {
       await injectOverlay(tabId);
@@ -800,6 +814,7 @@ const cdpReq = {};
 const cdp = (tabId, method, params = {}) => chrome.debugger.sendCommand({ tabId }, method, params);
 async function attachCdp(tabId) {
   try {
+    if (!chrome.debugger || !(await hasDebugger())) throw new Error('нет разрешения на отладку вкладки — включите «Полный захват сети» в окне расширения ещё раз');
     try { await chrome.debugger.attach({ tabId }, '1.3'); } catch (e) { if (!/already attached/i.test(e.message)) throw e; }
     await cdp(tabId, 'Network.enable', { maxPostDataSize: 20000 });
     await cdp(tabId, 'Log.enable');
@@ -856,7 +871,7 @@ function applyResp(e, r) {
   e.fromCache = !!(r.fromDiskCache || r.fromPrefetchCache || r.fromServiceWorker);
 }
 
-chrome.debugger.onEvent.addListener(async (src, method, p) => {
+const onDbgEvent = async (src, method, p) => {
   await ready;
   if (!S || !S.active || src.tabId !== S.tabId) return;
   const tabId = src.tabId;
@@ -930,9 +945,9 @@ chrome.debugger.onEvent.addListener(async (src, method, p) => {
       break;
     }
   }
-});
+};
 
-chrome.debugger.onDetach.addListener(async (src, reason) => {
+const onDbgDetach = async (src, reason) => {
   await ready;
   if (S && S.active && src.tabId === S.tabId) {
     S.meta.cdp = false;
@@ -940,7 +955,7 @@ chrome.debugger.onDetach.addListener(async (src, reason) => {
     saveSession();
     if (reason !== 'target_closed') toast('Расширенный захват сети отключён (панель отладки закрыта). Сбор продолжается в обычном режиме.', 'warn');
   }
-});
+};
 
 // ================= события вкладок =================
 chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
@@ -1061,5 +1076,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
+// после установки — страница с описанием данных и согласием
+chrome.runtime.onInstalled.addListener((d) => { if (d.reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') }); });
+
+// отладка вкладки — необязательное разрешение: обработчики подключаются, когда оно выдано
+let dbgHooked = false;
+function hookDebugger() {
+  if (dbgHooked || !chrome.debugger) return;
+  dbgHooked = true;
+  chrome.debugger.onEvent.addListener(onDbgEvent);
+  chrome.debugger.onDetach.addListener(onDbgDetach);
+  if (typeof onToolsDbgDetach === 'function') chrome.debugger.onDetach.addListener(onToolsDbgDetach);
+}
+chrome.permissions.onAdded.addListener(() => hookDebugger());
+const hasDebugger = () => chrome.permissions.contains({ permissions: ['debugger'] });
+
 // инструменты: автотесты, условия, скриншоты экранов
 importScripts('tools-bg.js');
+hookDebugger();

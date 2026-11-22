@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru"><head><script src="i18n-dict.js"></script><script src="i18n.js"></script><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
+<html lang="ru"><head><script src="i18n.js"></script><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
 <body>
 <header><img src="icons/32.png" alt=""><span>QA Bug Recorder</span></header>
 
@@ -9,7 +9,7 @@
   <div class="buf" id="buf"></div>
 
   <details id="settings">
-    <label class="row">🌐 Язык / Language <select id="s-lang"><option value="auto">Как в браузере / Browser</option><option value="ru">Русский</option><option value="en">English</option></select></label>
+    <label class="row">🌐 Язык / Language <select id="s-lang"></select></label>
     <summary>Настройки</summary>
     <label><input type="checkbox" id="s-videoOnStart"> Записывать видео автоматически<small>Сразу при начале проверки. По умолчанию выключено: видео включается кнопкой, когда нужно.</small></label>
     <label><input type="checkbox" id="s-tabAudio"> Записывать звук вкладки в видео</label>
@@ -72,8 +72,10 @@
 
 <div id="err" class="err" hidden></div>
 
+<div id="consent" class="consent" hidden>Перед началом прочитайте, какие данные использует расширение. <button id="consent-open" class="link">Открыть</button></div>
 <footer>
   <button id="reports" class="link">📁 Мои отчёты</button>
+  <button id="donate" class="link" title="Поддержать разработку">❤ Поддержать</button>
   <button id="intg" class="link" title="AI-разбор багов и Google Docs">🔌 Интеграции</button>
   <button id="keys" class="keys link" title="Настроить горячие клавиши">Ctrl+Shift+Q — начать проверку</button>
 </footer>

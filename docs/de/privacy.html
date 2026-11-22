@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Datenschutzerklärung — QA Bug Recorder</title>
+<meta content="Welche Daten die Erweiterung QA Bug Recorder verwendet, wo sie gespeichert und wann sie übertragen werden." name="description"/>
+<link href="../img/logo.png" rel="icon"/>
+<link href="../style.css" rel="stylesheet"/>
+<style>
+.pp{max-width:820px;margin:0 auto;padding:48px 20px 80px}
+.pp h1{font:800 34px/1.15 var(--display);margin:0 0 8px}
+.pp h2{font:700 21px/1.3 var(--display);margin:34px 0 10px}
+.pp p,.pp li{font-size:16px;line-height:1.65}
+.pp ul{padding-left:22px}
+.pp .meta{color:#6b7280}
+.pp .back{display:inline-block;margin-bottom:24px}
+</style>
+<!--lang--><link rel="alternate" hreflang="ru" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/privacy.html"><link rel="alternate" hreflang="en" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/en/privacy.html"><link rel="alternate" hreflang="zh-Hans" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/zh/privacy.html"><link rel="alternate" hreflang="es" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/es/privacy.html"><link rel="alternate" hreflang="pt-BR" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/pt/privacy.html"><link rel="alternate" hreflang="fr" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/fr/privacy.html"><link rel="alternate" hreflang="de" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/de/privacy.html"><link rel="alternate" hreflang="kk" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/kk/privacy.html"><link rel="alternate" hreflang="x-default" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/privacy.html"><!--/lang--></head>
+<body>
+<main class="pp">
+<a class="back" href="../index.html">← QA Bug Recorder</a><!--lang--><select class="lang-sel" data-noi18n aria-label="Language" onchange="try{localStorage.setItem('qa_land_lang',this.value)}catch(e){};location.href=(this.value==='ru'?'../':'../'+this.value+'/')+'privacy.html'+location.hash"><option value="ru">Русский</option><option value="en">English</option><option value="zh">中文</option><option value="es">Español</option><option value="pt">Português</option><option value="fr">Français</option><option value="de" selected>Deutsch</option><option value="kk">Қазақша</option></select><!--/lang-->
+<h1>Datenschutzerklärung</h1>
+<p class="meta">Chrome-Erweiterung „QA Bug Recorder“. Gültig ab 22. November 2026.</p>
+<h2>Kurz gesagt</h2>
+<p>Die Erweiterung hilft beim Testen von Websites. Alles, was sie erfasst, wird nur in Ihrem Browser gespeichert. Die Erweiterung hat keinen eigenen Server, zeigt keine Werbung und verkauft oder teilt keine Daten mit Dritten. Daten verlassen den Browser nur, wenn Sie es selbst tun: einen Bericht herunterladen oder kopieren oder die Schaltfläche eines von Ihnen verbundenen Dienstes drücken.</p>
+<h2>Welche Daten erfasst werden</h2>
+<p>Nur auf dem Tab, auf dem Sie eine Prüfung gestartet haben, und nur solange sie läuft:</p>
+<ul>
+<li>Screenshots der Seite sowie Tab-Video und Stimme vom Mikrofon — nur auf Ihren Befehl;</li>
+<li>Aktionen auf der Seite: Klicks, Eingaben in Felder, Navigation. Werte von Passwort-, Bankkarten-, CVV- und Token-Feldern werden nicht aufgezeichnet;</li>
+<li>technische Seitendaten: Netzwerkanfragen und -antworten, Konsolenmeldungen, Performance-Kennzahlen, Cookies und Speicherdaten der Website, Angaben zur Umgebung (Browser, Fenstergröße);</li>
+<li>Ihre Kommentare, Markierungen und der gewählte Schweregrad.</li>
+</ul>
+<p>Außerdem speichert die Erweiterung, was Sie selbst erstellen: Autotest-Szenarien, Mocking-Regeln, API-Test-Projekte und deren Ergebnisse, Einstellungen.</p>
+<h2>Wo die Daten gespeichert werden</h2>
+<p>Im lokalen Speicher des Browsers auf Ihrem Computer (IndexedDB und Erweiterungsspeicher). Sie können jeden Bericht unter „Meine Berichte“ löschen oder alle Daten, indem Sie die Erweiterung entfernen.</p>
+<h2>Wann Daten übertragen werden</h2>
+<ul>
+<li><b>Export und Kopieren.</b> Sie entscheiden, wer einen heruntergeladenen oder kopierten Bericht erhält. Token und Passwörter lassen sich vor dem Export verbergen.</li>
+<li><b>KI-Analyse (optional).</b> Wenn Sie Ihren eigenen API-Schlüssel eines Dienstes (Anthropic, OpenAI oder kompatibel) angegeben haben, werden beim Drücken von 🤖 der Text des Punkts oder Berichts und, falls aktiviert, der Screenshot an diesen Dienst gesendet. Danach gilt die Datenschutzerklärung des gewählten Dienstes. Der Schlüssel wird nur in Ihrem Browser gespeichert.</li>
+<li><b>Google Docs (optional).</b> Wenn Sie Google verbunden haben, wird der Bericht auf Ihren Befehl in den Ordner „QA Bug Recorder“ auf Ihrem Google Drive hochgeladen. Die Erweiterung erhält nur Zugriff auf Dateien, die sie selbst erstellt hat.</li>
+<li><b>API-Tests und Autotests.</b> Anfragen gehen nur an die von Ihnen angegebenen Adressen.</li>
+</ul>
+<h2>Berechtigungen der Erweiterung</h2>
+<ul>
+<li><b>Zugriff auf Websites</b> — um Anfragen, Konsole und Aktionen auf der geprüften Seite aufzuzeichnen und das Markierungspanel anzuzeigen.</li>
+<li><b>Tab-Aufnahme und Mikrofon</b> — für Video und Sprachkommentare auf Ihren Befehl.</li>
+<li><b>Speicher</b> — damit Berichte im Browser gespeichert werden.</li>
+<li><b>Tab-Debugging</b> (optional, wird bei der ersten Nutzung angefragt) — zur Emulation von langsamem Netz und Geräten, für Screenshots in verschiedenen Bildschirmgrößen und die vollständige Netzwerkerfassung.</li>
+<li><b>Google-Anmeldung</b> — nur wenn Sie Google Docs verbinden.</li>
+</ul>
+<h2>Kinder</h2>
+<p>Die Erweiterung richtet sich an Fachleute aus Test und Entwicklung und ist nicht für Kinder bestimmt.</p>
+<h2>Änderungen</h2>
+<p>Ändert sich die Richtlinie, wird die neue Version mit Datum auf dieser Seite veröffentlicht.</p>
+<h2>Kontakt</h2>
+<p>Fragen zu Daten und zur Funktionsweise der Erweiterung: über die Seite der Erweiterung im Chrome Web Store („Support“).</p>
+</main>
+</body>
+</html>

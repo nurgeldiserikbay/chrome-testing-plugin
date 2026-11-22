@@ -1,0 +1,23 @@
+{
+  "name": {
+    "message": "QA Bug Recorder"
+  },
+  "desc": {
+    "message": "Rapports de bugs avec marques, vidéo, voix, console, requêtes. Audit du site, analyse IA, autotests, tests d'API, export."
+  },
+  "cmd_found": {
+    "message": "Lancer la vérification / ouvrir le panneau"
+  },
+  "cmd_pick": {
+    "message": "Sélectionner un élément pour une remarque"
+  },
+  "cmd_arrow": {
+    "message": "Dessiner une flèche"
+  },
+  "cmd_finish": {
+    "message": "Terminer la vérification et ouvrir le rapport"
+  },
+  "title": {
+    "message": "QA Bug Recorder — lancer la vérification"
+  }
+}

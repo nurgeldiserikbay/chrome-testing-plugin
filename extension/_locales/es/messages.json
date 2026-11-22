@@ -1,0 +1,23 @@
+{
+  "name": {
+    "message": "QA Bug Recorder"
+  },
+  "desc": {
+    "message": "Informes de bugs con marcas, vídeo, voz, consola y peticiones. Auditoría del sitio, análisis IA, autotests, tests de API."
+  },
+  "cmd_found": {
+    "message": "Iniciar comprobación / abrir panel"
+  },
+  "cmd_pick": {
+    "message": "Seleccionar un elemento para una observación"
+  },
+  "cmd_arrow": {
+    "message": "Dibujar una flecha"
+  },
+  "cmd_finish": {
+    "message": "Terminar la comprobación y abrir el informe"
+  },
+  "title": {
+    "message": "QA Bug Recorder — iniciar comprobación"
+  }
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Política de privacidad — QA Bug Recorder</title>
+<meta content="Qué datos usa la extensión QA Bug Recorder, dónde se guardan y cuándo se transmiten." name="description"/>
+<link href="../img/logo.png" rel="icon"/>
+<link href="../style.css" rel="stylesheet"/>
+<style>
+.pp{max-width:820px;margin:0 auto;padding:48px 20px 80px}
+.pp h1{font:800 34px/1.15 var(--display);margin:0 0 8px}
+.pp h2{font:700 21px/1.3 var(--display);margin:34px 0 10px}
+.pp p,.pp li{font-size:16px;line-height:1.65}
+.pp ul{padding-left:22px}
+.pp .meta{color:#6b7280}
+.pp .back{display:inline-block;margin-bottom:24px}
+</style>
+<!--lang--><link rel="alternate" hreflang="ru" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/privacy.html"><link rel="alternate" hreflang="en" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/en/privacy.html"><link rel="alternate" hreflang="zh-Hans" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/zh/privacy.html"><link rel="alternate" hreflang="es" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/es/privacy.html"><link rel="alternate" hreflang="pt-BR" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/pt/privacy.html"><link rel="alternate" hreflang="fr" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/fr/privacy.html"><link rel="alternate" hreflang="de" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/de/privacy.html"><link rel="alternate" hreflang="kk" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/kk/privacy.html"><link rel="alternate" hreflang="x-default" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/privacy.html"><!--/lang--></head>
+<body>
+<main class="pp">
+<a class="back" href="../index.html">← QA Bug Recorder</a><!--lang--><select class="lang-sel" data-noi18n aria-label="Language" onchange="try{localStorage.setItem('qa_land_lang',this.value)}catch(e){};location.href=(this.value==='ru'?'../':'../'+this.value+'/')+'privacy.html'+location.hash"><option value="ru">Русский</option><option value="en">English</option><option value="zh">中文</option><option value="es" selected>Español</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="kk">Қазақша</option></select><!--/lang-->
+<h1>Política de privacidad</h1>
+<p class="meta">Extensión de Chrome «QA Bug Recorder». Vigente desde el 22 de noviembre de 2026.</p>
+<h2>En resumen</h2>
+<p>La extensión ayuda a probar sitios web. Todo lo que recoge se guarda solo en tu navegador. La extensión no tiene servidor propio, no muestra publicidad, no vende ni cede datos a terceros. Los datos salen del navegador solo cuando tú lo haces: descargas o copias un informe o pulsas el botón de un servicio que conectaste.</p>
+<h2>Qué datos se recogen</h2>
+<p>Solo en la pestaña donde iniciaste la comprobación y solo mientras está en curso:</p>
+<ul>
+<li>capturas de la página, así como vídeo de la pestaña y voz del micrófono — solo cuando lo indicas;</li>
+<li>acciones en la página: clics, escritura en campos, navegación. No se registran los valores de campos de contraseñas, tarjetas bancarias, CVV ni tokens;</li>
+<li>datos técnicos de la página: peticiones y respuestas de red, mensajes de consola, indicadores de rendimiento, cookies y almacenamiento del sitio, datos del entorno (navegador, tamaño de ventana);</li>
+<li>tus comentarios, marcas y la gravedad elegida.</li>
+</ul>
+<p>Además, la extensión guarda lo que creas tú: escenarios de autotests, reglas de simulación de respuestas, proyectos de tests de API y sus resultados, ajustes.</p>
+<h2>Dónde se guardan los datos</h2>
+<p>En el almacenamiento local del navegador en tu ordenador (IndexedDB y almacenamiento de la extensión). Puedes eliminar cualquier informe en «Mis informes», o todos los datos desinstalando la extensión.</p>
+<h2>Cuándo se transmiten los datos</h2>
+<ul>
+<li><b>Exportación y copia.</b> Tú decides a quién enviar un informe descargado o copiado. Antes de exportar se pueden ocultar tokens y contraseñas.</li>
+<li><b>Análisis con IA (opcional).</b> Si indicaste tu propia clave de API de un servicio (Anthropic, OpenAI o compatible), al pulsar 🤖 se envían a ese servicio el texto del elemento o del informe y, si está activado, la captura. A partir de ahí se aplica la política de privacidad del servicio elegido. La clave solo se guarda en tu navegador.</li>
+<li><b>Google Docs (opcional).</b> Si conectaste Google, el informe se sube cuando lo indicas a la carpeta «QA Bug Recorder» de tu Google Drive. La extensión solo accede a los archivos que creó ella misma.</li>
+<li><b>Tests de API y autotests.</b> Las peticiones solo van a las direcciones que indicaste.</li>
+</ul>
+<h2>Permisos de la extensión</h2>
+<ul>
+<li><b>Acceso a sitios</b> — para registrar peticiones, consola y acciones en la página probada y mostrar el panel de marcas.</li>
+<li><b>Captura de pestaña y micrófono</b> — para grabar vídeo y comentarios de voz cuando lo indicas.</li>
+<li><b>Almacenamiento</b> — para guardar los informes en el navegador.</li>
+<li><b>Depuración de la pestaña</b> (opcional, se solicita en el primer uso) — para emular red lenta y dispositivos, hacer capturas en distintos tamaños de pantalla y la captura de red completa.</li>
+<li><b>Inicio de sesión de Google</b> — solo si conectas Google Docs.</li>
+</ul>
+<h2>Menores</h2>
+<p>La extensión está pensada para profesionales de pruebas y desarrollo y no está destinada a menores.</p>
+<h2>Cambios</h2>
+<p>Si la política cambia, la nueva versión se publicará en esta página con su fecha.</p>
+<h2>Contacto</h2>
+<p>Preguntas sobre los datos y el funcionamiento de la extensión: a través de la página de la extensión en Chrome Web Store («Asistencia»).</p>
+</main>
+</body>
+</html>

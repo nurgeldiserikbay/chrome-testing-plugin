@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>QA Bug Recorder — Bug-Bericht in 10 Sekunden direkt in Chrome</title>
+<meta content="Kostenlose Chrome-Erweiterung für Tester: Element markieren, Pfeil zeichnen, per Stimme kommentieren. Konsolenlogs, Anfragen und Reproduktionsschritte werden automatisch gesammelt. Export nach Word, Markdown, HTML und HAR." name="description"/>
+<meta content="QA Bug Recorder — Bug-Bericht in 10 Sekunden" property="og:title"/>
+<meta content="Markierungen auf der Seite, Video, Stimme, Konsole, Netzwerk und automatische Schritte. Export nach Word, Markdown, HTML." property="og:description"/>
+<meta content="../img/report.webp" property="og:image"/>
+<link href="../img/logo.png" rel="icon"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&amp;family=Manrope:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="../style.css" rel="stylesheet"/>
+<!--lang--><link rel="alternate" hreflang="ru" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/index.html"><link rel="alternate" hreflang="en" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/en/index.html"><link rel="alternate" hreflang="zh-Hans" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/zh/index.html"><link rel="alternate" hreflang="es" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/es/index.html"><link rel="alternate" hreflang="pt-BR" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/pt/index.html"><link rel="alternate" hreflang="fr" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/fr/index.html"><link rel="alternate" hreflang="de" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/de/index.html"><link rel="alternate" hreflang="kk" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/kk/index.html"><link rel="alternate" hreflang="x-default" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/index.html"><!--/lang--></head>
+<body>
+<header class="nav">
+<div class="wrap nav-in">
+<a class="brand" href="#"><img alt="" src="../img/logo.png"/><span>QA Bug Recorder</span></a>
+<nav><a href="#how">So funktioniert's</a> <a href="#items">Punkte</a> <a href="#tools">Autotests</a> <a href="#audit">Auto-Prüfung</a> <a href="#devtools">DevTools</a> <a href="#features">Funktionen</a> <a href="#report">Bericht</a> <a href="#install">Installation</a> <a href="#faq">FAQ</a></nav><!--lang--><select class="lang-sel" data-noi18n aria-label="Language" onchange="try{localStorage.setItem('qa_land_lang',this.value)}catch(e){};location.href=(this.value==='ru'?'../':'../'+this.value+'/')+'index.html'+location.hash"><option value="ru">Русский</option><option value="en">English</option><option value="zh">中文</option><option value="es">Español</option><option value="pt">Português</option><option value="fr">Français</option><option value="de" selected>Deutsch</option><option value="kk">Қазақша</option></select><!--/lang-->
+<a class="btn btn-red sm" download="" href="../qa-bug-recorder.zip">Herunterladen</a>
+</div>
+</header>
+<main>
+<!-- ============ HERO ============ -->
+<section class="hero">
+<div aria-hidden="true" class="grid-bg"></div>
+<div class="wrap hero-in">
+<div class="hero-copy">
+<div class="eyebrow"><span class="dot"></span> Chrome-Erweiterung · kostenlos · ohne Registrierung</div>
+<h1>Bug gefunden?<br/>Festhalten<br/><em>in 10 Sekunden</em></h1>
+<p class="lead">Starten Sie die Prüfung und nutzen Sie die Website. Konsolenfehler und fehlgeschlagene Anfragen fängt die Erweiterung selbst ab — mit Screenshot und vollem Kontext. Ihre Anmerkungen mit Pfeil oder Rahmen werden zu eigenen Punkten. Der fertige Bericht geht nach Word, Markdown oder HTML.</p>
+<div class="cta">
+<a class="btn btn-red" download="" href="../qa-bug-recorder.zip">
+<svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewbox="0 0 24 24" width="18"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"></path></svg>
+          Erweiterung herunterladen
+        </a>
+<a class="btn btn-ghost" href="#how">So funktioniert's</a>
+</div>
+<div class="hero-meta"><span>Chrome · Edge · Yandex Browser</span><span>Daten verlassen den Browser nicht</span><span>DevTools müssen nicht geöffnet werden</span></div>
+</div>
+<div class="hero-shot">
+<div class="browser">
+<div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
+<img alt="Bug-Erfassungspanel über der Website: Element „Bezahlen“ ausgewählt, Kommentar geöffnet" height="1125" sizes="(max-width: 900px) 100vw, 600px" src="../img/panel-element.webp" srcset="../img/panel-element-sm.webp 900w, ../img/panel-element.webp 1800w" width="1800"/>
+</div>
+<div class="chip c1"><b>console.error</b> TypeError: Cannot read properties of null</div>
+<div class="chip c2"><b class="red">POST 501</b> /api/orders</div>
+<div class="chip c3"><b>⚠ Punkt gespeichert</b> mit Screenshot und Anfrage</div>
+</div>
+</div>
+</section>
+<!-- ============ PROBLEM ============ -->
+<section class="pain">
+<div class="wrap">
+<h2 class="h2">„Nicht reproduzierbar“ ist der teuerste Satz in der Entwicklung</h2>
+<p class="sub">Ein Tester sieht einen Bug in einer Sekunde und verbringt dann 15 Minuten mit Screenshots, Logs kopieren und Schritte rekonstruieren. Der Entwickler bekommt einen Bericht ohne Kontext und verliert noch eine Stunde.</p>
+<div class="pain-grid">
+<div class="pain-card">
+<div class="pc-before">Vorher</div>
+<h3>„Was habe ich davor geklickt?“</h3>
+<p>Schritte werden aus dem Gedächtnis rekonstruiert, die Hälfte geht verloren.</p>
+<div class="pc-after">Nachher</div>
+<p class="ok">Klicks, Eingaben und Navigation werden automatisch aufgezeichnet. Die Reproduktionsschritte entstehen von selbst.</p>
+</div>
+<div class="pain-card">
+<div class="pc-before">Vorher</div>
+<h3>Screenshot ohne Kontext</h3>
+<p>Unklar, worauf man schauen soll und welche Schaltfläche im Code das ist.</p>
+<div class="pc-after">Nachher</div>
+<p class="ok">Pfeil, Rahmen und Kommentar direkt auf dem Screenshot, dazu CSS-Selektor, HTML und Styles des Elements.</p>
+</div>
+<div class="pain-card">
+<div class="pc-before">Vorher</div>
+<h3>„Öffne DevTools und schick mir die Logs“</h3>
+<p>Der Fehler ist schon passiert, die Konsole geleert, die Anfrage lässt sich nicht wiederholen.</p>
+<div class="pc-after">Nachher</div>
+<p class="ok">Konsole und Netzwerk der letzten 5 Minuten sind schon im Puffer, auch das, was vor dem Klick passiert ist.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ HOW ============ -->
+<section class="how" id="how">
+<div class="wrap">
+<div class="kicker">So funktioniert's</div>
+<h2 class="h2">Drei Schritte von der Prüfung zum Bericht</h2>
+<div class="step">
+<div class="step-text">
+<div class="num">01</div>
+<h3>Prüfung starten und wie gewohnt arbeiten</h3>
+<p>Klicken Sie auf <b>„▶ Prüfung starten“</b> oder <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>. Sobald in der Konsole ein Fehler erscheint oder eine Anfrage fehlschlägt, <b>speichert die Erweiterung ihn selbst als eigenen Punkt</b>: Screenshot in diesem Moment, Fehlertext, Anfrage mit Serverantwort und Ihre Aktionen davor.</p>
+<ul class="ticks">
+<li>Wiederholungen desselben Fehlers werden gezählt, nicht dupliziert</li>
+<li>Fehler fremder Skripte und Dienste werden nicht gespeichert, unnötige lassen sich ignorieren (🙈)</li>
+<li>Passwörter, Kartennummern und CVV werden nicht aufgezeichnet</li>
+</ul>
+</div>
+<div class="step-img popup-pair">
+<img alt="Erweiterungsfenster: Schaltfläche „Prüfung starten“" height="665" loading="lazy" src="../img/popup-idle.webp" width="680"/>
+</div>
+</div>
+<div class="step rev">
+<div class="step-text">
+<div class="num">02</div>
+<h3>Problem gesehen — markieren</h3>
+<p>Wählen Sie ein Werkzeug im Panel unten auf der Seite. Jede Anmerkung ist <b>ein eigener Punkt: Screenshot mit Hervorhebung und Ihr Text</b>, ohne überflüssige Logs. Ein Szenario zeigen? Videoaufnahme einschalten, Ereignisse und Anfragen werden angehängt.</p>
+<div class="tools">
+<div><span>🎯</span><b>Element</b>überfahren und klicken, im Bericht landen Selektor, Text, Größen, Styles</div>
+<div><span>➚</span><b>Pfeil</b>von einer freien Stelle zum Problem ziehen</div>
+<div><span>▭</span><b>Bereich</b>einen Teil der Oberfläche umrahmen</div>
+<div><span>💬</span><b>Notiz</b>Kommentar mit Screenshot des ganzen Bildschirms</div>
+<div><span>🎤</span><b>Stimme</b>einsprechen, wenn Tippen zu lange dauert</div>
+<div><span>⏺</span><b>Video</b>Tab-Aufnahme mit Ihrer Stimme</div>
+</div>
+<ul class="ticks" style="margin-top:14px">
+<li>Markierungen haften an Elementen und wandern beim Scrollen mit</li>
+<li>Im Ruhezustand halbtransparent und unauffällig, beim Überfahren hell</li>
+<li>Jede Markierung lässt sich ändern oder löschen, die Liste öffnet die Schaltfläche 📋</li>
+</ul>
+</div>
+<div class="step-img">
+<div class="switch" data-switch="">
+<div class="sw-tabs"><button class="on" data-i="0">Element</button><button data-i="1">Pfeil</button><button data-i="2">Bereich</button></div>
+<div class="browser small">
+<div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
+<img alt="Elementauswahl, Pfeil und Bereich auf der Seite" data-src="../img/element-hover.webp|../img/arrow.webp|../img/area.webp" height="1125" loading="lazy" sizes="(max-width: 900px) 100vw, 600px" src="../img/element-hover.webp" srcset="../img/element-hover-sm.webp 900w, ../img/element-hover.webp 1800w" width="1800"/>
+</div>
+</div>
+</div>
+</div>
+<div class="step">
+<div class="step-text">
+<div class="num">03</div>
+<h3>Fertigen Bericht exportieren</h3>
+<p>Klicken Sie auf <b>„✓ Fertig“</b>. Der Bericht ist eine Liste von Punkten in Reihenfolge: Fehler, Anmerkungen, Aufnahmen. Jeder enthält nur seine Daten. Export: <b>Word</b>, <b>Markdown</b>, <b>HTML</b>, <b>HAR</b> oder alles in einem Archiv.</p>
+<ul class="ticks">
+<li>Jeder Punkt lässt sich kopieren (📋) oder einzeln herunterladen — eine Tracker-Aufgabe pro Punkt</li>
+<li>Alle Sitzungsdaten liegen in einem eingeklappten Anhang, falls nötig</li>
+<li>Token, Cookies und Passwörter werden beim Export verborgen</li>
+</ul>
+</div>
+<div class="step-img">
+<div class="browser small">
+<div class="browser-bar"><i></i><i></i><i></i><span>Prüfbericht</span></div>
+<img alt="Bericht: Liste der Punkte — Anmerkung, Aufnahme, Fehler" height="1250" loading="lazy" sizes="(max-width: 900px) 100vw, 600px" src="../img/report.webp" srcset="../img/report-sm.webp 900w, ../img/report.webp 1800w" width="1800"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ ITEMS ============ -->
+<section class="items-sec" id="items">
+<div class="wrap">
+<div class="kicker">Berichtspunkte</div>
+<h2 class="h2">Drei Arten von Punkten — jeder nur mit den nötigen Daten</h2>
+<p class="sub">Jeder Punkt hat seinen Schweregrad — von 🔴 blockierend bis ⚪ trivial; bei Fehlern wird er automatisch gewählt. Der Bericht wird nicht zur Log-Halde. Eine Layout-Anmerkung ist einfach Screenshot und Text. Ein Fehler ist alles, was der Entwickler zur Behebung braucht. Eine Aufnahme ist das Video und alles, was währenddessen passiert ist.</p>
+<div class="it-grid">
+<div class="itc err"><div class="itl"><span>⚠</span>Fehler — automatisch</div>
+<p>Konsolenfehler oder fehlgeschlagene Anfrage → Punkt von selbst: Screenshot in diesem Moment, Fehlertext, Anfrage mit Body und Serverantwort, Aktionen vor dem Fehler, Konsole und Anfragen ringsum.</p>
+<img alt="Punkt „Fehler“: Screenshot, JS-Fehler, Anfrage, Aktionen vor dem Fehler" height="1305" loading="lazy" sizes="(max-width: 900px) 100vw, 400px" src="../img/item-error.webp" srcset="../img/item-error-sm.webp 900w, ../img/item-error.webp 1800w" width="1600"/></div>
+<div class="itc rem"><div class="itl"><span>💬</span>Anmerkung — Sie markieren selbst</div>
+<p>Element, Pfeil, Bereich oder Notiz → Screenshot mit Hervorhebung, Ihr Text und Ihre Stimme. Ohne technische Logs — die braucht es hier nicht.</p>
+<img alt="Punkt „Anmerkung“: Screenshot mit Hervorhebung und Text" height="649" loading="lazy" sizes="(max-width: 900px) 100vw, 400px" src="../img/item-remark.webp" srcset="../img/item-remark-sm.webp 900w, ../img/item-remark.webp 1800w" width="1600"/></div>
+<div class="itc rec"><div class="itl"><span>🎬</span>Aufnahme — wenn das Video läuft</div>
+<p>Tab-Video plus Aktionen, Ereignisse, Anfragen und Konsole während der Aufnahme und 1–2 Minuten davor.</p>
+<img alt="Punkt „Aufnahme“: Video und Ereignisse während der Aufnahme" height="987" loading="lazy" sizes="(max-width: 900px) 100vw, 400px" src="../img/item-recording.webp" srcset="../img/item-recording-sm.webp 900w, ../img/item-recording.webp 1800w" width="1600"/></div>
+</div>
+</div>
+</section>
+<!-- ============ AUDIT ============ -->
+<section class="features" id="tools">
+<div class="wrap">
+<div class="kicker light">Werkzeuge für Tester</div>
+<h2 class="h2 light">Regression per Knopfdruck und Grenzfälle ohne Backend</h2>
+<div class="fgrid">
+<article><div class="fi">🤖</div><h3>Autotests aus einer Aufnahme</h3><p>Klicken Sie auf „Autotest aufnehmen“ und durchlaufen Sie das Szenario: Klicks, Eingaben, Auswahl. Setzen Sie ✓-Prüfungen — „Text erschienen“, „Adresse enthält /success“. Speichern — und nach jedem Release alle Szenarien ausführen: was bestanden, was fehlgeschlagen ist, bei welchem Schritt, mit Screenshot.</p></article>
+<article><div class="fi">🎭</div><h3>Export nach Playwright</h3><p>Jedes Szenario wird als fertiger <code>.spec.ts</code>-Test mit Konfiguration heruntergeladen — Entwickler binden ihn in die CI ein. Konsolenfehler gelten als Fehlschlag, wie in der Erweiterung.</p></article>
+<article><div class="fi">🔌</div><h3>API-Tests aus Swagger und Postman</h3><p>Spezifikation importieren — die Erweiterung prüft jeden Endpunkt selbst: gültige, unvollständige und ungültige Daten, ohne Token, nicht vorhandene Objekte, Ketten „erstellen → abrufen → ändern → löschen“ und falsche Reihenfolge der Anfragen. Ergebnis: „Was mit der API nicht stimmt“ mit Erklärungen: 500er-Abstürze, Annahme kaputter Daten, Schema-Abweichungen, Lecks, Zugriff ohne Autorisierung.</p></article>
+<article><div class="fi">🧪</div><h3>Mocking von API-Antworten</h3><p>Fehler 500, 401, leere Liste, 5 Sekunden Verzögerung, „kein Netzwerk“ — für jede Anfrage. Die echte Antwort lässt sich übernehmen und bearbeiten. Gemockte Anfragen sind im Bericht markiert, damit sie nicht für einen Bug gehalten werden.</p></article>
+<article><div class="fi">📶</div><h3>Langsames Netz und schwaches Smartphone</h3><p>3G, langsames 3G, offline; CPU 4–6-mal langsamer; iPhone, Android, iPad. Die Bedingungen werden für jeden Punkt im Bericht festgehalten.</p></article>
+<article><div class="fi">📐</div><h3>Screenshots auf allen Bildschirmen</h3><p>Ein Klick — die ganze Seite in 375, 768, 1280 und 1920 px Breite, als Punkte im Bericht. Sofort sichtbar, wo das Layout verrutscht.</p></article>
+</div>
+</div>
+</section>
+<section class="audit-sec" id="audit">
+<div class="wrap audit-in">
+<div>
+<div class="kicker">🩺 Auto-Prüfung</div>
+<h2 class="h2">Website-Audit, während Sie testen</h2>
+<p class="sub">Jede geöffnete Seite wird im Hintergrund von selbst geprüft. Im Bericht: Bewertungen nach Bereichen und eine Liste der Verbesserungen — Schweregrad, warum es schlecht ist, wie man es behebt und die konkreten Elemente.</p>
+<ul class="ticks">
+<li><b>SEO:</b> noindex und gesperrte robots.txt, title und description (fehlend, Länge, Duplikate zwischen Seiten), h1, canonical, viewport, Open Graph, schema.org, favicon</li>
+<li><b>Ladegeschwindigkeit:</b> render-blockierende Ressourcen, keine Kompression und kein Caching, schweres JS, Schriften ohne font-display, Lazy Loading von Bildern, HTTP/1.1, Drittanbieter-Dienste</li>
+<li><b>Semantik und Formulare:</b> klickbare divs statt Schaltflächen, Platzhalter-Links, Schaltflächen ohne type in Formularen, E-Mail/Telefon-Felder mit type="text"</li>
+<li><b>Praktiken und Sicherheit:</b> defekte Links und Ressourcen, HTTPS und gemischte Inhalte, Sicherheits-Header, veraltete APIs</li>
+<li><b>Netzwerk:</b> doppelte Anfragen, erneutes Absenden von Formularen, N+1, zu häufiges Polling, langsame und schwere Antworten</li>
+<li><b>Unnötige Re-Renders auf jeder Website:</b> Elemente, die ohne Änderung neu erstellt werden, leere DOM-Updates, ständig wechselnde Bereiche; für React zusätzlich ein Zähler pro Komponente</li>
+<li><b>Barrierefreiheit:</b> die axe-core-Engine (wie in Lighthouse) mit Beschreibungen in der Sprache der Oberfläche — alt, Feldbeschriftungen, Kontrast, Struktur</li>
+<li><b>Bilder:</b> Bilder, die um ein Vielfaches größer sind als auf dem Bildschirm, und schwere Dateien</li>
+<li><b>Warnungen:</b> fehlender key in Listen, Update nach dem Unmount, Endlosschleifen</li>
+<li><b>Performance:</b> Web Vitals, Hänger, langsame Klicks</li>
+</ul>
+<p class="muted" style="margin-top:14px">Den Bericht der Auto-Prüfung kann man separat herunterladen und an Entwickler oder SEO-Spezialisten geben.</p>
+</div>
+<div class="browser small"><div class="browser-bar"><i></i><i></i><i></i><span>🩺 Auto-Prüfung</span></div><img alt="Website-Auto-Prüfung: Bewertungen für SEO, Geschwindigkeit, Barrierefreiheit, Semantik und Sicherheit" height="865" loading="lazy" src="../img/audit.webp" width="1170"/></div>
+</div>
+</section>
+<!-- ============ DEVTOOLS ============ -->
+<section class="devtools" id="devtools">
+<div class="wrap">
+<div class="kicker">Wie DevTools, nur verständlich</div>
+<h2 class="h2">Alles aus den DevTools — ohne DevTools</h2>
+<p class="sub">Ein Tester muss nicht wissen, wo in den DevTools der Performance-Tab ist. Die Erweiterung zeichnet selbst auf, was ein Entwickler normalerweise sucht, und ordnet es: das Wichtigste zuerst, Details per Klick.</p>
+<div class="dt-grid">
+<div class="dt-list">
+<div class="dt-item on" data-go="0"><span>🔎</span><div><b>Problemübersicht</b>JS- und Anfragefehler, Fehlermeldungen auf dem Bildschirm, Hänger, schlechte Metriken: als Karten oben im Bericht.</div></div>
+<div class="dt-item" data-go="1"><span>🕒</span><div><b>Zeitachse</b>Klicks, Eingaben, Anfragen, Fehler, Re-Renders und DOM-Änderungen auf einer Zeitachse. Man sieht, was eine Sekunde vor dem Bug passiert ist.</div></div>
+<div class="dt-item" data-go="2"><span>⚡</span><div><b>Performance</b>Web Vitals (LCP, INP, CLS, FCP, TTFB), lange Frames mit dem schuldigen Skript, langsame Klicks, FPS, Speicher, DOM-Knoten.</div></div>
+<div class="dt-item" data-go="2"><span>🔁</span><div><b>Unnötige Re-Renders</b>Auf jeder Website — reines HTML, React, Vue, Angular: was ohne Änderung neu erstellt wird und wo leere Updates sind. Für React — ein Zähler pro Komponente.</div></div>
+<div class="dt-item" data-go="1"><span>🧩</span><div><b>DOM- und Seitenereignisse</b>Erschienene Toasts und Modals, Validierungsfehler in Formularen, alert/confirm, Scrollen, Netzverlust, WebSocket.</div></div>
+<div class="dt-item" data-go="3"><span>🍪</span><div><b>Cookies und Speicher</b>Ein Snapshot von Cookies, localStorage und sessionStorage zum Zeitpunkt des Bugs und alle Änderungen während des Tests.</div></div>
+</div>
+<div class="switch dt" data-switch="">
+<div class="sw-tabs"><button class="on" data-i="0">Übersicht</button><button data-i="1">Zeitachse</button><button data-i="2">Performance</button><button data-i="3">Speicher</button></div>
+<div class="browser small">
+<div class="browser-bar"><i></i><i></i><i></i><span>QA Bug Recorder · Bericht</span></div>
+<img alt="Übersicht, Zeitachse, Performance und Speicher im Bericht" data-src="../img/summary.webp|../img/timeline.webp|../img/perf.webp|../img/storage.webp" height="469" loading="lazy" src="../img/summary.webp" width="1800"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ FEATURES ============ -->
+<section class="features" id="features">
+<div class="wrap">
+<div class="kicker light">Funktionen</div>
+<h2 class="h2 light">Alles, was ein Entwickler braucht, um es beim ersten Mal zu beheben</h2>
+<div class="fgrid">
+<article><div class="fi">⚠️</div><h3>Fehler werden von selbst erfasst</h3><p>Konsolenfehler oder fehlgeschlagene Anfrage → Punkt mit Screenshot, Anfrage, Serverantwort und Schritten vor dem Fehler.</p></article>
+<article><div class="fi">🎯</div><h3>Elementauswahl</h3><p>CSS-Selektor mit Vorrang für <code>data-testid</code>, Text, Größen, berechnete Styles und HTML-Fragment.</p></article>
+<article><div class="fi">✍️</div><h3>Markierungen auf dem Screenshot</h3><p>Pfeil, Rahmen, Nummerierung und Kommentar direkt auf dem Bild.</p></article>
+<article><div class="fi">🎤</div><h3>Sprachkommentar</h3><p>Mikrofonaufnahme parallel zu allem anderen: als eigene Datei und in der Tonspur des Videos.</p></article>
+<article><div class="fi">🎬</div><h3>Tab-Video</h3><p>Jederzeit einschaltbar. Ein Klick auf die Zeit einer Markierung spult das Video an diese Stelle.</p></article>
+<article><div class="fi">🧭</div><h3>Automatische Schritte</h3><p>„Eingabe in das Feld E-Mail“, „Klick: Bezahlen“, „Wechsel zu /checkout“: Schritte entstehen aus echten Aktionen.</p></article>
+<article><div class="fi">🖥️</div><h3>Konsole und JS-Fehler</h3><p><code>console.*</code>, unbehandelte Ausnahmen, abgelehnte Promises, nicht geladene Ressourcen.</p></article>
+<article><div class="fi">🔌</div><h3>Netzwerk und HAR</h3><p>Methode, Status, Zeit, Header, Request- und Response-Bodies. HAR lässt sich in DevTools → Network → Import öffnen.</p></article>
+<article><div class="fi">🔒</div><h3>Datenschutz</h3><p>Passwörter werden gar nicht aufgezeichnet. <code>Authorization</code>, Cookies, Token in URLs und JSON werden beim Export verborgen.</p></article>
+<article><div class="fi">🗂️</div><h3>Berichtsverlauf</h3><p>Alle Berichte werden lokal gespeichert. Zu jedem kann man zurückkehren, ihn ergänzen und neu exportieren.</p></article>
+<article><div class="fi">📋</div><h3>In eine Aufgabe kopieren</h3><p>Ein Punkt wird in die Zwischenablage kopiert: Text für Jira, Telegram, Slack, ein Screenshot oder alles zusammen für Google Docs und Notion.</p></article>
+<article><div class="fi">🙈</div><h3>Kein Rauschen</h3><p>Fehler fremder Skripte (Analytik, Werbung, Widgets) werden nicht gespeichert. Einen unnötigen Fehler kann man für immer ignorieren.</p></article>
+<article><div class="fi">⌨️</div><h3>Tastenkürzel</h3><p>Prüfung starten, Element wählen, Pfeil, fertig: ohne Maus und ohne Umwege.</p></article>
+<article><div class="fi">🕒</div><h3>Eine Zeitachse</h3><p>Aktionen, Netzwerk, Konsole, DOM und Renders auf einer Skala. Der Filter „Wichtig“ entfernt das Rauschen.</p></article>
+<article><div class="fi">⚡</div><h3>Web Vitals und Hänger</h3><p>LCP, INP, CLS mit Bewertung „gut/schlecht“, lange Frames mit dem schuldigen Skript, FPS-Einbrüche.</p></article>
+<article><div class="fi">🔁</div><h3>Unnötige Re-Renders</h3><p>Funktioniert auf jeder Website: ohne Änderung neu erstellte Elemente, leere DOM-Updates. Für React — pro Komponente.</p></article>
+<article><div class="fi">🤖</div><h3>KI-Bug-Analyse</h3><p>Die Schaltfläche 🤖 am Punkt: Titel, Schritte, erwartet / tatsächlich, wahrscheinliche Ursache (Frontend oder Backend) und was zu prüfen ist. Zusammenfassung des ganzen Berichts. Claude, ChatGPT oder ein kompatibler Dienst — mit Ihrem eigenen Schlüssel.</p></article>
+<article><div class="fi">🧪</div><h3>DevTools-Modus</h3><p>Optional: CORS-Fehler, Browser-Warnungen und DevTools-Metriken (Layout- und Style-Neuberechnungen, JS-Zeit).</p></article>
+</div>
+</div>
+</section>
+<!-- ============ REPORT SHOWCASE ============ -->
+<section class="showcase" id="report">
+<div class="wrap">
+<div class="kicker">Bericht</div>
+<h2 class="h2">Ein Bildschirm: was kaputt ist, wo und warum</h2>
+<p class="sub">Das sind echte Screenshots des Berichts aus einem Testshop. Wechseln Sie die Tabs.</p>
+<div class="switch big" data-switch="">
+<div class="sw-tabs">
+<button class="on" data-i="0">Bericht</button>
+<button data-i="1">Markierungen</button>
+<button data-i="2">Netzwerk</button>
+<button data-i="3">Konsole</button>
+<button data-i="4">Word</button>
+</div>
+<div class="browser">
+<div class="browser-bar"><i></i><i></i><i></i><span>QA Bug Recorder · Bericht</span></div>
+<img alt="Bericht von QA Bug Recorder" data-src="../img/report.webp|../img/report-annotations.webp|../img/report-network.webp|../img/report-console.webp|../img/word-1.webp" height="1250" loading="lazy" src="../img/report.webp" width="1800"/>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ FORMATS ============ -->
+<section class="formats">
+<div class="wrap">
+<div class="kicker">Export</div>
+<h2 class="h2">Ein Format, das Ihr Tracker akzeptiert</h2>
+<div class="fmt-grid">
+<div class="fmt"><div class="ext">.docx</div><h3>Word</h3><p>Für Kunden und Dokumentation. Punkte mit Screenshots, Fehler mit Anfragen und Schritten, Umgebung.</p></div>
+<div class="fmt"><div class="ext">.md</div><h3>Markdown</h3><p>Für GitLab, Jira, Notion und andere Tracker. Archiv: <code>report.md</code>, ein Ordner mit Screenshots, Medien, HAR.</p></div>
+<div class="fmt"><div class="ext">G Docs</div><h3>Google Docs</h3><p>Ein Bericht oder ein einzelner Punkt — direkt als Google-Dokument mit Screenshots in einem Ordner auf Ihrem Drive. Video und Stimme werden daneben hochgeladen.</p></div>
+<div class="fmt"><div class="ext">.html</div><h3>HTML</h3><p>Eine Datei, die sich in jedem Browser öffnet. Video und Stimme sind eingebettet.</p></div>
+<div class="fmt"><div class="ext">.har</div><h3>HAR</h3><p>Für Entwickler: Import in DevTools, Charles, Fiddler oder Postman.</p></div>
+<div class="fmt wide"><div class="ext">.zip</div><h3>Alles in einem Archiv</h3><p>Word + HTML + Markdown + Screenshots + Video + Stimme + HAR + <code>console.log</code>. An die Aufgabe anhängen — fertig.</p></div>
+</div>
+</div>
+</section>
+<!-- ============ AUDIENCE ============ -->
+<section class="who">
+<div class="wrap who-grid">
+<div><div class="who-i">🧪</div><h3>Für Tester</h3><p>Weniger Routine, mehr gefundene Bugs. Ein Bericht ohne „Und was hast du geklickt?“.</p></div>
+<div><div class="who-i">👩‍💻</div><h3>Für Entwickler</h3><p>Selektor, Fehler-Stack, Body der Serverantwort und HAR direkt in der Aufgabe.</p></div>
+<div><div class="who-i">📋</div><h3>Für Manager und Kunden</h3><p>Abnahmetests: auch Nicht-Techniker schicken einen verständlichen Bericht mit Stimme und Pfeil.</p></div>
+</div>
+</section>
+<!-- ============ PRIVACY ============ -->
+<section class="privacy">
+<div class="wrap priv-in">
+<div class="lock">🔒</div>
+<div>
+<h2 class="h2 light">Ihre Daten bleiben bei Ihnen</h2>
+<p>Die Erweiterung hat keinen Server und sendet nichts ins Internet. Alles wird lokal im Browser gespeichert (IndexedDB) und verlässt ihn nur, wenn Sie selbst einen Bericht herunterladen. Werte von Passwort-, Karten- und Token-Feldern werden gar nicht aufgezeichnet, Autorisierungs-Header und Cookies werden beim Export standardmäßig verborgen.</p>
+</div>
+</div>
+</section>
+<!-- ============ INSTALL ============ -->
+<section class="install" id="install">
+<div class="wrap">
+<div class="kicker">Installation</div>
+<h2 class="h2">Zwei Minuten, ohne Erweiterungs-Store</h2>
+<div class="inst-grid">
+<ol class="inst">
+<li><b>Archiv herunterladen</b> und in einen dauerhaften Ordner entpacken.<br/><a class="btn btn-red sm" download="" href="../qa-bug-recorder.zip">qa-bug-recorder.zip herunterladen</a></li>
+<li>Öffnen Sie <code>chrome://extensions</code> und schalten Sie oben rechts den <b>„Entwicklermodus“</b> ein.</li>
+<li>Klicken Sie auf <b>„Entpackte Erweiterung laden“</b> und wählen Sie den Ordner <code>qa-bug-recorder</code>.</li>
+<li>Heften Sie das Symbol 🐞 an die Browserleiste an und <b>laden Sie die Tabs</b> der zu testenden Website neu.</li>
+</ol>
+<div class="keys">
+<h3>Tastenkürzel</h3>
+<table>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd></td><td>Prüfung starten / Panel öffnen</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Element auswählen</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Pfeil</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>Fertig, Bericht öffnen</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Markierung speichern</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Werkzeug abbrechen</td></tr>
+</table>
+<p class="muted">Neu zuweisen: <code>chrome://extensions/shortcuts</code></p>
+</div>
+</div>
+</div>
+</section>
+<!-- ============ FAQ ============ -->
+<section class="faq" id="faq">
+<div class="wrap narrow">
+<div class="kicker">FAQ</div>
+<h2 class="h2">Häufige Fragen</h2>
+<details><summary>Verlangsamt die Erweiterung die Website?</summary><p>Praktisch nicht. Das Abfangen von Konsole und Anfragen sind leichte Wrapper um Standardfunktionen, DOM-Änderungen und Renders werden gebündelt einmal pro Sekunde gezählt, und Daten werden nur für die letzten Minuten gehalten. Video wird nur aufgenommen, wenn Sie es einschalten.</p></details>
+<details><summary>Wie findet die Erweiterung unnötige Re-Renders?</summary><p>Auf jeder Website — anhand von HTML-Änderungen: Wird ein Element entfernt und mit demselben Inhalt wieder eingefügt oder derselbe Wert in ein Attribut geschrieben, ist das unnötige Arbeit für den Browser. Für React werden zusätzlich Komponenten-Renders gezählt — über denselben Mechanismus wie React DevTools. Funktioniert mit React 16–19, auch in Produktions-Builds. Wenn Sie die Erweiterung React DevTools installiert haben, deaktivieren Sie in den Einstellungen von QA Bug Recorder „React-Re-Renders zählen“: Zwei Zähler stören sich gegenseitig.</p></details>
+<details><summary>In welchen Sprachen funktioniert die Erweiterung?</summary><p>Russisch, Englisch, Chinesisch, Spanisch, Portugiesisch, Französisch, Deutsch und Kasachisch. Die Sprache wird automatisch nach der Browsersprache oder manuell in den Einstellungen gewählt. Auch die Berichte entstehen in der gewählten Sprache — praktisch, wenn Kollegen oder Kunden im Ausland die Bugs lesen.</p></details>
+<details><summary>Wohin gehen die Daten bei der KI-Analyse?</summary><p>Nur an den von Ihnen gewählten Dienst (Claude, OpenAI oder einen anderen) und nur, wenn Sie 🤖 drücken. Der Schlüssel wird in Ihrem Browser gespeichert. Token, Cookies und Passwörter in Anfragen werden vor dem Senden maskiert, das Senden des Screenshots lässt sich abschalten. Ohne Schlüssel kopiert die Schaltfläche einen fertigen Prompt zum manuellen Einfügen in einen Chat.</p></details>
+<details><summary>Wie verbinde ich Google Docs?</summary><p>Ohne Einrichtung kopiert die Schaltfläche „Google Docs“ den Bericht und öffnet ein neues Dokument — dann nur noch Ctrl+V. Für den Export per Klick braucht es eine Client ID aus Google Cloud: Jemand im Team erstellt sie einmal nach der Schritt-für-Schritt-Anleitung unter „🔌 Integrationen“. Die Erweiterung erhält nur Zugriff auf Dateien, die sie selbst erstellt hat.</p></details>
+<details><summary>Warum ist der Puffer leer?</summary><p>Die Erfassung beginnt mit dem Laden der Seite. Laden Sie nach der Installation den Tab der Website neu (F5). Auf <code>chrome://</code>-Seiten und im Chrome-Erweiterungs-Store erlaubt Chrome keine Erweiterungen.</p></details>
+<details><summary>Warum fragt Chrome beim Video nach einer Bestätigung?</summary><p>Chrome erlaubt die Aufnahme eines Tabs nur nach einer ausdrücklichen Aktion des Nutzers. Wenn Sie den Bug über das Symbol oder ein Tastenkürzel gestartet haben, wird das Video im Panel auf der Seite eingeschaltet. Gab es danach einen Wechsel auf eine andere Seite, klicken Sie auf das Symbol → „⏺ Video“.</p></details>
+<details><summary>Wie funktioniert der Sprachkommentar?</summary><p>Beim ersten Druck auf 🎤 öffnet sich ein Tab mit der Anfrage für den Mikrofonzugriff: Das ist nur einmal nötig. Die Stimme wird als eigene Datei aufgenommen und ins Video gemischt, wenn es läuft.</p></details>
+<details><summary>Was ist die „Vollständige Netzwerkerfassung“?</summary><p>Ein Modus über das DevTools-Protokoll: Er zeichnet alle Ressourcen (Bilder, Skripte, Styles), CORS-Fehler und Browser-Warnungen auf. Chrome zeigt dabei die Leiste „Eine Erweiterung debuggt diesen Browser“ — das ist normal. Wird in den Einstellungen der Erweiterung aktiviert.</p></details>
+<details><summary>In welchem Format ist das Video?</summary><p>WebM (VP9/VP8 + Opus). Öffnet sich in Chrome, Firefox, VLC und den Playern von Windows 10+ und macOS 13+. In Word wird Video nicht eingebettet: Verwenden Sie HTML oder das Archiv.</p></details>
+<details><summary>Funktioniert es in Edge, Yandex Browser, Opera?</summary><p>Ja, in jedem Chromium-Browser ab Version 116. Die Installation ist gleich, über die Erweiterungsseite und den Entwicklermodus.</p></details>
+</div>
+</section>
+<!-- ============ ROADMAP ============ -->
+<section class="roadmap">
+<div class="wrap">
+<div class="kicker">Ausblick</div>
+<h2 class="h2">Geplant</h2>
+<div class="rm-grid">
+<div class="rm"><span>Bald</span>MCP-Server: Berichte direkt verfügbar für Claude Code, Cursor und Claude Desktop — „behebe Fehler 3 aus dem letzten Bericht“</div>
+<div class="rm"><span>Bald</span>Stimme → Text: Diktieren eines Kommentars mit Spracherkennung</div>
+<div class="rm"><span>Idee</span>Video der „letzten 30 Sekunden“ und rückwirkende DOM-Aufzeichnung (rrweb)</div>
+<div class="rm"><span>Idee</span>Unkenntlichmachen persönlicher Daten auf Screenshots</div>
+<div class="rm"><span>Idee</span>Berichtsvorlagen pro Projekt und PDF-Export</div>
+</div>
+</div>
+</section>
+<section class="final">
+<div class="wrap final-in">
+<h2>Den nächsten Bug in 10 Sekunden festhalten</h2>
+<div class="cta center"><a class="btn btn-red" download="" href="../qa-bug-recorder.zip">Erweiterung herunterladen</a></div>
+</div>
+</section>
+</main>
+<section class="donate" id="donate">
+<div class="wrap donate-in">
+<div>
+<div class="kicker">Projekt unterstützen</div>
+<h2 class="h2">Die Erweiterung ist kostenlos und werbefrei</h2>
+<p class="sub">Wenn sie Ihnen und Ihrem Team Zeit spart, unterstützen Sie die Entwicklung neuer Funktionen mit einer Kartenüberweisung.</p>
+</div>
+<div class="card-num">
+<span class="lbl">Kartennummer</span>
+<code id="card">5269 8800 8898 3051</code>
+<button class="btn btn-red" id="copy-card" type="button">📋 Nummer kopieren</button>
+<span class="copied" hidden="" id="copied">✓ Kopiert</span>
+</div>
+</div>
+</section>
+<footer class="foot">
+<div class="wrap foot-in"><span><img alt="" src="../img/logo.png"/> QA Bug Recorder</span> <span>Läuft lokal · Manifest V3 · Chrome 116+ · MIT-Lizenz · <a href="../privacy.html">Datenschutzerklärung</a> · <a href="#donate">❤ Unterstützen</a></span></div>
+</footer>
+<script>
+  // копирование номера карты
+  (function () {
+    var b = document.getElementById('copy-card');
+    if (!b) return;
+    b.addEventListener('click', function () {
+      var n = document.getElementById('card').textContent.replace(/\s/g, '');
+      (navigator.clipboard ? navigator.clipboard.writeText(n) : Promise.reject()).then(function () {
+        var c = document.getElementById('copied'); c.hidden = false; setTimeout(function () { c.hidden = true; }, 2000);
+      }).catch(function () { window.prompt('Kartennummer', n); });
+    });
+  })();
+  // переключатели скриншотов
+  document.querySelectorAll('[data-switch]').forEach(function (sw) {
+    var img = sw.querySelector('img[data-src]');
+    var srcs = img.dataset.src.split('|');
+    srcs.forEach(function (s) { var i = new Image(); if (img.srcset) { i.sizes = img.sizes; i.srcset = s.replace('.webp', '-sm.webp') + ' 900w, ' + s + ' 1800w'; } i.src = s; }); // предзагрузка
+    sw.querySelectorAll('.sw-tabs button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        sw.querySelectorAll('.sw-tabs button').forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        img.classList.add('fade');
+        setTimeout(function () {
+          var nx = srcs[+b.dataset.i];
+          if (img.srcset) img.srcset = nx.replace('.webp', '-sm.webp') + ' 900w, ' + nx + ' 1800w';
+          img.src = nx;
+          img.classList.toggle('portrait', /word/.test(img.src));
+          img.classList.remove('fade');
+        }, 150);
+      });
+    });
+  });
+  // клик по пункту списка DevTools-данных переключает скриншот
+  document.querySelectorAll('.dt-item[data-go]').forEach(function (it) {
+    it.addEventListener('click', function () {
+      var b = document.querySelector('.switch.dt .sw-tabs button[data-i="' + it.dataset.go + '"]');
+      if (b) b.click();
+      document.querySelectorAll('.dt-item').forEach(function (x) { x.classList.toggle('on', x === it); });
+    });
+  });
+</script>
+</body>
+</html>

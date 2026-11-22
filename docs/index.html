@@ -1,429 +1,432 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>QA Bug Recorder — баг-репорт за 10 секунд прямо в Chrome</title>
-<meta name="description" content="Бесплатное расширение Chrome для тестировщиков: отметьте элемент, нарисуйте стрелку, наговорите голосом. Логи консоли, запросы и шаги воспроизведения собираются сами. Экспорт в Word, Markdown, HTML и HAR.">
-<meta property="og:title" content="QA Bug Recorder — баг-репорт за 10 секунд">
-<meta property="og:description" content="Пометки на странице, видео, голос, консоль, сеть и автошаги. Экспорт в Word, Markdown, HTML.">
-<meta property="og:image" content="img/report.webp">
-<link rel="icon" href="img/logo.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-</head>
+<meta content="Бесплатное расширение Chrome для тестировщиков: отметьте элемент, нарисуйте стрелку, наговорите голосом. Логи консоли, запросы и шаги воспроизведения собираются сами. Экспорт в Word, Markdown, HTML и HAR." name="description"/>
+<meta content="QA Bug Recorder — баг-репорт за 10 секунд" property="og:title"/>
+<meta content="Пометки на странице, видео, голос, консоль, сеть и автошаги. Экспорт в Word, Markdown, HTML." property="og:description"/>
+<meta content="img/report.webp" property="og:image"/>
+<link href="img/logo.png" rel="icon"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&amp;family=Manrope:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="style.css" rel="stylesheet"/>
+<!--lang--><link rel="alternate" hreflang="ru" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/index.html"><link rel="alternate" hreflang="en" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/en/index.html"><link rel="alternate" hreflang="zh-Hans" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/zh/index.html"><link rel="alternate" hreflang="es" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/es/index.html"><link rel="alternate" hreflang="pt-BR" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/pt/index.html"><link rel="alternate" hreflang="fr" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/fr/index.html"><link rel="alternate" hreflang="de" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/de/index.html"><link rel="alternate" hreflang="kk" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/kk/index.html"><link rel="alternate" hreflang="x-default" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/index.html"><script>(function(){try{if(localStorage.getItem('qa_land_lang'))return;var L=['en','zh','es','pt','fr','de','kk'];var n=(navigator.languages||[navigator.language||'']);for(var i=0;i<n.length;i++){var l=(n[i]||'').toLowerCase().slice(0,2);if(l==='ru'||l==='uk'||l==='be')return;if(L.indexOf(l)>=0){location.replace(l+'/'+location.pathname.split('/').pop()+location.hash);return;}}}catch(e){}})();</script><!--/lang--></head>
 <body>
-
 <header class="nav">
-  <div class="wrap nav-in">
-    <a href="#" class="brand"><img src="img/logo.png" alt=""><span>QA Bug Recorder</span></a>
-    <nav>
-      <a href="#how">Как работает</a>
-      <a href="#items">Пункты</a>
-      <a href="#tools">Автотесты</a>
-      <a href="#audit">Автопроверка</a>
-      <a href="#devtools">DevTools</a>
-      <a href="#features">Возможности</a>
-      <a href="#report">Отчёт</a>
-      <a href="#install">Установка</a>
-      <a href="#faq">FAQ</a>
-    </nav>
-    <a class="btn btn-red sm" href="qa-bug-recorder.zip" download>Скачать</a>
-  </div>
+<div class="wrap nav-in">
+<a class="brand" href="#"><img alt="" src="img/logo.png"/><span>QA Bug Recorder</span></a>
+<nav>
+<a href="#how">Как работает</a>
+<a href="#items">Пункты</a>
+<a href="#tools">Автотесты</a>
+<a href="#audit">Автопроверка</a>
+<a href="#devtools">DevTools</a>
+<a href="#features">Возможности</a>
+<a href="#report">Отчёт</a>
+<a href="#install">Установка</a>
+<a href="#faq">FAQ</a>
+</nav><!--lang--><select class="lang-sel" data-noi18n aria-label="Language" onchange="try{localStorage.setItem('qa_land_lang',this.value)}catch(e){};location.href=(this.value==='ru'?'':''+this.value+'/')+'index.html'+location.hash"><option value="ru" selected>Русский</option><option value="en">English</option><option value="zh">中文</option><option value="es">Español</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="kk">Қазақша</option></select><!--/lang-->
+<a class="btn btn-red sm" download="" href="qa-bug-recorder.zip">Скачать</a>
+</div>
 </header>
 <main>
-
 <!-- ============ HERO ============ -->
 <section class="hero">
-  <div class="grid-bg" aria-hidden="true"></div>
-  <div class="wrap hero-in">
-    <div class="hero-copy">
-      <div class="eyebrow"><span class="dot"></span> Расширение для Chrome · бесплатно · без регистрации</div>
-      <h1>Нашли баг —<br>зафиксируйте его<br><em>за 10 секунд</em></h1>
-      <p class="lead">Включите проверку и работайте с сайтом. Ошибки консоли и упавшие запросы расширение поймает само — со скриншотом и всем контекстом. Ваши замечания стрелкой или рамкой станут отдельными пунктами. Готовый отчёт — в Word, Markdown или HTML.</p>
-      <div class="cta">
-        <a class="btn btn-red" href="qa-bug-recorder.zip" download>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+<div aria-hidden="true" class="grid-bg"></div>
+<div class="wrap hero-in">
+<div class="hero-copy">
+<div class="eyebrow"><span class="dot"></span> Расширение для Chrome · бесплатно · без регистрации</div>
+<h1>Нашли баг —<br/>зафиксируйте его<br/><em>за 10 секунд</em></h1>
+<p class="lead">Включите проверку и работайте с сайтом. Ошибки консоли и упавшие запросы расширение поймает само — со скриншотом и всем контекстом. Ваши замечания стрелкой или рамкой станут отдельными пунктами. Готовый отчёт — в Word, Markdown или HTML.</p>
+<div class="cta">
+<a class="btn btn-red" download="" href="qa-bug-recorder.zip">
+<svg aria-hidden="true" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" viewbox="0 0 24 24" width="18"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"></path></svg>
           Скачать расширение
         </a>
-        <a class="btn btn-ghost" href="#how">Посмотреть, как работает</a>
-      </div>
-      <div class="hero-meta">
-        <span>Chrome · Edge · Яндекс Браузер</span><span>Данные не покидают браузер</span><span>Не нужно открывать DevTools</span>
-      </div>
-    </div>
-    <div class="hero-shot">
-      <div class="browser">
-        <div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
-        <img src="img/panel-element.webp" srcset="img/panel-element-sm.webp 900w, img/panel-element.webp 1800w" sizes="(max-width: 900px) 100vw, 600px" alt="Панель фиксации бага поверх сайта: выбран элемент «Оплатить», открыт комментарий" width="1800" height="1125">
-      </div>
-      <div class="chip c1"><b>console.error</b> TypeError: Cannot read properties of null</div>
-      <div class="chip c2"><b class="red">POST 501</b> /api/orders</div>
-      <div class="chip c3"><b>⚠ Пункт сохранён</b> со скриншотом и запросом</div>
-    </div>
-  </div>
+<a class="btn btn-ghost" href="#how">Посмотреть, как работает</a>
+</div>
+<div class="hero-meta">
+<span>Chrome · Edge · Яндекс Браузер</span><span>Данные не покидают браузер</span><span>Не нужно открывать DevTools</span>
+</div>
+</div>
+<div class="hero-shot">
+<div class="browser">
+<div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
+<img alt="Панель фиксации бага поверх сайта: выбран элемент «Оплатить», открыт комментарий" height="1125" sizes="(max-width: 900px) 100vw, 600px" src="img/panel-element.webp" srcset="img/panel-element-sm.webp 900w, img/panel-element.webp 1800w" width="1800"/>
+</div>
+<div class="chip c1"><b>console.error</b> TypeError: Cannot read properties of null</div>
+<div class="chip c2"><b class="red">POST 501</b> /api/orders</div>
+<div class="chip c3"><b>⚠ Пункт сохранён</b> со скриншотом и запросом</div>
+</div>
+</div>
 </section>
-
 <!-- ============ PROBLEM ============ -->
 <section class="pain">
-  <div class="wrap">
-    <h2 class="h2">«Не воспроизводится» — самая дорогая фраза в разработке</h2>
-    <p class="sub">Тестировщик видит баг за секунду, а потом тратит 15 минут на скриншоты, копирование логов и вспоминание шагов. Разработчик получает отчёт без контекста и тратит ещё час.</p>
-    <div class="pain-grid">
-      <div class="pain-card">
-        <div class="pc-before">Было</div>
-        <h3>«Что я нажимал перед этим?»</h3>
-        <p>Шаги восстанавливаются по памяти, половина теряется.</p>
-        <div class="pc-after">Стало</div>
-        <p class="ok">Клики, ввод и переходы пишутся сами. Шаги воспроизведения собираются автоматически.</p>
-      </div>
-      <div class="pain-card">
-        <div class="pc-before">Было</div>
-        <h3>Скриншот без контекста</h3>
-        <p>Непонятно, на что смотреть и какая это кнопка в коде.</p>
-        <div class="pc-after">Стало</div>
-        <p class="ok">Стрелка, рамка и комментарий прямо на скриншоте плюс CSS-селектор, HTML и стили элемента.</p>
-      </div>
-      <div class="pain-card">
-        <div class="pc-before">Было</div>
-        <h3>«Открой DevTools и пришли логи»</h3>
-        <p>Ошибка уже случилась, консоль очищена, запрос не повторить.</p>
-        <div class="pc-after">Стало</div>
-        <p class="ok">Консоль и сеть за последние 5 минут уже в буфере, включая то, что произошло до нажатия кнопки.</p>
-      </div>
-    </div>
-  </div>
+<div class="wrap">
+<h2 class="h2">«Не воспроизводится» — самая дорогая фраза в разработке</h2>
+<p class="sub">Тестировщик видит баг за секунду, а потом тратит 15 минут на скриншоты, копирование логов и вспоминание шагов. Разработчик получает отчёт без контекста и тратит ещё час.</p>
+<div class="pain-grid">
+<div class="pain-card">
+<div class="pc-before">Было</div>
+<h3>«Что я нажимал перед этим?»</h3>
+<p>Шаги восстанавливаются по памяти, половина теряется.</p>
+<div class="pc-after">Стало</div>
+<p class="ok">Клики, ввод и переходы пишутся сами. Шаги воспроизведения собираются автоматически.</p>
+</div>
+<div class="pain-card">
+<div class="pc-before">Было</div>
+<h3>Скриншот без контекста</h3>
+<p>Непонятно, на что смотреть и какая это кнопка в коде.</p>
+<div class="pc-after">Стало</div>
+<p class="ok">Стрелка, рамка и комментарий прямо на скриншоте плюс CSS-селектор, HTML и стили элемента.</p>
+</div>
+<div class="pain-card">
+<div class="pc-before">Было</div>
+<h3>«Открой DevTools и пришли логи»</h3>
+<p>Ошибка уже случилась, консоль очищена, запрос не повторить.</p>
+<div class="pc-after">Стало</div>
+<p class="ok">Консоль и сеть за последние 5 минут уже в буфере, включая то, что произошло до нажатия кнопки.</p>
+</div>
+</div>
+</div>
 </section>
-
 <!-- ============ HOW ============ -->
-<section id="how" class="how">
-  <div class="wrap">
-    <div class="kicker">Как это работает</div>
-    <h2 class="h2">Три шага от проверки до отчёта</h2>
-
-    <div class="step">
-      <div class="step-text">
-        <div class="num">01</div>
-        <h3>Включаете проверку и работаете как обычно</h3>
-        <p>Нажмите <b>«▶ Начать проверку»</b> или <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>. Как только в консоли появится ошибка или запрос вернёт ошибку, расширение <b>само сохранит её отдельным пунктом</b>: скриншот в этот момент, текст ошибки, запрос с ответом сервера и ваши действия перед ней.</p>
-        <ul class="ticks">
-          <li>Повторы той же ошибки считаются, а не дублируются</li>
-          <li>Ошибки чужих скриптов и сервисов не сохраняются, лишнюю можно игнорировать (🙈)</li>
-          <li>Пароли, номера карт и CVV не записываются</li>
-        </ul>
-      </div>
-      <div class="step-img popup-pair">
-        <img src="img/popup-idle.webp" alt="Окно расширения: кнопка «Начать проверку»" loading="lazy" width="680" height="665">
-      </div>
-    </div>
-
-    <div class="step rev">
-      <div class="step-text">
-        <div class="num">02</div>
-        <h3>Видите проблему — отмечаете её</h3>
-        <p>На панели внизу страницы выберите инструмент. Каждое замечание — <b>отдельный пункт: скриншот с выделением и ваш текст</b>, без лишних логов. Нужно показать сценарий — включите запись видео, и к ней приложатся события и запросы.</p>
-        <div class="tools">
-          <div><span>🎯</span><b>Элемент</b>наведите и кликните, в отчёт попадёт селектор, текст, размеры, стили</div>
-          <div><span>➚</span><b>Стрелка</b>тяните от свободного места к проблеме</div>
-          <div><span>▭</span><b>Область</b>обведите кусок интерфейса</div>
-          <div><span>💬</span><b>Заметка</b>комментарий со скриншотом всего экрана</div>
-          <div><span>🎤</span><b>Голос</b>наговорите, если печатать долго</div>
-          <div><span>⏺</span><b>Видео</b>запись вкладки с вашим голосом</div>
-        </div>
-        <ul class="ticks" style="margin-top:14px">
-          <li>Пометки приклеены к элементам и едут при прокрутке</li>
-          <li>В покое полупрозрачные и не мешают, при наведении яркие</li>
-          <li>Любую пометку можно изменить или удалить, список — по кнопке 📋</li>
-        </ul>
-      </div>
-      <div class="step-img">
-        <div class="switch" data-switch>
-          <div class="sw-tabs"><button class="on" data-i="0">Элемент</button><button data-i="1">Стрелка</button><button data-i="2">Область</button></div>
-          <div class="browser small">
-            <div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
-            <img src="img/element-hover.webp" srcset="img/element-hover-sm.webp 900w, img/element-hover.webp 1800w" sizes="(max-width: 900px) 100vw, 600px" data-src="img/element-hover.webp|img/arrow.webp|img/area.webp" alt="Выбор элемента, стрелка и область на странице" loading="lazy" width="1800" height="1125">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="step">
-      <div class="step-text">
-        <div class="num">03</div>
-        <h3>Выгружаете готовый отчёт</h3>
-        <p>Нажмите <b>«✓ Готово»</b>. Отчёт — это список пунктов по порядку: ошибки, замечания, записи. У каждого только свои данные. Выгрузка: <b>Word</b>, <b>Markdown</b>, <b>HTML</b>, <b>HAR</b> или всё одним архивом.</p>
-        <ul class="ticks">
-          <li>Любой пункт можно скопировать (📋) или скачать отдельно — одна задача в трекер на пункт</li>
-          <li>Все данные сессии — в свёрнутом приложении, если понадобятся</li>
-          <li>Токены, cookie и пароли скрываются при экспорте</li>
-        </ul>
-      </div>
-      <div class="step-img">
-        <div class="browser small">
-          <div class="browser-bar"><i></i><i></i><i></i><span>Отчёт о проверке</span></div>
-          <img src="img/report.webp" srcset="img/report-sm.webp 900w, img/report.webp 1800w" sizes="(max-width: 900px) 100vw, 600px" alt="Отчёт: список пунктов — замечание, запись, ошибка" loading="lazy" width="1800" height="1250">
-        </div>
-      </div>
-    </div>
-  </div>
+<section class="how" id="how">
+<div class="wrap">
+<div class="kicker">Как это работает</div>
+<h2 class="h2">Три шага от проверки до отчёта</h2>
+<div class="step">
+<div class="step-text">
+<div class="num">01</div>
+<h3>Включаете проверку и работаете как обычно</h3>
+<p>Нажмите <b>«▶ Начать проверку»</b> или <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>. Как только в консоли появится ошибка или запрос вернёт ошибку, расширение <b>само сохранит её отдельным пунктом</b>: скриншот в этот момент, текст ошибки, запрос с ответом сервера и ваши действия перед ней.</p>
+<ul class="ticks">
+<li>Повторы той же ошибки считаются, а не дублируются</li>
+<li>Ошибки чужих скриптов и сервисов не сохраняются, лишнюю можно игнорировать (🙈)</li>
+<li>Пароли, номера карт и CVV не записываются</li>
+</ul>
+</div>
+<div class="step-img popup-pair">
+<img alt="Окно расширения: кнопка «Начать проверку»" height="665" loading="lazy" src="img/popup-idle.webp" width="680"/>
+</div>
+</div>
+<div class="step rev">
+<div class="step-text">
+<div class="num">02</div>
+<h3>Видите проблему — отмечаете её</h3>
+<p>На панели внизу страницы выберите инструмент. Каждое замечание — <b>отдельный пункт: скриншот с выделением и ваш текст</b>, без лишних логов. Нужно показать сценарий — включите запись видео, и к ней приложатся события и запросы.</p>
+<div class="tools">
+<div><span>🎯</span><b>Элемент</b>наведите и кликните, в отчёт попадёт селектор, текст, размеры, стили</div>
+<div><span>➚</span><b>Стрелка</b>тяните от свободного места к проблеме</div>
+<div><span>▭</span><b>Область</b>обведите кусок интерфейса</div>
+<div><span>💬</span><b>Заметка</b>комментарий со скриншотом всего экрана</div>
+<div><span>🎤</span><b>Голос</b>наговорите, если печатать долго</div>
+<div><span>⏺</span><b>Видео</b>запись вкладки с вашим голосом</div>
+</div>
+<ul class="ticks" style="margin-top:14px">
+<li>Пометки приклеены к элементам и едут при прокрутке</li>
+<li>В покое полупрозрачные и не мешают, при наведении яркие</li>
+<li>Любую пометку можно изменить или удалить, список — по кнопке 📋</li>
+</ul>
+</div>
+<div class="step-img">
+<div class="switch" data-switch="">
+<div class="sw-tabs"><button class="on" data-i="0">Элемент</button><button data-i="1">Стрелка</button><button data-i="2">Область</button></div>
+<div class="browser small">
+<div class="browser-bar"><i></i><i></i><i></i><span>techmarket.kz/checkout</span></div>
+<img alt="Выбор элемента, стрелка и область на странице" data-src="img/element-hover.webp|img/arrow.webp|img/area.webp" height="1125" loading="lazy" sizes="(max-width: 900px) 100vw, 600px" src="img/element-hover.webp" srcset="img/element-hover-sm.webp 900w, img/element-hover.webp 1800w" width="1800"/>
+</div>
+</div>
+</div>
+</div>
+<div class="step">
+<div class="step-text">
+<div class="num">03</div>
+<h3>Выгружаете готовый отчёт</h3>
+<p>Нажмите <b>«✓ Готово»</b>. Отчёт — это список пунктов по порядку: ошибки, замечания, записи. У каждого только свои данные. Выгрузка: <b>Word</b>, <b>Markdown</b>, <b>HTML</b>, <b>HAR</b> или всё одним архивом.</p>
+<ul class="ticks">
+<li>Любой пункт можно скопировать (📋) или скачать отдельно — одна задача в трекер на пункт</li>
+<li>Все данные сессии — в свёрнутом приложении, если понадобятся</li>
+<li>Токены, cookie и пароли скрываются при экспорте</li>
+</ul>
+</div>
+<div class="step-img">
+<div class="browser small">
+<div class="browser-bar"><i></i><i></i><i></i><span>Отчёт о проверке</span></div>
+<img alt="Отчёт: список пунктов — замечание, запись, ошибка" height="1250" loading="lazy" sizes="(max-width: 900px) 100vw, 600px" src="img/report.webp" srcset="img/report-sm.webp 900w, img/report.webp 1800w" width="1800"/>
+</div>
+</div>
+</div>
+</div>
 </section>
-
 <!-- ============ ITEMS ============ -->
-<section id="items" class="items-sec">
-  <div class="wrap">
-    <div class="kicker">Пункты отчёта</div>
-    <h2 class="h2">Три вида пунктов — у каждого только нужные данные</h2>
-    <p class="sub">У каждого пункта своя серьёзность — от 🔴 блокирующего до ⚪ тривиального; для ошибок она подбирается автоматически. Отчёт не превращается в свалку логов. Замечание о вёрстке — это просто скриншот и текст. Ошибка — всё, что нужно разработчику, чтобы её починить. Запись — видео и всё, что происходило за это время.</p>
-    <div class="it-grid">
-      <div class="itc err"><div class="itl"><span>⚠</span>Ошибка — автоматически</div>
-        <p>Ошибка в консоли или запрос с ошибкой → пункт сам: скриншот в этот момент, текст ошибки, запрос с телом и ответом сервера, действия перед ошибкой, консоль и запросы рядом.</p>
-        <img src="img/item-error.webp" srcset="img/item-error-sm.webp 900w, img/item-error.webp 1800w" sizes="(max-width: 900px) 100vw, 400px" alt="Пункт «Ошибка»: скриншот, ошибка JS, запрос, действия перед ошибкой" loading="lazy" width="1600" height="1305"></div>
-      <div class="itc rem"><div class="itl"><span>💬</span>Замечание — вы отмечаете сами</div>
-        <p>Элемент, стрелка, область или заметка → скриншот с выделением, ваш текст и голос. Без технических логов — они тут не нужны.</p>
-        <img src="img/item-remark.webp" srcset="img/item-remark-sm.webp 900w, img/item-remark.webp 1800w" sizes="(max-width: 900px) 100vw, 400px" alt="Пункт «Замечание»: скриншот с выделением и текст" loading="lazy" width="1600" height="649"></div>
-      <div class="itc rec"><div class="itl"><span>🎬</span>Запись — когда включили видео</div>
-        <p>Видео вкладки плюс действия, события, запросы и консоль за время записи и 1–2 минуты до неё.</p>
-        <img src="img/item-recording.webp" srcset="img/item-recording-sm.webp 900w, img/item-recording.webp 1800w" sizes="(max-width: 900px) 100vw, 400px" alt="Пункт «Запись»: видео и события за время записи" loading="lazy" width="1600" height="987"></div>
-    </div>
-  </div>
+<section class="items-sec" id="items">
+<div class="wrap">
+<div class="kicker">Пункты отчёта</div>
+<h2 class="h2">Три вида пунктов — у каждого только нужные данные</h2>
+<p class="sub">У каждого пункта своя серьёзность — от 🔴 блокирующего до ⚪ тривиального; для ошибок она подбирается автоматически. Отчёт не превращается в свалку логов. Замечание о вёрстке — это просто скриншот и текст. Ошибка — всё, что нужно разработчику, чтобы её починить. Запись — видео и всё, что происходило за это время.</p>
+<div class="it-grid">
+<div class="itc err"><div class="itl"><span>⚠</span>Ошибка — автоматически</div>
+<p>Ошибка в консоли или запрос с ошибкой → пункт сам: скриншот в этот момент, текст ошибки, запрос с телом и ответом сервера, действия перед ошибкой, консоль и запросы рядом.</p>
+<img alt="Пункт «Ошибка»: скриншот, ошибка JS, запрос, действия перед ошибкой" height="1305" loading="lazy" sizes="(max-width: 900px) 100vw, 400px" src="img/item-error.webp" srcset="img/item-error-sm.webp 900w, img/item-error.webp 1800w" width="1600"/></div>
+<div class="itc rem"><div class="itl"><span>💬</span>Замечание — вы отмечаете сами</div>
+<p>Элемент, стрелка, область или заметка → скриншот с выделением, ваш текст и голос. Без технических логов — они тут не нужны.</p>
+<img alt="Пункт «Замечание»: скриншот с выделением и текст" height="649" loading="lazy" sizes="(max-width: 900px) 100vw, 400px" src="img/item-remark.webp" srcset="img/item-remark-sm.webp 900w, img/item-remark.webp 1800w" width="1600"/></div>
+<div class="itc rec"><div class="itl"><span>🎬</span>Запись — когда включили видео</div>
+<p>Видео вкладки плюс действия, события, запросы и консоль за время записи и 1–2 минуты до неё.</p>
+<img alt="Пункт «Запись»: видео и события за время записи" height="987" loading="lazy" sizes="(max-width: 900px) 100vw, 400px" src="img/item-recording.webp" srcset="img/item-recording-sm.webp 900w, img/item-recording.webp 1800w" width="1600"/></div>
+</div>
+</div>
 </section>
-
 <!-- ============ AUDIT ============ -->
-<section id="tools" class="features">
-  <div class="wrap">
-    <div class="kicker light">Инструменты тестировщика</div>
-    <h2 class="h2 light">Регресс одной кнопкой и проверка крайних случаев без бэкенда</h2>
-    <div class="fgrid">
-      <article><div class="fi">🤖</div><h3>Автотесты из записи</h3><p>Нажмите «Записать автотест» и пройдите сценарий: клики, ввод, выбор. Поставьте ✓ проверки — «появился текст», «адрес содержит /success». Сохраните — и прогоняйте все сценарии после каждого релиза: что прошло, что упало, на каком шаге, со скриншотом.</p></article>
-      <article><div class="fi">🎭</div><h3>Экспорт в Playwright</h3><p>Каждый сценарий скачивается готовым тестом <code>.spec.ts</code> с конфигом — разработчики подключают его в CI. Ошибки консоли считаются падением, как в расширении.</p></article>
-      <article><div class="fi">🔌</div><h3>API-тесты по Swagger и Postman</h3><p>Импортируйте спецификацию — расширение само проверит каждый эндпоинт: правильные, неполные и неверные данные, без токена, несуществующие объекты, цепочки «создать → получить → изменить → удалить» и неправильный порядок запросов. В итоге — «что не так с API» с объяснениями: падения 500, приём битых данных, несоответствие схеме, утечки, доступ без авторизации.</p></article>
-      <article><div class="fi">🧪</div><h3>Подмена ответов API</h3><p>Ошибка 500, 401, пустой список, задержка 5 секунд, «нет сети» — для любого запроса. Можно взять настоящий ответ и поправить его. Подменённые запросы помечены в отчёте, чтобы их не приняли за баг.</p></article>
-      <article><div class="fi">📶</div><h3>Медленная сеть и слабый телефон</h3><p>3G, медленный 3G, без сети; процессор в 4–6 раз медленнее; iPhone, Android, iPad. Условия записываются в отчёт к каждому пункту.</p></article>
-      <article><div class="fi">📐</div><h3>Скриншоты на всех экранах</h3><p>Одна кнопка — страница целиком на ширине 375, 768, 1280 и 1920 px, пунктами в отчёт. Сразу видно, где поехала вёрстка.</p></article>
-    </div>
-  </div>
+<section class="features" id="tools">
+<div class="wrap">
+<div class="kicker light">Инструменты тестировщика</div>
+<h2 class="h2 light">Регресс одной кнопкой и проверка крайних случаев без бэкенда</h2>
+<div class="fgrid">
+<article><div class="fi">🤖</div><h3>Автотесты из записи</h3><p>Нажмите «Записать автотест» и пройдите сценарий: клики, ввод, выбор. Поставьте ✓ проверки — «появился текст», «адрес содержит /success». Сохраните — и прогоняйте все сценарии после каждого релиза: что прошло, что упало, на каком шаге, со скриншотом.</p></article>
+<article><div class="fi">🎭</div><h3>Экспорт в Playwright</h3><p>Каждый сценарий скачивается готовым тестом <code>.spec.ts</code> с конфигом — разработчики подключают его в CI. Ошибки консоли считаются падением, как в расширении.</p></article>
+<article><div class="fi">🔌</div><h3>API-тесты по Swagger и Postman</h3><p>Импортируйте спецификацию — расширение само проверит каждый эндпоинт: правильные, неполные и неверные данные, без токена, несуществующие объекты, цепочки «создать → получить → изменить → удалить» и неправильный порядок запросов. В итоге — «что не так с API» с объяснениями: падения 500, приём битых данных, несоответствие схеме, утечки, доступ без авторизации.</p></article>
+<article><div class="fi">🧪</div><h3>Подмена ответов API</h3><p>Ошибка 500, 401, пустой список, задержка 5 секунд, «нет сети» — для любого запроса. Можно взять настоящий ответ и поправить его. Подменённые запросы помечены в отчёте, чтобы их не приняли за баг.</p></article>
+<article><div class="fi">📶</div><h3>Медленная сеть и слабый телефон</h3><p>3G, медленный 3G, без сети; процессор в 4–6 раз медленнее; iPhone, Android, iPad. Условия записываются в отчёт к каждому пункту.</p></article>
+<article><div class="fi">📐</div><h3>Скриншоты на всех экранах</h3><p>Одна кнопка — страница целиком на ширине 375, 768, 1280 и 1920 px, пунктами в отчёт. Сразу видно, где поехала вёрстка.</p></article>
+</div>
+</div>
 </section>
-
-<section id="audit" class="audit-sec">
-  <div class="wrap audit-in">
-    <div>
-      <div class="kicker">🩺 Автопроверка</div>
-      <h2 class="h2">Аудит сайта, пока вы тестируете</h2>
-      <p class="sub">Каждая открытая страница проверяется сама, в фоне. В отчёте — оценки по направлениям и список того, что улучшить: серьёзность, почему это плохо, как исправить и конкретные элементы.</p>
-      <ul class="ticks">
-        <li><b>SEO:</b> noindex и закрытый robots.txt, title и description (нет, длина, дубли между страницами), h1, canonical, viewport, Open Graph, schema.org, favicon</li>
-        <li><b>Скорость загрузки:</b> ресурсы, блокирующие отрисовку, нет сжатия и кэширования, тяжёлый JS, шрифты без font-display, lazy-загрузка картинок, HTTP/1.1, сторонние сервисы</li>
-        <li><b>Семантика и формы:</b> кликабельные div вместо кнопок, ссылки-заглушки, кнопки без type в формах, поля email/телефона с type="text"</li>
-        <li><b>Практики и безопасность:</b> битые ссылки и ресурсы, HTTPS и смешанный контент, заголовки безопасности, устаревшие API</li>
-        <li><b>Сеть:</b> дублирующиеся запросы, повторная отправка форм, N+1, слишком частый опрос, медленные и тяжёлые ответы</li>
-        <li><b>Лишние перерисовки на любом сайте:</b> элементы, которые пересоздаются без изменений, пустые обновления DOM, постоянно меняющиеся области; для React — ещё и счётчик по компонентам</li>
-        <li><b>Доступность:</b> движок axe-core (как в Lighthouse) с описаниями на русском — alt, подписи полей, контраст, структура</li>
-        <li><b>Изображения:</b> картинки в разы больше, чем на экране, и тяжёлые файлы</li>
-        <li><b>Предупреждения:</b> нет key в списках, обновление после размонтирования, бесконечные циклы</li>
-        <li><b>Производительность:</b> Web Vitals, зависания, медленные клики</li>
-      </ul>
-      <p class="muted" style="margin-top:14px">Отчёт автопроверки можно скачать отдельно и отдать разработчику или SEO-специалисту.</p>
-    </div>
-    <div class="browser small"><div class="browser-bar"><i></i><i></i><i></i><span>🩺 Автопроверка</span></div><img src="img/audit.webp" alt="Автопроверка сайта: оценки SEO, скорости, доступности, семантики и безопасности" loading="lazy" width="1170" height="865"></div>
-  </div>
+<section class="audit-sec" id="audit">
+<div class="wrap audit-in">
+<div>
+<div class="kicker">🩺 Автопроверка</div>
+<h2 class="h2">Аудит сайта, пока вы тестируете</h2>
+<p class="sub">Каждая открытая страница проверяется сама, в фоне. В отчёте — оценки по направлениям и список того, что улучшить: серьёзность, почему это плохо, как исправить и конкретные элементы.</p>
+<ul class="ticks">
+<li><b>SEO:</b> noindex и закрытый robots.txt, title и description (нет, длина, дубли между страницами), h1, canonical, viewport, Open Graph, schema.org, favicon</li>
+<li><b>Скорость загрузки:</b> ресурсы, блокирующие отрисовку, нет сжатия и кэширования, тяжёлый JS, шрифты без font-display, lazy-загрузка картинок, HTTP/1.1, сторонние сервисы</li>
+<li><b>Семантика и формы:</b> кликабельные div вместо кнопок, ссылки-заглушки, кнопки без type в формах, поля email/телефона с type="text"</li>
+<li><b>Практики и безопасность:</b> битые ссылки и ресурсы, HTTPS и смешанный контент, заголовки безопасности, устаревшие API</li>
+<li><b>Сеть:</b> дублирующиеся запросы, повторная отправка форм, N+1, слишком частый опрос, медленные и тяжёлые ответы</li>
+<li><b>Лишние перерисовки на любом сайте:</b> элементы, которые пересоздаются без изменений, пустые обновления DOM, постоянно меняющиеся области; для React — ещё и счётчик по компонентам</li>
+<li><b>Доступность:</b> движок axe-core (как в Lighthouse) с описаниями на языке интерфейса — alt, подписи полей, контраст, структура</li>
+<li><b>Изображения:</b> картинки в разы больше, чем на экране, и тяжёлые файлы</li>
+<li><b>Предупреждения:</b> нет key в списках, обновление после размонтирования, бесконечные циклы</li>
+<li><b>Производительность:</b> Web Vitals, зависания, медленные клики</li>
+</ul>
+<p class="muted" style="margin-top:14px">Отчёт автопроверки можно скачать отдельно и отдать разработчику или SEO-специалисту.</p>
+</div>
+<div class="browser small"><div class="browser-bar"><i></i><i></i><i></i><span>🩺 Автопроверка</span></div><img alt="Автопроверка сайта: оценки SEO, скорости, доступности, семантики и безопасности" height="865" loading="lazy" src="img/audit.webp" width="1170"/></div>
+</div>
 </section>
-
 <!-- ============ DEVTOOLS ============ -->
-<section id="devtools" class="devtools">
-  <div class="wrap">
-    <div class="kicker">Как в DevTools, только понятно</div>
-    <h2 class="h2">Всё, что видно в DevTools, — без DevTools</h2>
-    <p class="sub">Тестировщику не нужно знать, где в DevTools вкладка Performance. Расширение само записывает то, что обычно ищет разработчик, и раскладывает по полочкам: сначала главное, подробности по клику.</p>
-    <div class="dt-grid">
-      <div class="dt-list">
-        <div class="dt-item on" data-go="0"><span>🔎</span><div><b>Сводка проблем</b>Ошибки JS и запросов, сообщения об ошибках на экране, зависания, плохие метрики: карточками сверху отчёта.</div></div>
-        <div class="dt-item" data-go="1"><span>🕒</span><div><b>Таймлайн</b>Клики, ввод, запросы, ошибки, перерисовки и изменения DOM на одной шкале времени. Видно, что случилось за секунду до бага.</div></div>
-        <div class="dt-item" data-go="2"><span>⚡</span><div><b>Производительность</b>Web Vitals (LCP, INP, CLS, FCP, TTFB), долгие кадры с виновным скриптом, медленные клики, FPS, память, DOM-узлы.</div></div>
-        <div class="dt-item" data-go="2"><span>🔁</span><div><b>Лишние перерисовки</b>На любом сайте — обычный HTML, React, Vue, Angular: что пересоздаётся без изменений и где пустые обновления. Для React — счётчик по компонентам.</div></div>
-        <div class="dt-item" data-go="1"><span>🧩</span><div><b>DOM и события страницы</b>Появившиеся тосты и модалки, ошибки валидации форм, alert/confirm, прокрутка, потеря сети, WebSocket.</div></div>
-        <div class="dt-item" data-go="3"><span>🍪</span><div><b>Cookies и хранилище</b>Снимок cookies, localStorage и sessionStorage в момент бага и все изменения во время теста.</div></div>
-      </div>
-      <div class="switch dt" data-switch>
-        <div class="sw-tabs"><button class="on" data-i="0">Сводка</button><button data-i="1">Таймлайн</button><button data-i="2">Производительность</button><button data-i="3">Хранилище</button></div>
-        <div class="browser small">
-          <div class="browser-bar"><i></i><i></i><i></i><span>QA Bug Recorder · отчёт</span></div>
-          <img src="img/summary.webp" data-src="img/summary.webp|img/timeline.webp|img/perf.webp|img/storage.webp" alt="Сводка, таймлайн, производительность и хранилище в отчёте" loading="lazy" width="1800" height="469">
-        </div>
-      </div>
-    </div>
-  </div>
+<section class="devtools" id="devtools">
+<div class="wrap">
+<div class="kicker">Как в DevTools, только понятно</div>
+<h2 class="h2">Всё, что видно в DevTools, — без DevTools</h2>
+<p class="sub">Тестировщику не нужно знать, где в DevTools вкладка Performance. Расширение само записывает то, что обычно ищет разработчик, и раскладывает по полочкам: сначала главное, подробности по клику.</p>
+<div class="dt-grid">
+<div class="dt-list">
+<div class="dt-item on" data-go="0"><span>🔎</span><div><b>Сводка проблем</b>Ошибки JS и запросов, сообщения об ошибках на экране, зависания, плохие метрики: карточками сверху отчёта.</div></div>
+<div class="dt-item" data-go="1"><span>🕒</span><div><b>Таймлайн</b>Клики, ввод, запросы, ошибки, перерисовки и изменения DOM на одной шкале времени. Видно, что случилось за секунду до бага.</div></div>
+<div class="dt-item" data-go="2"><span>⚡</span><div><b>Производительность</b>Web Vitals (LCP, INP, CLS, FCP, TTFB), долгие кадры с виновным скриптом, медленные клики, FPS, память, DOM-узлы.</div></div>
+<div class="dt-item" data-go="2"><span>🔁</span><div><b>Лишние перерисовки</b>На любом сайте — обычный HTML, React, Vue, Angular: что пересоздаётся без изменений и где пустые обновления. Для React — счётчик по компонентам.</div></div>
+<div class="dt-item" data-go="1"><span>🧩</span><div><b>DOM и события страницы</b>Появившиеся тосты и модалки, ошибки валидации форм, alert/confirm, прокрутка, потеря сети, WebSocket.</div></div>
+<div class="dt-item" data-go="3"><span>🍪</span><div><b>Cookies и хранилище</b>Снимок cookies, localStorage и sessionStorage в момент бага и все изменения во время теста.</div></div>
+</div>
+<div class="switch dt" data-switch="">
+<div class="sw-tabs"><button class="on" data-i="0">Сводка</button><button data-i="1">Таймлайн</button><button data-i="2">Производительность</button><button data-i="3">Хранилище</button></div>
+<div class="browser small">
+<div class="browser-bar"><i></i><i></i><i></i><span>QA Bug Recorder · отчёт</span></div>
+<img alt="Сводка, таймлайн, производительность и хранилище в отчёте" data-src="img/summary.webp|img/timeline.webp|img/perf.webp|img/storage.webp" height="469" loading="lazy" src="img/summary.webp" width="1800"/>
+</div>
+</div>
+</div>
+</div>
 </section>
-
 <!-- ============ FEATURES ============ -->
-<section id="features" class="features">
-  <div class="wrap">
-    <div class="kicker light">Возможности</div>
-    <h2 class="h2 light">Всё, что нужно разработчику, чтобы починить с первого раза</h2>
-    <div class="fgrid">
-      <article><div class="fi">⚠️</div><h3>Ошибки ловятся сами</h3><p>Ошибка консоли или упавший запрос → пункт со скриншотом, запросом, ответом сервера и шагами перед ошибкой.</p></article>
-      <article><div class="fi">🎯</div><h3>Выбор элемента</h3><p>CSS-селектор с приоритетом <code>data-testid</code>, текст, размеры, вычисленные стили и фрагмент HTML.</p></article>
-      <article><div class="fi">✍️</div><h3>Пометки на скриншоте</h3><p>Стрелка, рамка, нумерация и комментарий нарисованы прямо на картинке.</p></article>
-      <article><div class="fi">🎤</div><h3>Голосовой комментарий</h3><p>Запись с микрофона параллельно с остальным: отдельным файлом и в звуковой дорожке видео.</p></article>
-      <article><div class="fi">🎬</div><h3>Видео вкладки</h3><p>Включается в любой момент. Клик по времени пометки перематывает видео к этому моменту.</p></article>
-      <article><div class="fi">🧭</div><h3>Автошаги</h3><p>«Ввод в поле Email», «Клик: Оплатить», «Переход на /checkout»: шаги собираются из реальных действий.</p></article>
-      <article><div class="fi">🖥️</div><h3>Консоль и ошибки JS</h3><p><code>console.*</code>, необработанные исключения, отклонённые промисы, незагруженные ресурсы.</p></article>
-      <article><div class="fi">🔌</div><h3>Сеть и HAR</h3><p>Метод, статус, время, заголовки, тела запроса и ответа. HAR открывается в DevTools → Network → Import.</p></article>
-      <article><div class="fi">🔒</div><h3>Защита данных</h3><p>Пароли не пишутся вовсе. <code>Authorization</code>, cookie, токены в URL и JSON скрываются при экспорте.</p></article>
-      <article><div class="fi">🗂️</div><h3>История отчётов</h3><p>Все отчёты хранятся локально. К любому можно вернуться, дописать и выгрузить заново.</p></article>
-      <article><div class="fi">📋</div><h3>Копировать в задачу</h3><p>Пункт копируется в буфер: текст для Jira, Telegram, Slack, скриншот или всё вместе для Google Docs и Notion.</p></article>
-      <article><div class="fi">🙈</div><h3>Без шума</h3><p>Ошибки чужих скриптов (аналитика, реклама, виджеты) не сохраняются. Лишнюю ошибку можно игнорировать навсегда.</p></article>
-      <article><div class="fi">⌨️</div><h3>Горячие клавиши</h3><p>Начать проверку, выбрать элемент, стрелка, готово: без мыши и без лишних кликов.</p></article>
-      <article><div class="fi">🕒</div><h3>Единый таймлайн</h3><p>Действия, сеть, консоль, DOM и рендеры на одной шкале. Фильтр «Важное» убирает шум.</p></article>
-      <article><div class="fi">⚡</div><h3>Web Vitals и зависания</h3><p>LCP, INP, CLS с оценкой «хорошо/плохо», долгие кадры с виновным скриптом, просадки FPS.</p></article>
-      <article><div class="fi">🔁</div><h3>Лишние перерисовки</h3><p>Работает на любом сайте: элементы, пересоздаваемые без изменений, пустые обновления DOM. Для React — по компонентам.</p></article>
-      <article><div class="fi">🤖</div><h3>AI-разбор бага</h3><p>Кнопка 🤖 у пункта: заголовок, шаги, ожидалось / фактически, вероятная причина (фронт или бэк) и что проверить. Резюме всего отчёта. Claude, ChatGPT или любой совместимый сервис — по вашему ключу.</p></article>
-      <article><div class="fi">🧪</div><h3>Режим DevTools</h3><p>По желанию: CORS-ошибки, предупреждения браузера и метрики DevTools (пересчёты layout и стилей, время JS).</p></article>
-    </div>
-  </div>
+<section class="features" id="features">
+<div class="wrap">
+<div class="kicker light">Возможности</div>
+<h2 class="h2 light">Всё, что нужно разработчику, чтобы починить с первого раза</h2>
+<div class="fgrid">
+<article><div class="fi">⚠️</div><h3>Ошибки ловятся сами</h3><p>Ошибка консоли или упавший запрос → пункт со скриншотом, запросом, ответом сервера и шагами перед ошибкой.</p></article>
+<article><div class="fi">🎯</div><h3>Выбор элемента</h3><p>CSS-селектор с приоритетом <code>data-testid</code>, текст, размеры, вычисленные стили и фрагмент HTML.</p></article>
+<article><div class="fi">✍️</div><h3>Пометки на скриншоте</h3><p>Стрелка, рамка, нумерация и комментарий нарисованы прямо на картинке.</p></article>
+<article><div class="fi">🎤</div><h3>Голосовой комментарий</h3><p>Запись с микрофона параллельно с остальным: отдельным файлом и в звуковой дорожке видео.</p></article>
+<article><div class="fi">🎬</div><h3>Видео вкладки</h3><p>Включается в любой момент. Клик по времени пометки перематывает видео к этому моменту.</p></article>
+<article><div class="fi">🧭</div><h3>Автошаги</h3><p>«Ввод в поле Email», «Клик: Оплатить», «Переход на /checkout»: шаги собираются из реальных действий.</p></article>
+<article><div class="fi">🖥️</div><h3>Консоль и ошибки JS</h3><p><code>console.*</code>, необработанные исключения, отклонённые промисы, незагруженные ресурсы.</p></article>
+<article><div class="fi">🔌</div><h3>Сеть и HAR</h3><p>Метод, статус, время, заголовки, тела запроса и ответа. HAR открывается в DevTools → Network → Import.</p></article>
+<article><div class="fi">🔒</div><h3>Защита данных</h3><p>Пароли не пишутся вовсе. <code>Authorization</code>, cookie, токены в URL и JSON скрываются при экспорте.</p></article>
+<article><div class="fi">🗂️</div><h3>История отчётов</h3><p>Все отчёты хранятся локально. К любому можно вернуться, дописать и выгрузить заново.</p></article>
+<article><div class="fi">📋</div><h3>Копировать в задачу</h3><p>Пункт копируется в буфер: текст для Jira, Telegram, Slack, скриншот или всё вместе для Google Docs и Notion.</p></article>
+<article><div class="fi">🙈</div><h3>Без шума</h3><p>Ошибки чужих скриптов (аналитика, реклама, виджеты) не сохраняются. Лишнюю ошибку можно игнорировать навсегда.</p></article>
+<article><div class="fi">⌨️</div><h3>Горячие клавиши</h3><p>Начать проверку, выбрать элемент, стрелка, готово: без мыши и без лишних кликов.</p></article>
+<article><div class="fi">🕒</div><h3>Единый таймлайн</h3><p>Действия, сеть, консоль, DOM и рендеры на одной шкале. Фильтр «Важное» убирает шум.</p></article>
+<article><div class="fi">⚡</div><h3>Web Vitals и зависания</h3><p>LCP, INP, CLS с оценкой «хорошо/плохо», долгие кадры с виновным скриптом, просадки FPS.</p></article>
+<article><div class="fi">🔁</div><h3>Лишние перерисовки</h3><p>Работает на любом сайте: элементы, пересоздаваемые без изменений, пустые обновления DOM. Для React — по компонентам.</p></article>
+<article><div class="fi">🤖</div><h3>AI-разбор бага</h3><p>Кнопка 🤖 у пункта: заголовок, шаги, ожидалось / фактически, вероятная причина (фронт или бэк) и что проверить. Резюме всего отчёта. Claude, ChatGPT или любой совместимый сервис — по вашему ключу.</p></article>
+<article><div class="fi">🧪</div><h3>Режим DevTools</h3><p>По желанию: CORS-ошибки, предупреждения браузера и метрики DevTools (пересчёты layout и стилей, время JS).</p></article>
+</div>
+</div>
 </section>
-
 <!-- ============ REPORT SHOWCASE ============ -->
-<section id="report" class="showcase">
-  <div class="wrap">
-    <div class="kicker">Отчёт</div>
-    <h2 class="h2">Один экран: что сломалось, где и почему</h2>
-    <p class="sub">Это настоящие скриншоты отчёта, снятые на тестовом магазине. Переключайте вкладки.</p>
-    <div class="switch big" data-switch>
-      <div class="sw-tabs">
-        <button class="on" data-i="0">Отчёт</button>
-        <button data-i="1">Пометки</button>
-        <button data-i="2">Сеть</button>
-        <button data-i="3">Консоль</button>
-        <button data-i="4">Word</button>
-      </div>
-      <div class="browser">
-        <div class="browser-bar"><i></i><i></i><i></i><span>QA Bug Recorder · отчёт</span></div>
-        <img src="img/report.webp" data-src="img/report.webp|img/report-annotations.webp|img/report-network.webp|img/report-console.webp|img/word-1.webp" alt="Отчёт QA Bug Recorder" loading="lazy" width="1800" height="1250">
-      </div>
-    </div>
-  </div>
+<section class="showcase" id="report">
+<div class="wrap">
+<div class="kicker">Отчёт</div>
+<h2 class="h2">Один экран: что сломалось, где и почему</h2>
+<p class="sub">Это настоящие скриншоты отчёта, снятые на тестовом магазине. Переключайте вкладки.</p>
+<div class="switch big" data-switch="">
+<div class="sw-tabs">
+<button class="on" data-i="0">Отчёт</button>
+<button data-i="1">Пометки</button>
+<button data-i="2">Сеть</button>
+<button data-i="3">Консоль</button>
+<button data-i="4">Word</button>
+</div>
+<div class="browser">
+<div class="browser-bar"><i></i><i></i><i></i><span>QA Bug Recorder · отчёт</span></div>
+<img alt="Отчёт QA Bug Recorder" data-src="img/report.webp|img/report-annotations.webp|img/report-network.webp|img/report-console.webp|img/word-1.webp" height="1250" loading="lazy" src="img/report.webp" width="1800"/>
+</div>
+</div>
+</div>
 </section>
-
 <!-- ============ FORMATS ============ -->
 <section class="formats">
-  <div class="wrap">
-    <div class="kicker">Экспорт</div>
-    <h2 class="h2">Формат, который примет ваш трекер</h2>
-    <div class="fmt-grid">
-      <div class="fmt"><div class="ext">.docx</div><h3>Word</h3><p>Для заказчика и документации. Пункты со скриншотами, ошибки с запросами и шагами, окружение.</p></div>
-      <div class="fmt"><div class="ext">.md</div><h3>Markdown</h3><p>Для GitLab, GitHub, Jira, Notion. Архив: <code>report.md</code>, папка со скриншотами, медиа, HAR.</p></div>
-      <div class="fmt"><div class="ext">G Docs</div><h3>Google Docs</h3><p>Отчёт или один пункт — сразу Google-документом со скриншотами в папке на вашем Диске. Видео и голос загружаются рядом.</p></div>
-      <div class="fmt"><div class="ext">.html</div><h3>HTML</h3><p>Один файл, открывается в любом браузере. Видео и голос встраиваются внутрь.</p></div>
-      <div class="fmt"><div class="ext">.har</div><h3>HAR</h3><p>Для разработчика: импорт в DevTools, Charles, Fiddler или Postman.</p></div>
-      <div class="fmt wide"><div class="ext">.zip</div><h3>Всё одним архивом</h3><p>Word + HTML + Markdown + скриншоты + видео + голос + HAR + <code>console.log</code>. Прикрепил к задаче, и готово.</p></div>
-    </div>
-  </div>
+<div class="wrap">
+<div class="kicker">Экспорт</div>
+<h2 class="h2">Формат, который примет ваш трекер</h2>
+<div class="fmt-grid">
+<div class="fmt"><div class="ext">.docx</div><h3>Word</h3><p>Для заказчика и документации. Пункты со скриншотами, ошибки с запросами и шагами, окружение.</p></div>
+<div class="fmt"><div class="ext">.md</div><h3>Markdown</h3><p>Для GitLab, Jira, Notion и других трекеров. Архив: <code>report.md</code>, папка со скриншотами, медиа, HAR.</p></div>
+<div class="fmt"><div class="ext">G Docs</div><h3>Google Docs</h3><p>Отчёт или один пункт — сразу Google-документом со скриншотами в папке на вашем Диске. Видео и голос загружаются рядом.</p></div>
+<div class="fmt"><div class="ext">.html</div><h3>HTML</h3><p>Один файл, открывается в любом браузере. Видео и голос встраиваются внутрь.</p></div>
+<div class="fmt"><div class="ext">.har</div><h3>HAR</h3><p>Для разработчика: импорт в DevTools, Charles, Fiddler или Postman.</p></div>
+<div class="fmt wide"><div class="ext">.zip</div><h3>Всё одним архивом</h3><p>Word + HTML + Markdown + скриншоты + видео + голос + HAR + <code>console.log</code>. Прикрепил к задаче, и готово.</p></div>
+</div>
+</div>
 </section>
-
 <!-- ============ AUDIENCE ============ -->
 <section class="who">
-  <div class="wrap who-grid">
-    <div><div class="who-i">🧪</div><h3>Тестировщикам</h3><p>Меньше рутины, больше найденных багов. Отчёт без «а что ты нажимал?».</p></div>
-    <div><div class="who-i">👩‍💻</div><h3>Разработчикам</h3><p>Селектор, стек ошибки, тело ответа сервера и HAR сразу в задаче.</p></div>
-    <div><div class="who-i">📋</div><h3>Менеджерам и заказчикам</h3><p>Приёмочное тестирование: даже не-технический человек отправит понятный отчёт голосом и стрелкой.</p></div>
-  </div>
+<div class="wrap who-grid">
+<div><div class="who-i">🧪</div><h3>Тестировщикам</h3><p>Меньше рутины, больше найденных багов. Отчёт без «а что ты нажимал?».</p></div>
+<div><div class="who-i">👩‍💻</div><h3>Разработчикам</h3><p>Селектор, стек ошибки, тело ответа сервера и HAR сразу в задаче.</p></div>
+<div><div class="who-i">📋</div><h3>Менеджерам и заказчикам</h3><p>Приёмочное тестирование: даже не-технический человек отправит понятный отчёт голосом и стрелкой.</p></div>
+</div>
 </section>
-
 <!-- ============ PRIVACY ============ -->
 <section class="privacy">
-  <div class="wrap priv-in">
-    <div class="lock">🔒</div>
-    <div>
-      <h2 class="h2 light">Ваши данные остаются у вас</h2>
-      <p>Расширение не имеет сервера и ничего не отправляет в интернет. Всё хранится локально в браузере (IndexedDB) и покидает его, только когда вы сами скачиваете отчёт. Значения полей паролей, карт и токенов не записываются вовсе, а заголовки авторизации и cookie по умолчанию скрываются при экспорте.</p>
-    </div>
-  </div>
+<div class="wrap priv-in">
+<div class="lock">🔒</div>
+<div>
+<h2 class="h2 light">Ваши данные остаются у вас</h2>
+<p>Расширение не имеет сервера и ничего не отправляет в интернет. Всё хранится локально в браузере (IndexedDB) и покидает его, только когда вы сами скачиваете отчёт. Значения полей паролей, карт и токенов не записываются вовсе, а заголовки авторизации и cookie по умолчанию скрываются при экспорте.</p>
+</div>
+</div>
 </section>
-
 <!-- ============ INSTALL ============ -->
-<section id="install" class="install">
-  <div class="wrap">
-    <div class="kicker">Установка</div>
-    <h2 class="h2">Две минуты, без магазина расширений</h2>
-    <div class="inst-grid">
-      <ol class="inst">
-        <li><b>Скачайте архив</b> и распакуйте в постоянную папку.<br><a class="btn btn-red sm" href="qa-bug-recorder.zip" download>Скачать qa-bug-recorder.zip</a></li>
-        <li>Откройте <code>chrome://extensions</code> и справа вверху включите <b>«Режим разработчика»</b>.</li>
-        <li>Нажмите <b>«Загрузить распакованное расширение»</b> и выберите папку <code>qa-bug-recorder</code>.</li>
-        <li>Закрепите иконку 🐞 на панели браузера и <b>обновите вкладки</b> тестируемого сайта.</li>
-      </ol>
-      <div class="keys">
-        <h3>Горячие клавиши</h3>
-        <table>
-          <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd></td><td>Начать проверку / открыть панель</td></tr>
-          <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Выбрать элемент</td></tr>
-          <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Стрелка</td></tr>
-          <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>Готово, открыть отчёт</td></tr>
-          <tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Сохранить пометку</td></tr>
-          <tr><td><kbd>Esc</kbd></td><td>Отменить инструмент</td></tr>
-        </table>
-        <p class="muted">Переназначить: <code>chrome://extensions/shortcuts</code></p>
-      </div>
-    </div>
-  </div>
+<section class="install" id="install">
+<div class="wrap">
+<div class="kicker">Установка</div>
+<h2 class="h2">Две минуты, без магазина расширений</h2>
+<div class="inst-grid">
+<ol class="inst">
+<li><b>Скачайте архив</b> и распакуйте в постоянную папку.<br/><a class="btn btn-red sm" download="" href="qa-bug-recorder.zip">Скачать qa-bug-recorder.zip</a></li>
+<li>Откройте <code>chrome://extensions</code> и справа вверху включите <b>«Режим разработчика»</b>.</li>
+<li>Нажмите <b>«Загрузить распакованное расширение»</b> и выберите папку <code>qa-bug-recorder</code>.</li>
+<li>Закрепите иконку 🐞 на панели браузера и <b>обновите вкладки</b> тестируемого сайта.</li>
+</ol>
+<div class="keys">
+<h3>Горячие клавиши</h3>
+<table>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd></td><td>Начать проверку / открыть панель</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Выбрать элемент</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Стрелка</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>Готово, открыть отчёт</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Сохранить пометку</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Отменить инструмент</td></tr>
+</table>
+<p class="muted">Переназначить: <code>chrome://extensions/shortcuts</code></p>
+</div>
+</div>
+</div>
 </section>
-
 <!-- ============ FAQ ============ -->
-<section id="faq" class="faq">
-  <div class="wrap narrow">
-    <div class="kicker">FAQ</div>
-    <h2 class="h2">Частые вопросы</h2>
-    <details><summary>Замедляет ли расширение сайт?</summary><p>Практически нет. Перехват консоли и запросов — лёгкие обёртки над стандартными функциями, изменения DOM и рендеры считаются пачками раз в секунду, а данные хранятся только за последние минуты. Видео пишется, только когда вы его включили.</p></details>
-    <details><summary>Как расширение находит лишние перерисовки?</summary><p>Для любого сайта — по изменениям HTML: если элемент удалён и вставлен заново с тем же содержимым или в атрибут записано то же значение, это лишняя работа браузера. Для React дополнительно считаются рендеры компонентов — через тот же механизм, что использует React DevTools. Работает на сайтах с React 16–19, включая продакшен-сборки. Если у вас установлено расширение React DevTools, отключите в настройках QA Bug Recorder пункт «Считать перерисовки React»: два счётчика мешают друг другу.</p></details>
-    <details><summary>Есть английский интерфейс?</summary><p>Да. Язык выбирается автоматически по языку браузера или вручную в настройках расширения. На английском формируются и отчёты — удобно, если баги читают зарубежные коллеги или заказчик.</p></details>
-    <details><summary>Куда уходят данные при AI-разборе?</summary><p>Только в выбранный вами сервис (Claude, OpenAI или другой) и только когда вы нажимаете 🤖. Ключ хранится в вашем браузере. Токены, cookie и пароли в запросах маскируются перед отправкой, отправку скриншота можно выключить. Без ключа кнопка копирует готовый запрос, чтобы вставить его в чат вручную.</p></details>
-    <details><summary>Как подключить Google Docs?</summary><p>Без настройки кнопка «Google Docs» копирует отчёт и открывает новый документ — остаётся нажать Ctrl+V. Для выгрузки в один клик нужен Client ID из Google Cloud: его один раз создаёт кто-то в команде по пошаговой инструкции в «🔌 Интеграции». Расширение получает доступ только к файлам, которые создало само.</p></details>
-    <details><summary>Почему в буфере пусто?</summary><p>Сбор начинается с загрузки страницы. После установки расширения обновите вкладку сайта (F5). На служебных страницах <code>chrome://</code> и в магазине расширений Chrome запрещает работу расширений.</p></details>
-    <details><summary>Почему Chrome просит подтверждение для видео?</summary><p>Chrome разрешает записывать вкладку только после явного действия пользователя. Если вы начали баг через иконку или горячую клавишу, видео включается с панели на странице. Если после этого был переход на другую страницу, нажмите иконку → «⏺ Видео».</p></details>
-    <details><summary>Как работает голосовой комментарий?</summary><p>При первом нажатии 🎤 откроется вкладка с запросом доступа к микрофону: это нужно один раз. Голос записывается отдельным файлом и подмешивается в видео, если оно включено.</p></details>
-    <details><summary>Что такое «Полный захват сети»?</summary><p>Режим через DevTools-протокол: записывает все ресурсы (картинки, скрипты, стили), CORS-ошибки и предупреждения браузера. Chrome при этом показывает полосу «Расширение отлаживает этот браузер», это нормально. Включается в настройках расширения.</p></details>
-    <details><summary>В каком формате видео?</summary><p>WebM (VP9/VP8 + Opus). Открывается в Chrome, Firefox, VLC, плеерах Windows 10+ и macOS 13+. В Word видео не встраивается: используйте HTML или архив.</p></details>
-    <details><summary>Можно ли использовать в Edge, Яндекс Браузере, Opera?</summary><p>Да, в любом браузере на Chromium версии 116 и новее. Установка такая же, через страницу расширений и режим разработчика.</p></details>
-  </div>
+<section class="faq" id="faq">
+<div class="wrap narrow">
+<div class="kicker">FAQ</div>
+<h2 class="h2">Частые вопросы</h2>
+<details><summary>Замедляет ли расширение сайт?</summary><p>Практически нет. Перехват консоли и запросов — лёгкие обёртки над стандартными функциями, изменения DOM и рендеры считаются пачками раз в секунду, а данные хранятся только за последние минуты. Видео пишется, только когда вы его включили.</p></details>
+<details><summary>Как расширение находит лишние перерисовки?</summary><p>Для любого сайта — по изменениям HTML: если элемент удалён и вставлен заново с тем же содержимым или в атрибут записано то же значение, это лишняя работа браузера. Для React дополнительно считаются рендеры компонентов — через тот же механизм, что использует React DevTools. Работает на сайтах с React 16–19, включая продакшен-сборки. Если у вас установлено расширение React DevTools, отключите в настройках QA Bug Recorder пункт «Считать перерисовки React»: два счётчика мешают друг другу.</p></details>
+<details><summary>На каких языках работает расширение?</summary><p>Русский, английский, китайский, испанский, португальский, французский, немецкий и казахский. Язык выбирается автоматически по языку браузера или вручную в настройках расширения. На выбранном языке формируются и отчёты — удобно, если баги читают зарубежные коллеги или заказчик.</p></details>
+<details><summary>Куда уходят данные при AI-разборе?</summary><p>Только в выбранный вами сервис (Claude, OpenAI или другой) и только когда вы нажимаете 🤖. Ключ хранится в вашем браузере. Токены, cookie и пароли в запросах маскируются перед отправкой, отправку скриншота можно выключить. Без ключа кнопка копирует готовый запрос, чтобы вставить его в чат вручную.</p></details>
+<details><summary>Как подключить Google Docs?</summary><p>Без настройки кнопка «Google Docs» копирует отчёт и открывает новый документ — остаётся нажать Ctrl+V. Для выгрузки в один клик нужен Client ID из Google Cloud: его один раз создаёт кто-то в команде по пошаговой инструкции в «🔌 Интеграции». Расширение получает доступ только к файлам, которые создало само.</p></details>
+<details><summary>Почему в буфере пусто?</summary><p>Сбор начинается с загрузки страницы. После установки расширения обновите вкладку сайта (F5). На служебных страницах <code>chrome://</code> и в магазине расширений Chrome запрещает работу расширений.</p></details>
+<details><summary>Почему Chrome просит подтверждение для видео?</summary><p>Chrome разрешает записывать вкладку только после явного действия пользователя. Если вы начали баг через иконку или горячую клавишу, видео включается с панели на странице. Если после этого был переход на другую страницу, нажмите иконку → «⏺ Видео».</p></details>
+<details><summary>Как работает голосовой комментарий?</summary><p>При первом нажатии 🎤 откроется вкладка с запросом доступа к микрофону: это нужно один раз. Голос записывается отдельным файлом и подмешивается в видео, если оно включено.</p></details>
+<details><summary>Что такое «Полный захват сети»?</summary><p>Режим через DevTools-протокол: записывает все ресурсы (картинки, скрипты, стили), CORS-ошибки и предупреждения браузера. Chrome при этом показывает полосу «Расширение отлаживает этот браузер», это нормально. Включается в настройках расширения.</p></details>
+<details><summary>В каком формате видео?</summary><p>WebM (VP9/VP8 + Opus). Открывается в Chrome, Firefox, VLC, плеерах Windows 10+ и macOS 13+. В Word видео не встраивается: используйте HTML или архив.</p></details>
+<details><summary>Можно ли использовать в Edge, Яндекс Браузере, Opera?</summary><p>Да, в любом браузере на Chromium версии 116 и новее. Установка такая же, через страницу расширений и режим разработчика.</p></details>
+</div>
 </section>
-
 <!-- ============ ROADMAP ============ -->
 <section class="roadmap">
-  <div class="wrap">
-    <div class="kicker">Дальше</div>
-    <h2 class="h2">В планах</h2>
-    <div class="rm-grid">
-      <div class="rm"><span>Скоро</span>Отправка в Jira, YouTrack, GitLab, Linear и Telegram в один клик</div>
-      <div class="rm"><span>Скоро</span>MCP-сервер: отчёты доступны Claude Code, Cursor и Claude Desktop напрямую — «исправь ошибку 3 из последнего отчёта»</div>
-      <div class="rm"><span>Скоро</span>Голос → текст: диктовка комментария с распознаванием речи</div>
-      <div class="rm"><span>Идея</span>Видео «последние 30 секунд» и запись DOM (rrweb) задним числом</div>
-      <div class="rm"><span>Идея</span>Размытие персональных данных на скриншоте</div>
-      <div class="rm"><span>Идея</span>Шаблоны отчётов под проект и экспорт в PDF</div>
-      <div class="rm"><span>Идея</span>Метрики производительности (Web Vitals) в отчёте</div>
-    </div>
-  </div>
+<div class="wrap">
+<div class="kicker">Дальше</div>
+<h2 class="h2">В планах</h2>
+<div class="rm-grid">
+<div class="rm"><span>Скоро</span>MCP-сервер: отчёты доступны Claude Code, Cursor и Claude Desktop напрямую — «исправь ошибку 3 из последнего отчёта»</div>
+<div class="rm"><span>Скоро</span>Голос → текст: диктовка комментария с распознаванием речи</div>
+<div class="rm"><span>Идея</span>Видео «последние 30 секунд» и запись DOM (rrweb) задним числом</div>
+<div class="rm"><span>Идея</span>Размытие персональных данных на скриншоте</div>
+<div class="rm"><span>Идея</span>Шаблоны отчётов под проект и экспорт в PDF</div>
+</div>
+</div>
 </section>
-
 <section class="final">
-  <div class="wrap final-in">
-    <h2>Следующий баг зафиксируйте за 10 секунд</h2>
-    <div class="cta center">
-      <a class="btn btn-red" href="qa-bug-recorder.zip" download>Скачать расширение</a>
-    </div>
-  </div>
+<div class="wrap final-in">
+<h2>Следующий баг зафиксируйте за 10 секунд</h2>
+<div class="cta center">
+<a class="btn btn-red" download="" href="qa-bug-recorder.zip">Скачать расширение</a>
+</div>
+</div>
 </section>
-
 </main>
+<section class="donate" id="donate">
+<div class="wrap donate-in">
+<div>
+<div class="kicker">Поддержать проект</div>
+<h2 class="h2">Расширение бесплатное и без рекламы</h2>
+<p class="sub">Если оно экономит вам и команде время — поддержите разработку новых возможностей переводом на карту.</p>
+</div>
+<div class="card-num">
+<span class="lbl">Номер карты</span>
+<code id="card">5269 8800 8898 3051</code>
+<button class="btn btn-red" id="copy-card" type="button">📋 Копировать номер</button>
+<span class="copied" hidden="" id="copied">✓ Скопировано</span>
+</div>
+</div>
+</section>
 <footer class="foot">
-  <div class="wrap foot-in">
-    <span><img src="img/logo.png" alt=""> QA Bug Recorder</span>
-    <span>Работает локально · Manifest V3 · Chrome 116+ · Лицензия MIT</span>
-  </div>
+<div class="wrap foot-in">
+<span><img alt="" src="img/logo.png"/> QA Bug Recorder</span>
+<span>Работает локально · Manifest V3 · Chrome 116+ · Лицензия MIT · <a href="privacy.html">Политика конфиденциальности</a> · <a href="#donate">❤ Поддержать</a></span>
+</div>
 </footer>
-
 <script>
+  // копирование номера карты
+  (function () {
+    var b = document.getElementById('copy-card');
+    if (!b) return;
+    b.addEventListener('click', function () {
+      var n = document.getElementById('card').textContent.replace(/\s/g, '');
+      (navigator.clipboard ? navigator.clipboard.writeText(n) : Promise.reject()).then(function () {
+        var c = document.getElementById('copied'); c.hidden = false; setTimeout(function () { c.hidden = true; }, 2000);
+      }).catch(function () { window.prompt('Номер карты', n); });
+    });
+  })();
   // переключатели скриншотов
   document.querySelectorAll('[data-switch]').forEach(function (sw) {
     var img = sw.querySelector('img[data-src]');

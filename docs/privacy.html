@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Политика конфиденциальности — QA Bug Recorder</title>
+<meta content="Какие данные использует расширение QA Bug Recorder, где они хранятся и когда передаются." name="description"/>
+<link href="img/logo.png" rel="icon"/>
+<link href="style.css" rel="stylesheet"/>
+<style>
+.pp{max-width:820px;margin:0 auto;padding:48px 20px 80px}
+.pp h1{font:800 34px/1.15 var(--display);margin:0 0 8px}
+.pp h2{font:700 21px/1.3 var(--display);margin:34px 0 10px}
+.pp p,.pp li{font-size:16px;line-height:1.65}
+.pp ul{padding-left:22px}
+.pp .meta{color:#6b7280}
+.pp .back{display:inline-block;margin-bottom:24px}
+</style>
+<!--lang--><link rel="alternate" hreflang="ru" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/privacy.html"><link rel="alternate" hreflang="en" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/en/privacy.html"><link rel="alternate" hreflang="zh-Hans" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/zh/privacy.html"><link rel="alternate" hreflang="es" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/es/privacy.html"><link rel="alternate" hreflang="pt-BR" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/pt/privacy.html"><link rel="alternate" hreflang="fr" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/fr/privacy.html"><link rel="alternate" hreflang="de" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/de/privacy.html"><link rel="alternate" hreflang="kk" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/kk/privacy.html"><link rel="alternate" hreflang="x-default" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/privacy.html"><script>(function(){try{if(localStorage.getItem('qa_land_lang'))return;var L=['en','zh','es','pt','fr','de','kk'];var n=(navigator.languages||[navigator.language||'']);for(var i=0;i<n.length;i++){var l=(n[i]||'').toLowerCase().slice(0,2);if(l==='ru'||l==='uk'||l==='be')return;if(L.indexOf(l)>=0){location.replace(l+'/'+location.pathname.split('/').pop()+location.hash);return;}}}catch(e){}})();</script><!--/lang--></head>
+<body>
+<main class="pp">
+<a class="back" href="index.html">← QA Bug Recorder</a><!--lang--><select class="lang-sel" data-noi18n aria-label="Language" onchange="try{localStorage.setItem('qa_land_lang',this.value)}catch(e){};location.href=(this.value==='ru'?'':''+this.value+'/')+'privacy.html'+location.hash"><option value="ru" selected>Русский</option><option value="en">English</option><option value="zh">中文</option><option value="es">Español</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="kk">Қазақша</option></select><!--/lang-->
+<h1>Политика конфиденциальности</h1>
+<p class="meta">Расширение Chrome «QA Bug Recorder». Действует с 22 ноября 2026 г.</p>
+<h2>Коротко</h2>
+<p>Расширение помогает тестировать сайты. Всё, что оно собирает, хранится только в вашем браузере. У расширения нет своего сервера, оно не показывает рекламу, не продаёт и не передаёт данные третьим лицам. Данные уходят из браузера только когда вы сами это делаете: скачиваете или копируете отчёт либо нажимаете кнопку подключённого вами сервиса.</p>
+<h2>Какие данные собираются</h2>
+<p>Только на вкладке, где вы запустили проверку, и только пока она идёт:</p>
+<ul>
+<li>скриншоты страницы, а также видео вкладки и голос с микрофона — только по вашей команде;</li>
+<li>действия на странице: клики, ввод в поля, переходы. Значения полей паролей, банковских карт, CVV и токенов не записываются;</li>
+<li>технические данные страницы: сетевые запросы и ответы, сообщения консоли, показатели производительности, cookies и данные хранилища сайта, сведения об окружении (браузер, размер окна);</li>
+<li>ваши комментарии, пометки и выбранная серьёзность.</li>
+</ul>
+<p>Кроме того, расширение хранит то, что вы создаёте сами: сценарии автотестов, правила подмены ответов, проекты API-тестов и их результаты, настройки.</p>
+<h2>Где хранятся данные</h2>
+<p>В локальном хранилище браузера на вашем компьютере (IndexedDB и хранилище расширения). Вы можете удалить любой отчёт в «Мои отчёты» или все данные, удалив расширение.</p>
+<h2>Когда данные передаются</h2>
+<ul>
+<li><b>Выгрузка и копирование.</b> Вы сами решаете, кому отправить скачанный или скопированный отчёт. Перед выгрузкой можно скрыть токены и пароли.</li>
+<li><b>AI-разбор (необязательно).</b> Если вы указали свой API-ключ сервиса (Anthropic, OpenAI или совместимого), то при нажатии кнопки 🤖 текст пункта или отчёта и, если включено, скриншот отправляются этому сервису. Дальше действует политика конфиденциальности выбранного сервиса. Ключ хранится только в вашем браузере.</li>
+<li><b>Google Docs (необязательно).</b> Если вы подключили Google, отчёт по вашей команде загружается в папку «QA Bug Recorder» на вашем Google Диске. Расширение получает доступ только к файлам, которые создало само.</li>
+<li><b>API-тесты и автотесты.</b> Запросы уходят только на адреса, которые вы указали.</li>
+</ul>
+<h2>Разрешения расширения</h2>
+<ul>
+<li><b>Доступ к сайтам</b> — чтобы записывать запросы, консоль и действия на проверяемой странице и показывать панель пометок.</li>
+<li><b>Захват вкладки и микрофон</b> — для записи видео и голосовых комментариев по вашей команде.</li>
+<li><b>Хранилище</b> — чтобы отчёты сохранялись в браузере.</li>
+<li><b>Отладка вкладки</b> (необязательное, запрашивается при первом использовании) — для эмуляции медленной сети и устройств, скриншотов на разных экранах и полного захвата сети.</li>
+<li><b>Вход Google</b> — только если вы подключаете Google Docs.</li>
+</ul>
+<h2>Дети</h2>
+<p>Расширение предназначено для специалистов по тестированию и разработке и не предназначено для детей.</p>
+<h2>Изменения</h2>
+<p>Если политика изменится, новая версия будет опубликована на этой странице с указанием даты.</p>
+<h2>Контакты</h2>
+<p>Вопросы о данных и работе расширения: через страницу расширения в Chrome Web Store («Поддержка»).</p>
+</main>
+</body>
+</html>

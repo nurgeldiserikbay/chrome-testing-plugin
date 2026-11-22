@@ -16,7 +16,13 @@ async function loadSettings() {
   $('s-bufferMin').value = String(s.bufferMin);
   $('s-bufferMin').onchange = save;
 }
-async function save() {
+// «Отладка вкладки» — необязательное разрешение, спрашиваем при первом использовании
+async function needDebugger() {
+  if (await chrome.permissions.contains({ permissions: ['debugger'] })) return true;
+  try { return await chrome.permissions.request({ permissions: ['debugger'] }); } catch (_) { return false; }
+}
+async function save(e) {
+  if (e && e.target && e.target.id === 's-cdp' && e.target.checked && !(await needDebugger())) e.target.checked = false;
   await chrome.storage.local.set({
     qa_settings: {
       videoOnStart: $('s-videoOnStart').checked,
@@ -147,6 +153,7 @@ async function recState() {
 }
 $('screens').onclick = async () => {
   showErr('');
+  if (!(await needDebugger())) { showErr('Для скриншотов экранов нужно разрешение «Отладка вкладки».'); return; }
   const t = await curTab();
   $('screens').disabled = true;
   $('screens').textContent = '📐 Снимаю…';
@@ -169,6 +176,8 @@ async function condInit() {
   if (r.label) $('cond').open = true;
   const apply = async () => {
     showErr('');
+    const wantsAny = $('cn-net').value !== 'none' || +$('cn-cpu').value > 1 || $('cn-dev').value !== 'none';
+    if (wantsAny && !(await needDebugger())) { showErr('Без разрешения «Отладка вкладки» условия не включить.'); condInit(); return; }
     const res = await send({ type: 'emu-set', tabId: t.id, conf: { net: $('cn-net').value, cpu: +$('cn-cpu').value, device: $('cn-dev').value } });
     if (res && res.ok === false) showErr(res.error);
     $('cond-l').textContent = res && res.label ? 'изменены' : 'обычные';
@@ -179,7 +188,9 @@ async function condInit() {
 recState();
 condInit();
 
-chrome.storage.local.get('qa_lang').then((o) => { $('s-lang').value = o.qa_lang || 'auto'; });
+$('s-lang').innerHTML = [['auto', 'Как в браузере / Browser']].concat(Object.entries(QAI18N.LANGS)).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+chrome.storage.local.get(['qa_lang', 'qa_consent']).then((o) => { $('s-lang').value = o.qa_lang || 'auto'; $('consent').hidden = !!o.qa_consent; });
+$('consent-open').onclick = $('donate').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') }); window.close(); };
 $('s-lang').onchange = async () => { await chrome.storage.local.set({ qa_lang: $('s-lang').value }); location.reload(); };
 
 showIgnore();

@@ -332,7 +332,7 @@ function renderRes() {
   R.results.forEach((r) => (byEp.get(r.ep) || byEp.set(r.ep, []).get(r.ep)).push(r));
   const worst = (list) => (list.some((x) => x.verdict === 'fail') ? 'fail' : list.some((x) => x.verdict === 'warn') ? 'warn' : list.every((x) => x.verdict === 'skip') ? 'skip' : 'pass');
   box.innerHTML = `<div class="res-h"><h3>Прогон ${fmtDate(R.ts)}${R.status === 'stopped' ? ' (остановлен)' : ''} · ${esc(R.project ? R.project.base || '' : '')} · ${R.writes ? 'тестовый стенд' : 'только чтение'}</h3>
-      <button id="ai-api">🤖 Разбор AI</button><button id="exp-html">⬇ HTML</button><button id="exp-md">⬇ Markdown</button></div>
+      <button id="ai-api">🤖 AI: разбор</button><button id="exp-html">⬇ HTML</button><button id="exp-md">⬇ Markdown</button></div>
     <div class="kpi"><div class="p"><b>${s.pass}</b><span>прошли</span></div><div class="w"><b>${s.warn}</b><span>с замечаниями</span></div><div class="f"><b>${s.fail}</b><span>с ошибками</span></div><div><b>${s.skip}</b><span>пропущено${R.writes ? '' : ' (нужен стенд)'}</span></div><div><b>${iss.length}</b><span>проблем в API</span></div></div>
     <div id="ai-out"></div>
     <h3>Что не так с API</h3>
@@ -349,7 +349,7 @@ function renderRes() {
   $('#ai-api').onclick = aiSummary;
   if (R.ai) $('#ai-out').innerHTML = aiBox(R.ai);
 }
-function aiBox(ai) { return `<div class="card aisum" style="background:#faf9ff;border-color:#e4defc"><b style="color:#5b21b6">🤖 Разбор AI</b> <span class="muted">${esc(ai.model)}</span><div>${globalThis.QAExport ? QAExport.mdLite(ai.text) : esc(ai.text).replace(/\n/g, '<br>')}</div></div>`; }
+function aiBox(ai) { return `<div class="card aisum" style="background:#faf9ff;border-color:#e4defc"><b style="color:#5b21b6">🤖 AI: разбор</b> <span class="muted">${esc(ai.model)}</span><div>${globalThis.QAExport ? QAExport.mdLite(ai.text) : esc(ai.text).replace(/\n/g, '<br>')}</div></div>`; }
 function issuesText(R) {
   const iss = A.issues(R), s = A.stats(R);
   return `API: ${R.project ? R.project.name + ' — ' + R.project.base : ''}\nПроверок: ${s.total}, ок ${s.pass}, с замечаниями ${s.warn}, с ошибками ${s.fail}, пропущено ${s.skip}\n\n` +
@@ -368,7 +368,7 @@ async function aiSummary() {
     await QADB.put('blobs', 'apirun_' + cur, lastRun).catch(() => {});
     $('#ai-out').innerHTML = aiBox(lastRun.ai);
   } catch (e) { alert('AI: ' + e.message); }
-  finally { $('#ai-api').disabled = false; $('#ai-api').textContent = '🤖 Разбор AI'; }
+  finally { $('#ai-api').disabled = false; $('#ai-api').textContent = '🤖 AI: разбор'; }
 }
 function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
 function exportRun(kind) {
@@ -376,7 +376,7 @@ function exportRun(kind) {
   const nm = `api-check_${new Date(R.ts).toISOString().slice(0, 16).replace(/[:T]/g, '-')}`;
   if (kind === 'md') {
     let md = `# Проверка API: ${R.project ? R.project.name : ''}\n\n${fmtDate(R.ts)} · ${R.project ? R.project.base : ''} · ${R.writes ? 'тестовый стенд' : 'только чтение'}\n\nПроверок: ${s.total} · ок ${s.pass} · с замечаниями ${s.warn} · с ошибками ${s.fail} · пропущено ${s.skip}\n\n`;
-    if (R.ai) md += `## 🤖 Разбор AI\n\n${R.ai.text}\n\n`;
+    if (R.ai) md += `## 🤖 AI: разбор\n\n${R.ai.text}\n\n`;
     md += `## Что не так с API\n\n` + (iss.map((g) => `### ${SEV_RU[g.sev]} — ${g.title} (${g.items.length})\n\n**Почему это плохо:** ${g.why}\n\n**Как исправить:** ${g.fix}\n\n${g.items.map((it) => `- \`${it.ep.replace(/ #\d+$/, '')}\` — ${it.where}: ${it.text}${it.detail ? '\n  ```\n  ' + it.detail.replace(/\n/g, '\n  ') + '\n  ```' : ''}`).join('\n')}\n`).join('\n') || 'Проблем не найдено.\n');
     return download(new Blob([md], { type: 'text/markdown' }), nm + '.md');
   }

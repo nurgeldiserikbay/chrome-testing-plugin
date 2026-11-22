@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><script src="i18n.js"></script><title>Добро пожаловать — QA Bug Recorder</title><link rel="icon" href="icons/32.png"><link rel="stylesheet" href="settings.css">
+<style>
+.hero{display:flex;gap:16px;align-items:center;margin-bottom:8px}.hero img{width:56px;height:56px}
+.data li{margin:8px 0}.data b{display:inline-block;min-width:0}
+.big{font-size:16px;padding:12px 20px}
+.ok-box{display:none;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:12px 16px;margin-top:14px;color:#065f46}
+.lang-row{display:flex;gap:10px;align-items:center}.lang-row select{width:auto;margin:0}
+</style></head>
+<body><main>
+  <div class="hero"><img src="icons/128.png" alt=""><div><h1 style="margin:0">QA Bug Recorder</h1><p class="lead" style="margin:4px 0 0">Спасибо за установку! Прочитайте, пожалуйста, какие данные использует расширение.</p></div></div>
+  <section class="card">
+    <div class="lang-row"><b>🌐 Язык / Language</b><select id="lang"></select></div>
+  </section>
+  <section class="card">
+    <h2>Какие данные собирает расширение</h2>
+    <p>Только пока вы проверяете сайт (после «▶ Начать проверку») и только на вкладке проверки:</p>
+    <ul class="data">
+      <li><b>Скриншоты и видео</b> вкладки — по вашей команде; голос с микрофона — только по кнопке 🎤.</li>
+      <li><b>Действия на странице:</b> клики, ввод (значения паролей, карт и токенов не записываются), переходы.</li>
+      <li><b>Технические данные страницы:</b> сетевые запросы и ответы, сообщения консоли, производительность, cookies и хранилище сайта для отчёта.</li>
+      <li><b>Автотесты, подмена ответов и API-тесты</b> — сценарии, правила и результаты, которые вы создаёте.</li>
+    </ul>
+    <h2>Куда уходят данные</h2>
+    <ul class="data">
+      <li>🔒 <b>Всё хранится только в вашем браузере.</b> У расширения нет своего сервера, данные никуда не отправляются автоматически.</li>
+      <li>Отчёт уходит другим людям, только когда вы сами его скачиваете или копируете.</li>
+      <li>Если вы подключите <b>AI</b> (свой ключ) или <b>Google Docs</b> в «Интеграциях», данные пункта или отчёта отправляются выбранному сервису — только при нажатии соответствующей кнопки.</li>
+      <li>API-тесты отправляют запросы только на адрес, который вы указали.</li>
+    </ul>
+    <p class="muted">Подробно — в <a id="pp" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/privacy.html" target="_blank" rel="noopener">политике конфиденциальности</a>.</p>
+    <div class="row"><button id="agree" class="primary big">Понятно, начать работу</button></div>
+    <div class="ok-box" id="ok">✓ Готово. Откройте сайт, который нужно проверить, и нажмите на иконку расширения → «▶ Начать проверку» (или Ctrl+Shift+Q).</div>
+  </section>
+  <section class="card">
+    <h2>❤ Поддержать проект</h2>
+    <p>Расширение бесплатное. Если оно экономит вам время — можно поддержать разработку переводом на карту:</p>
+    <div class="row"><code id="card" style="font-size:18px;letter-spacing:.06em;background:#f3f4f6;padding:8px 12px;border-radius:8px">5269 8800 8898 3051</code><button id="copy">📋 Копировать номер</button><span id="cst" class="st"></span></div>
+  </section>
+</main>
+<script src="welcome.js"></script>
+</body></html>

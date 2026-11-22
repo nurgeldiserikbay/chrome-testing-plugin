@@ -3,7 +3,7 @@
     "message": "QA Bug Recorder"
   },
   "desc": {
-    "message": "Bug capture: marks on the page, video, voice, console logs, requests and actions. AI analysis, autotests, API tests, export to Word, Google Docs, Markdown, HTML, HAR."
+    "message": "Bug reports with marks, video, voice, console, requests and actions. Site audit, AI analysis, autotests, API tests, export."
   },
   "cmd_found": {
     "message": "Start check / open panel"

@@ -1,0 +1,23 @@
+{
+  "name": {
+    "message": "QA Bug Recorder"
+  },
+  "desc": {
+    "message": "带标记、视频、语音、控制台、请求和操作的缺陷报告。网站审计、AI 分析、自动测试、API 测试，导出 Word/MD/HAR。"
+  },
+  "cmd_found": {
+    "message": "开始检查 / 打开面板"
+  },
+  "cmd_pick": {
+    "message": "选择元素添加问题"
+  },
+  "cmd_arrow": {
+    "message": "画箭头"
+  },
+  "cmd_finish": {
+    "message": "结束检查并打开报告"
+  },
+  "title": {
+    "message": "QA Bug Recorder — 开始检查"
+  }
+}

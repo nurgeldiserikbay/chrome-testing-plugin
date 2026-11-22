@@ -487,7 +487,7 @@ function aiBox(i) {
   if (!ai) return '';
   const cur = itemSev(i);
   return `<div class="aibox">
-    <div class="aih"><b>🤖 Разбор AI</b><span class="muted">${esc(ai.model)} · ${new Date(ai.at).toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU'), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+    <div class="aih"><b>🤖 AI: разбор</b><span class="muted">${esc(ai.model)} · ${new Date(ai.at).toLocaleString((globalThis.QAI18N ? QAI18N.locale() : 'ru-RU'), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
       <span class="acts">${ai.severity && ai.severity !== cur ? `<button data-aisev="${i.key}" title="Поставить серьёзность, предложенную AI">${sevLabel(ai.severity)}?</button>` : ''}<button data-aicopy="${i.key}" title="Скопировать пункт вместе с разбором — для задачи в трекере">📋 Копировать как задачу</button><button data-ai="${i.key}" title="Разобрать ещё раз">↻</button><button data-aidel="${i.key}" title="Удалить разбор">✕</button></span></div>
     ${ai.title ? `<div class="ait">${esc(ai.title)}</div>` : ''}
     <div class="aig">
@@ -548,7 +548,7 @@ function summaryContext() {
     if (i.kind === 'remark') L.push(`- Замечание ${o.n} [${sv}]: ${short(o.comment || '(без комментария)', 300)}${o.element ? ` (элемент ${o.element.selector})` : ''} — ${maskS(o.url)}`);
     else if (i.kind === 'error') L.push(`- Ошибка ${o.n} [${sv}]: ${short(maskS(o.title), 300)}${o.count > 1 ? ` (×${o.count})` : ''} — ${maskS(o.url || '')}`);
     else L.push(`- Запись ${o.n} [${sv}]: видео ${X.fmtDur((o.end || Date.now()) - o.start)}`);
-    if (o.ai && o.ai.cause) L.push(`  Разбор AI: ${o.ai.title}. Причина (${QAInt.SIDE_RU[o.ai.side]}): ${short(o.ai.cause, 300)}`);
+    if (o.ai && o.ai.cause) L.push(`  AI: ${o.ai.title}. Причина (${QAInt.SIDE_RU[o.ai.side]}): ${short(o.ai.cause, 300)}`);
   }
   const au = auditModel();
   if (au.length) { L.push('', 'Автопроверка:'); au.slice(0, 25).forEach((f) => L.push(`- [${sevLabel(f.sev)}] ${f.title}`)); }

@@ -40,7 +40,7 @@
   }
 
   async function callAI({ system, text, image, maxTokens = 2000 }) {
-    if (g.QAI18N && QAI18N.lang !== 'ru') { system = QAI18N.T(system) + '\nAlways answer in English.'; text = QAI18N.T(text); }
+    if (g.QAI18N && QAI18N.lang !== 'ru') { system = QAI18N.T(system) + `\nAlways answer in ${QAI18N.aiLang()}.`; text = QAI18N.T(text); }
     const s = await getAI();
     if (!aiReady(s)) throw new Error('AI не настроен: укажите ключ в «🔌 Интеграции».');
     const p = PROVIDERS[s.provider] || PROVIDERS.anthropic;

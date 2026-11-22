@@ -54,6 +54,7 @@ function emuLabel(tabId) {
 }
 async function ensureDebugger(tabId) {
   if (dbgOwned.has(tabId) || (S && S.active && S.tabId === tabId && S.meta.cdp)) return;
+  if (!chrome.debugger || !(await hasDebugger())) throw new Error('Нужно разрешение «Отладка вкладки» — выберите условие или «Экраны» ещё раз и нажмите «Разрешить».');
   try {
     await chrome.debugger.attach({ tabId }, '1.3');
   } catch (e) {
@@ -110,11 +111,11 @@ async function clearEmulation(tabId) {
   if (had && had.device !== 'none' && (DEVICES[had.device] || {}).ua) chrome.tabs.reload(tabId).catch(() => {});
   if (had) sessionNote('Условия проверки: обычные');
 }
-chrome.debugger.onDetach.addListener((src) => {
+function onToolsDbgDetach(src) {
   if (src.tabId == null) return;
   dbgOwned.delete(src.tabId);
   if (EMU[src.tabId]) { delete EMU[src.tabId]; sessionNote('Условия сброшены: отладка вкладки закрыта'); }
-});
+}
 chrome.tabs.onRemoved.addListener((tabId) => { delete EMU[tabId]; dbgOwned.delete(tabId); });
 
 // ---------- 📐 скриншоты на разных экранах ----------
@@ -167,7 +168,7 @@ async function responsiveShots(tabId) {
 // ================= 🤖 автотесты: запись =================
 const REC = {}; // tabId -> {steps, startUrl, startedAt, lastStepTs, lastUrl}
 async function injectRecorder(tabId) {
-  try { await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, files: ['i18n-dict.js', 'i18n.js', 'recorder.js'] }); } catch (_) {}
+  try { await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, files: [...(await i18nFiles()), 'recorder.js'] }); } catch (_) {}
   pushRec(tabId);
 }
 function pushRec(tabId) {

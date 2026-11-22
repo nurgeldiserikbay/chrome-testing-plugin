@@ -264,7 +264,7 @@ $('#exp-pw').onclick = () => {
   if (!list.length) return alert('Нет выбранных сценариев');
   const files = list.map((t) => ({ name: 'tests/' + slug(t.name) + '.spec.ts', data: toPlaywright(t) }));
   files.push({ name: 'playwright.config.ts', data: `import { defineConfig } from '@playwright/test';\n\nexport default defineConfig({\n  testDir: './tests',\n  timeout: 60_000,\n  expect: { timeout: 10_000 },\n  use: { headless: true, screenshot: 'only-on-failure', trace: 'retain-on-failure' },\n  reporter: [['html', { open: 'never' }], ['list']],\n});\n` });
-  files.push({ name: 'README.md', data: `# Автотесты из QA Bug Recorder\n\n\`\`\`bash\nnpm init -y\nnpm i -D @playwright/test\nnpx playwright install chromium\nnpx playwright test\nnpx playwright show-report\n\`\`\`\n\nТесты можно подключить в CI (GitHub Actions, GitLab CI) — см. https://playwright.dev/docs/ci\n` });
+  files.push({ name: 'README.md', data: `# Автотесты из QA Bug Recorder\n\n\`\`\`bash\nnpm init -y\nnpm i -D @playwright/test\nnpx playwright install chromium\nnpx playwright test\nnpx playwright show-report\n\`\`\`\n\nТесты можно запускать в любом CI — см. https://playwright.dev/docs/ci\n` });
   download(QAZip.makeZip(files), 'playwright-tests.zip');
 };
 $('#exp-json').onclick = () => download(new Blob([JSON.stringify({ app: 'qa-bug-recorder', version: 1, tests: tests.map(({ last, sel, ...t }) => t) }, null, 2)], { type: 'application/json' }), 'qa-scenarios.json');

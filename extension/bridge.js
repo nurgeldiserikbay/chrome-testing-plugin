@@ -277,8 +277,26 @@
   let activeMocks = [];
   const mocksFor = (st) => (st.qa_mocks_on === false ? [] : (st.qa_mocks || []).filter((m) => m.on && (!m.host || host === m.host || host.endsWith('.' + m.host))));
   const sendMocks = () => document.dispatchEvent(new CustomEvent(TAG + ':mocks', { detail: JSON.stringify(activeMocks) }));
-  let EN = false;
-  const loadMocks = () => chrome.storage.local.get(['qa_mocks', 'qa_mocks_on', 'qa_lang']).then((st) => { EN = (st.qa_lang && st.qa_lang !== 'auto') ? st.qa_lang === 'en' : !/^(ru|uk|be|kk|ky|uz|tg|hy|az)/i.test(chrome.i18n.getUILanguage()); activeMocks = mocksFor(st); sendMocks(); if (isTop) pill(); }).catch(() => {});
+  // плашка подмены — на языке интерфейса
+  const PILL = {
+    ru: ['🧪 Подмена ответов', (n) => (n === 1 ? 'правило' : n < 5 ? 'правила' : 'правил'), 'сработала', 'Часть ответов сервера подменяется расширением QA Bug Recorder. Нажмите, чтобы открыть правила.'],
+    en: ['🧪 Mocked responses', (n) => (n === 1 ? 'rule' : 'rules'), 'triggered', 'Some server responses are being mocked by the QA Bug Recorder extension. Click to open the rules.'],
+    zh: ['🧪 响应模拟', () => '条规则', '已触发', '部分服务器响应正在被 QA Bug Recorder 扩展模拟。点击打开规则。'],
+    es: ['🧪 Respuestas simuladas', (n) => (n === 1 ? 'regla' : 'reglas'), 'activada', 'La extensión QA Bug Recorder está simulando algunas respuestas del servidor. Haz clic para abrir las reglas.'],
+    pt: ['🧪 Respostas simuladas', (n) => (n === 1 ? 'regra' : 'regras'), 'acionada', 'A extensão QA Bug Recorder está simulando algumas respostas do servidor. Clique para abrir as regras.'],
+    fr: ['🧪 Réponses simulées', (n) => (n === 1 ? 'règle' : 'règles'), 'déclenchée', "L'extension QA Bug Recorder simule certaines réponses du serveur. Cliquez pour ouvrir les règles."],
+    de: ['🧪 Simulierte Antworten', (n) => (n === 1 ? 'Regel' : 'Regeln'), 'ausgelöst', 'Einige Serverantworten werden von der Erweiterung QA Bug Recorder simuliert. Klicken, um die Regeln zu öffnen.'],
+    kk: ['🧪 Жауаптарды алмастыру', () => 'ереже', 'іске қосылды', 'Сервердің кейбір жауаптарын QA Bug Recorder кеңейтімі алмастырып жатыр. Ережелерді ашу үшін басыңыз.'],
+  };
+  let PL = PILL.ru;
+  const pickLang = (pref) => {
+    if (pref && pref !== 'auto' && PILL[pref]) return pref;
+    const ui = chrome.i18n.getUILanguage().toLowerCase();
+    if (/^kk/.test(ui)) return 'kk';
+    if (/^(ru|uk|be|ky|uz|tg|hy|az)/.test(ui)) return 'ru';
+    return PILL[ui.slice(0, 2)] ? ui.slice(0, 2) : 'en';
+  };
+  const loadMocks = () => chrome.storage.local.get(['qa_mocks', 'qa_mocks_on', 'qa_lang']).then((st) => { PL = PILL[pickLang(st.qa_lang)]; activeMocks = mocksFor(st); sendMocks(); if (isTop) pill(); }).catch(() => {});
   document.addEventListener(TAG + ':mocks-req', sendMocks);
   chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && (ch.qa_mocks || ch.qa_mocks_on || ch.qa_lang)) loadMocks(); });
   loadMocks();
@@ -291,15 +309,14 @@
       pillEl.style.cssText = 'all:initial;position:fixed;left:12px;bottom:12px;z-index:2147483646';
       const sh = pillEl.attachShadow({ mode: 'closed' });
       sh.innerHTML = '<style>b{font:600 12px/1 system-ui,sans-serif;background:#7c3aed;color:#fff;border-radius:999px;padding:7px 12px;box-shadow:0 6px 18px -6px rgba(0,0,0,.4);cursor:pointer;display:inline-block}</style><b></b>';
-      sh.querySelector('b').title = EN ? 'Some server responses are being mocked by the QA Bug Recorder extension. Click to open the rules.' : 'Часть ответов сервера подменяется расширением QA Bug Recorder. Нажмите, чтобы открыть правила.';
+
       sh.querySelector('b').onclick = () => chrome.runtime.sendMessage({ type: 'open-tools', hash: 'mocks' }).catch(() => {});
       pillEl.__b = sh.querySelector('b');
       document.documentElement.appendChild(pillEl);
     }
     const n = activeMocks.length;
-    pillEl.__b.textContent = EN
-      ? `🧪 Mocked responses: ${n} ${n === 1 ? 'rule' : 'rules'}${hits ? ` · triggered ${hits}×` : ''}`
-      : `🧪 Подмена ответов: ${n} ${n === 1 ? 'правило' : n < 5 ? 'правила' : 'правил'}${hits ? ` · сработала ${hits}×` : ''}`;
+    pillEl.__b.title = PL[3];
+    pillEl.__b.textContent = `${PL[0]}: ${n} ${PL[1](n)}${hits ? ` · ${PL[2]} ${hits}×` : ''}`;
   }
   document.addEventListener(TAG + ':mock-hit', () => { hits++; if (isTop) pill(); });
 })();

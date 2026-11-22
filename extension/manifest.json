@@ -3,7 +3,7 @@
   "name": "QA Bug Recorder",
   "short_name": "QA Bug",
   "description": "__MSG_desc__",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "tabs",
@@ -13,7 +13,6 @@
     "unlimitedStorage",
     "tabCapture",
     "offscreen",
-    "debugger",
     "identity"
   ],
   "host_permissions": [
@@ -91,5 +90,8 @@
     "page": "settings.html",
     "open_in_tab": true
   },
-  "default_locale": "en"
+  "default_locale": "en",
+  "optional_permissions": [
+    "debugger"
+  ]
 }

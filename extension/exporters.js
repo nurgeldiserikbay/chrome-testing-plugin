@@ -271,7 +271,7 @@ ${htmlStorage(m.storage)}
   const SEV_RU = { blocker: '🔴 Блокирующий', critical: '🟠 Критический', major: '🟡 Значительный', minor: '🔵 Незначительный', trivial: '⚪ Тривиальный' };
   function aiLines(ai) {
     if (!ai) return [];
-    const L = [`🤖 **Разбор AI** (${ai.model}):`];
+    const L = [`🤖 **AI: разбор** (${ai.model}):`];
     if (ai.title) L.push(`**${ai.title}**`);
     if (ai.steps.length) { L.push('', 'Шаги воспроизведения:'); ai.steps.forEach((x, i) => L.push(`${i + 1}. ${x}`)); }
     if (ai.expected) L.push('', `Ожидалось: ${ai.expected}`);
@@ -284,7 +284,7 @@ ${htmlStorage(m.storage)}
   }
   function aiHTML(ai) {
     if (!ai) return '';
-    return `<div class="ai"><div class="label">🤖 Разбор AI · ${escH(ai.model)}</div>${ai.title ? `<b>${escH(ai.title)}</b>` : ''}
+    return `<div class="ai"><div class="label">🤖 AI: разбор · ${escH(ai.model)}</div>${ai.title ? `<b>${escH(ai.title)}</b>` : ''}
       ${ai.steps.length ? `<div class="label">Шаги воспроизведения</div><ol>${ai.steps.map((x) => `<li>${escH(x)}</li>`).join('')}</ol>` : ''}
       ${ai.expected ? `<div class="label">Ожидалось</div><div>${escH(ai.expected)}</div>` : ''}${ai.actual ? `<div class="label">Фактически</div><div>${escH(ai.actual)}</div>` : ''}
       ${ai.cause ? `<div class="label">Вероятная причина · ${escH(SIDE_RU[ai.side] || '')}</div><div>${escH(ai.cause)}</div>` : ''}
@@ -466,7 +466,7 @@ ${htmlStorage(m.storage)}
   }
 
   function aiDOCX(d, ai) {
-    d.h('🤖 Разбор AI', 3);
+    d.h('🤖 AI: разбор', 3);
     d.p(ai.model, { run: { color: '6B7280', size: 16 } });
     if (ai.title) d.p(ai.title, { run: { bold: true } });
     if (ai.steps.length) { d.p('Шаги воспроизведения:', { run: { bold: true, size: 18 } }); ai.steps.forEach((x, i) => d.p(`${i + 1}. ${x}`)); }

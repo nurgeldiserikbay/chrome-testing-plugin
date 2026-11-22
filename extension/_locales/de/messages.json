@@ -1,0 +1,23 @@
+{
+  "name": {
+    "message": "QA Bug Recorder"
+  },
+  "desc": {
+    "message": "Bug-Berichte mit Markierungen, Video, Stimme, Konsole, Anfragen. Website-Audit, KI-Analyse, Autotests, API-Tests, Export."
+  },
+  "cmd_found": {
+    "message": "Prüfung starten / Panel öffnen"
+  },
+  "cmd_pick": {
+    "message": "Element für eine Anmerkung auswählen"
+  },
+  "cmd_arrow": {
+    "message": "Pfeil zeichnen"
+  },
+  "cmd_finish": {
+    "message": "Prüfung beenden und Bericht öffnen"
+  },
+  "title": {
+    "message": "QA Bug Recorder — Prüfung starten"
+  }
+}

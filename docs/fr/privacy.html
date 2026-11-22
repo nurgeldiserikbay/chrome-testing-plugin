@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Politique de confidentialité — QA Bug Recorder</title>
+<meta content="Quelles données l'extension QA Bug Recorder utilise, où elles sont stockées et quand elles sont transmises." name="description"/>
+<link href="../img/logo.png" rel="icon"/>
+<link href="../style.css" rel="stylesheet"/>
+<style>
+.pp{max-width:820px;margin:0 auto;padding:48px 20px 80px}
+.pp h1{font:800 34px/1.15 var(--display);margin:0 0 8px}
+.pp h2{font:700 21px/1.3 var(--display);margin:34px 0 10px}
+.pp p,.pp li{font-size:16px;line-height:1.65}
+.pp ul{padding-left:22px}
+.pp .meta{color:#6b7280}
+.pp .back{display:inline-block;margin-bottom:24px}
+</style>
+<!--lang--><link rel="alternate" hreflang="ru" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/privacy.html"><link rel="alternate" hreflang="en" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/en/privacy.html"><link rel="alternate" hreflang="zh-Hans" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/zh/privacy.html"><link rel="alternate" hreflang="es" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/es/privacy.html"><link rel="alternate" hreflang="pt-BR" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/pt/privacy.html"><link rel="alternate" hreflang="fr" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/fr/privacy.html"><link rel="alternate" hreflang="de" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/de/privacy.html"><link rel="alternate" hreflang="kk" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/kk/privacy.html"><link rel="alternate" hreflang="x-default" href="https://nurgeldiserikbay.github.io/chrome-testing-plugin/privacy.html"><!--/lang--></head>
+<body>
+<main class="pp">
+<a class="back" href="../index.html">← QA Bug Recorder</a><!--lang--><select class="lang-sel" data-noi18n aria-label="Language" onchange="try{localStorage.setItem('qa_land_lang',this.value)}catch(e){};location.href=(this.value==='ru'?'../':'../'+this.value+'/')+'privacy.html'+location.hash"><option value="ru">Русский</option><option value="en">English</option><option value="zh">中文</option><option value="es">Español</option><option value="pt">Português</option><option value="fr" selected>Français</option><option value="de">Deutsch</option><option value="kk">Қазақша</option></select><!--/lang-->
+<h1>Politique de confidentialité</h1>
+<p class="meta">Extension Chrome « QA Bug Recorder ». En vigueur depuis le 22 novembre 2026.</p>
+<h2>En bref</h2>
+<p>L'extension aide à tester des sites. Tout ce qu'elle collecte est stocké uniquement dans votre navigateur. L'extension n'a pas de serveur propre, n'affiche pas de publicité, ne vend ni ne transmet de données à des tiers. Les données ne quittent le navigateur que lorsque vous le faites vous-même : téléchargement ou copie d'un rapport, ou appui sur le bouton d'un service que vous avez connecté.</p>
+<h2>Quelles données sont collectées</h2>
+<p>Uniquement sur l'onglet où vous avez lancé une vérification, et seulement pendant qu'elle est en cours :</p>
+<ul>
+<li>captures de la page, ainsi que vidéo de l'onglet et voix du microphone — uniquement sur votre commande ;</li>
+<li>actions sur la page : clics, saisie dans les champs, navigation. Les valeurs des champs de mot de passe, carte bancaire, CVV et jeton ne sont pas enregistrées ;</li>
+<li>données techniques de la page : requêtes et réponses réseau, messages de console, indicateurs de performance, cookies et stockage du site, informations sur l'environnement (navigateur, taille de fenêtre) ;</li>
+<li>vos commentaires, marques et la gravité choisie.</li>
+</ul>
+<p>En outre, l'extension stocke ce que vous créez vous-même : scénarios d'autotests, règles de simulation, projets de tests d'API et leurs résultats, paramètres.</p>
+<h2>Où les données sont stockées</h2>
+<p>Dans le stockage local du navigateur sur votre ordinateur (IndexedDB et stockage de l'extension). Vous pouvez supprimer n'importe quel rapport dans « Mes rapports », ou toutes les données en désinstallant l'extension.</p>
+<h2>Quand les données sont transmises</h2>
+<ul>
+<li><b>Export et copie.</b> Vous décidez à qui envoyer un rapport téléchargé ou copié. Les jetons et mots de passe peuvent être masqués avant l'export.</li>
+<li><b>Analyse IA (facultative).</b> Si vous avez indiqué votre propre clé d'API d'un service (Anthropic, OpenAI ou compatible), un appui sur 🤖 envoie à ce service le texte de l'élément ou du rapport et, si activé, la capture. La politique de confidentialité du service choisi s'applique alors. La clé n'est stockée que dans votre navigateur.</li>
+<li><b>Google Docs (facultatif).</b> Si vous avez connecté Google, le rapport est envoyé sur votre commande dans le dossier « QA Bug Recorder » de votre Google Drive. L'extension n'accède qu'aux fichiers qu'elle a créés elle-même.</li>
+<li><b>Tests d'API et autotests.</b> Les requêtes ne vont qu'aux adresses que vous avez indiquées.</li>
+</ul>
+<h2>Autorisations de l'extension</h2>
+<ul>
+<li><b>Accès aux sites</b> — pour enregistrer les requêtes, la console et les actions sur la page testée et afficher le panneau de marques.</li>
+<li><b>Capture d'onglet et microphone</b> — pour enregistrer la vidéo et les commentaires vocaux sur votre commande.</li>
+<li><b>Stockage</b> — pour conserver les rapports dans le navigateur.</li>
+<li><b>Débogage de l'onglet</b> (facultatif, demandé à la première utilisation) — pour émuler un réseau lent et des appareils, faire des captures à différentes tailles d'écran et la capture réseau complète.</li>
+<li><b>Connexion Google</b> — uniquement si vous connectez Google Docs.</li>
+</ul>
+<h2>Enfants</h2>
+<p>L'extension est destinée aux professionnels du test et du développement et n'est pas destinée aux enfants.</p>
+<h2>Modifications</h2>
+<p>Si la politique change, la nouvelle version sera publiée sur cette page avec sa date.</p>
+<h2>Contact</h2>
+<p>Questions sur les données et le fonctionnement de l'extension : via la page de l'extension sur le Chrome Web Store (« Assistance »).</p>
+</main>
+</body>
+</html>
