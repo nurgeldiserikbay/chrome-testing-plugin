@@ -31,4 +31,4 @@ Mit Ihrem eigenen Claude-/OpenAI-Schlüssel: Titel, Schritte, wahrscheinliche Ur
 DATENSCHUTZ
 Alles bleibt in Ihrem Browser. Die Erweiterung hat keinen Server. Daten verlassen den Browser nur, wenn Sie einen Bericht herunterladen oder kopieren oder einen selbst verbundenen Dienst nutzen.
 
-Sprachen: Deutsch, Englisch, Russisch, Chinesisch, Spanisch, Portugiesisch, Französisch, Kasachisch.
+Sprachen: Chinesisch, Deutsch, Englisch, Französisch, Kasachisch, Portugiesisch, Russisch, Spanisch.

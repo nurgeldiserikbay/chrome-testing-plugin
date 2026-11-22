@@ -31,4 +31,4 @@ Com sua própria chave Claude/OpenAI: título, passos, causa provável e resumo 
 PRIVACIDADE
 Tudo fica no seu navegador. A extensão não tem servidor. Os dados só saem quando você baixa ou copia um relatório ou usa um serviço que você mesmo conectou.
 
-Idiomas: português, inglês, russo, chinês, espanhol, francês, alemão, cazaque.
+Idiomas: alemão, cazaque, chinês, espanhol, francês, inglês, português, russo.

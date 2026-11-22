@@ -4,7 +4,7 @@
 // фраза переводится, только если целиком есть в словаре.
 (function (g) {
   if (g.QAI18N) return;
-  const LANGS = { ru: 'Русский', en: 'English', zh: '中文（简体）', es: 'Español', pt: 'Português', fr: 'Français', de: 'Deutsch', kk: 'Қазақша' };
+  const LANGS = { de: 'Deutsch', en: 'English', es: 'Español', fr: 'Français', pt: 'Português', kk: 'Қазақша', ru: 'Русский', zh: '中文（简体）' };
   const LOCALE = { ru: 'ru-RU', en: 'en-GB', zh: 'zh-CN', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', de: 'de-DE', kk: 'kk-KZ' };
   const AI_LANG = { en: 'English', zh: 'Simplified Chinese', es: 'Spanish', pt: 'Portuguese (Brazil)', fr: 'French', de: 'German', kk: 'Kazakh' };
   const isExtPage = typeof location !== 'undefined' && location.protocol === 'chrome-extension:';

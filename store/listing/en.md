@@ -31,4 +31,4 @@ With your own Claude/OpenAI key: bug title, steps, probable cause and a report s
 PRIVACY
 Everything is stored only in your browser. The extension has no server. Data leaves the browser only when you download or copy a report, or press the button of a service you connected yourself.
 
-Interface: English, Russian, Chinese, Spanish, Portuguese, French, German, Kazakh.
+Interface: Chinese, English, French, German, Kazakh, Portuguese, Russian, Spanish.

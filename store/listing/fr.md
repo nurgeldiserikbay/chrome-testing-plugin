@@ -31,4 +31,4 @@ Avec votre propre clé Claude/OpenAI : titre, étapes, cause probable et résum�
 CONFIDENTIALITÉ
 Tout reste dans votre navigateur. L'extension n'a pas de serveur. Les données ne sortent que si vous téléchargez ou copiez un rapport, ou utilisez un service que vous avez connecté.
 
-Langues : français, anglais, russe, chinois, espagnol, portugais, allemand, kazakh.
+Langues : allemand, anglais, chinois, espagnol, français, kazakh, portugais, russe.
