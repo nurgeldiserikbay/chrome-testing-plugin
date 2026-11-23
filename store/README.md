@@ -45,7 +45,7 @@
 | `offscreen` | Runs the MediaRecorder for tab video and microphone voice comments, which is not available in the service worker. |
 | `identity` | Optional Google sign-in, used only if the user connects Google Docs to export a report to their own Google Drive (drive.file scope — only files created by the extension). |
 | Host permission `<all_urls>` | The user may test any website. After the user accepts the disclosure on the first-run page, the extension keeps a rolling 10-minute buffer of actions, network requests, console messages, a page replay and screenshots after actions on website tabs, so a bug can be reported retroactively with “Found a bug”. The buffer is stored locally only, erased when the tab is closed, and replay/screenshots can be turned off in settings. It also shows the marking panel and runs the site audit. |
-| `debugger` (optional) | Requested at runtime only when the user turns on network/CPU throttling, device emulation, multi-width screenshots or full network capture. Not granted at install. |
+| `debugger` | Attached to the tab under test only while the user has turned on network/CPU throttling, device emulation, multi-width screenshots or full network capture, and detached right after. Chrome does not allow this permission to be optional. |
 
 ### Remote code
 
@@ -73,5 +73,5 @@
 ## 4. Проверка перед отправкой
 
 - [ ] Установить архив начисто в новый профиль Chrome: открывается страница приветствия, без согласия проверка не запускается.
-- [ ] Включение эмуляции / скриншотов экранов запрашивает разрешение `debugger`, отказ не ломает остальное.
+- [ ] Эмуляция сети/устройств и скриншоты экранов работают, после выключения Chrome убирает плашку отладки.
 - [ ] Вручную: видео вкладки, голос с микрофона, вход Google, AI с настоящим ключом.
