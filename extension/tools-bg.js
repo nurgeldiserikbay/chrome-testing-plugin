@@ -322,13 +322,12 @@ function flattenTest(t, all, stack = [], depth = 0, top = null) {
   const out = [];
   t.steps.forEach((s, i) => {
     const ti = top == null ? i : top;
-    if (s.type !== 'call') { out.push({ ...s, depth, top: ti }); return; }
-    if (s.off) { out.push({ ...s, depth, top: ti }); return; }
+    if (s.type !== 'call' || s.off) { out.push({ ...s, depth, top: ti, li: i + 1 }); return; }
     const sub = all.find((x) => x.id === s.sid);
     const name = sub ? sub.name : s.name || '?';
-    if (!sub) { out.push({ type: 'call', name, depth, top: ti, err: `Сценарий «${name}» удалён` }); return; }
-    if (stack.includes(sub.id) || sub.id === t.id) { out.push({ type: 'call', name, depth, top: ti, err: `Сценарий «${name}» вызывает сам себя по кругу` }); return; }
-    out.push({ type: 'call', name, url: sub.startUrl, depth, top: ti });
+    if (!sub) { out.push({ type: 'call', name, depth, top: ti, li: i + 1, err: `Сценарий «${name}» удалён` }); return; }
+    if (stack.includes(sub.id) || sub.id === t.id) { out.push({ type: 'call', name, depth, top: ti, li: i + 1, err: `Сценарий «${name}» вызывает сам себя по кругу` }); return; }
+    out.push({ type: 'call', name, url: sub.startUrl, depth, top: ti, li: i + 1 });
     out.push(...flattenTest(sub, all, [...stack, t.id], depth + 1, ti).map((x) => ({ ...x, via: x.via || name })));
   });
   return out;
@@ -437,7 +436,7 @@ async function runOne(t, res, tabId, { failOnErrors, stepTimeout }) {
       failed = true;
       sr.error = r.error;
       res.failedStep = (step.top != null ? step.top : i) + 1;
-      if (step.via || step.type === 'call') res.failedIn = step.type === 'call' ? step.name : step.via;
+      if (step.via) { res.failedIn = step.via; res.failedStep = step.li; } else if (step.type === 'call') res.failedIn = step.name;
       try {
         const tb = await chrome.tabs.get(tabId);
         const shot = await chrome.tabs.captureVisibleTab(tb.windowId, { format: 'jpeg', quality: 75 });

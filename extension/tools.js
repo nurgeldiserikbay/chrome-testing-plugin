@@ -51,6 +51,12 @@ async function loadAll() {
   renderTests();
   renderRun();
   renderHist();
+  // свежий сценарий из последних действий — сразу предлагаем дать ему имя
+  if (openParam && !loadAll.done) {
+    loadAll.done = true;
+    const inp = document.querySelector(`.tc[data-id="${openParam}"] .name-in`);
+    if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); inp.select(); }
+  }
 }
 const saveOpts = () => chrome.storage.local.set({ qa_test_opts: { failOnErrors: $('#opt-errors').checked, timeout: +$('#opt-timeout').value } });
 $('#opt-errors').onchange = saveOpts;
@@ -64,7 +70,7 @@ function lastBadge(t) {
   if (!t.last) return '<span class="badge b-none">не запускался</span>';
   return t.last.status === 'passed'
     ? `<span class="badge b-passed" title="${fmtDate(t.last.ts)}">✓ прошёл · ${fmtMs(t.last.ms)}</span>`
-    : `<span class="badge b-failed" title="${fmtDate(t.last.ts)}">✗ упал${t.last.failedStep ? ' на шаге ' + t.last.failedStep : ''}${t.last.failedIn ? ` (в «${esc(t.last.failedIn)}»)` : ''}</span>`;
+    : `<span class="badge b-failed" title="${fmtDate(t.last.ts)}">✗ упал${t.last.failedIn ? ` в «${esc(t.last.failedIn)}»` : ''}${t.last.failedStep ? ' на шаге ' + t.last.failedStep : ''}</span>`;
 }
 // ---------- связи между сценариями ----------
 const testById = (id) => tests.find((x) => x.id === id);
@@ -107,10 +113,10 @@ function renderTests() {
   box.innerHTML = tests.map((t) => `<div class="tc" data-id="${t.id}">
     <div class="tc-h"><input type="checkbox" class="sel" ${t.sel === false ? '' : 'checked'}>
       <span class="nm" title="${esc(t.startUrl)}">${esc(t.name)}</span>
-      <span class="meta">${plural(t.steps.length, 'шаг', 'шага', 'шагов')} · ${plural(t.steps.filter((s) => /^assert/.test(s.type)).length, 'проверка', 'проверки', 'проверок')}</span>
+      <span class="meta">${t.steps.length && t.steps.every((s) => s.type === 'call') ? `🔗 ${t.steps.map((s) => esc(callName(s))).join(' → ')}` : `${plural(t.steps.length, 'шаг', 'шага', 'шагов')} · ${plural(t.steps.filter((s) => /^assert/.test(s.type)).length, 'проверка', 'проверки', 'проверок')}`}</span>
       ${lastBadge(t)}
       <span class="acts"><button data-a="run" title="Запустить">▶</button><button data-a="edit" title="Шаги и редактирование">${openIds.has(t.id) ? '▴ Шаги' : '▾ Шаги'}</button><button data-a="dup" title="Дублировать">⧉</button><button data-a="pw" title="Скачать тест Playwright">⬇ .spec</button><button data-a="del" title="Удалить">🗑</button></span></div>
-    ${openIds.has(t.id) && t.fromBuffer && t.id === openParam ? `<div class="fresh">🤖 Сценарий собран из ваших действий за последние ${t.fromBuffer.sec < 60 ? t.fromBuffer.sec + ' с' : t.fromBuffer.sec / 60 + ' мин'}. Проверьте начальную страницу, удалите лишние шаги (✕) и добавьте проверки ниже — без них автотест только повторяет клики.${t.fromBuffer.skipped ? ` Пропущено действий: ${t.fromBuffer.skipped} (загрузка файлов или записанные до обновления расширения).` : ''}</div>` : ''}
+    ${openIds.has(t.id) && t.fromBuffer && t.id === openParam ? `<div class="fresh">🤖 Сценарий собран из ваших действий за последние ${t.fromBuffer.sec < 60 ? t.fromBuffer.sec + ' с' : t.fromBuffer.sec / 60 + ' мин'}. Назовите сценарий, проверьте начальную страницу, удалите лишние шаги (✕) и добавьте проверки ниже — без них автотест только повторяет клики.${t.fromBuffer.skipped ? ` Пропущено действий: ${t.fromBuffer.skipped} (загрузка файлов или записанные до обновления расширения).` : ''}</div>` : ''}
     ${openIds.has(t.id) ? `<div class="steps">
       <label style="margin:0 0 8px">Название<input class="name-in" value="${esc(t.name)}"></label>
       ${startCandidates(t).map((x) => `<div class="link-sug">🔗 Этот сценарий начинается на <b>${esc(pathKey(t.startUrl).replace(/^https?:\/\//, ''))}</b>, а сценарий <b>«${esc(x.name)}»</b> заканчивается там же. Подключить его как начало — тогда страница откроется в нужном состоянии.<span><button data-link="${x.id}">▶ Подключить как начало</button><button data-nolink>Не нужно</button></span></div>`).join('')}
@@ -229,9 +235,23 @@ async function runHTML(r, forExport) {
       if (sr.shotKey) { const d = await QADB.get('blobs', sr.shotKey).catch(() => null); if (d) img = `<img src="${d}" alt="Скриншот при падении">`; }
       steps.push(`<div class="rs ${sr.status}${s && s.type === 'call' ? ' call' : ''}"${pad}><span class="ic">${ICON[sr.status] || ''}</span><span>${sr.s ? '' : i + 1 + '. '}${s ? `${STEP_RU[s.type] || s.type}${s.type === 'call' ? ' «' + esc(s.name || callName(s)) + '»' : stepDesc(s) || s.url ? ': ' + esc(stepDesc(s) || s.url) : ''}${EDITABLE[s.type] && !s.secret && s.type !== 'goto' && !(stepDesc(s) || '').includes(String(s[EDITABLE[s.type]])) ? ' — «' + esc(String(s[EDITABLE[s.type]]).slice(0, 80)) + '»' : ''}` : ''}${sr.ms != null && sr.status !== 'queued' ? ` <span style="color:#9ca3af">${fmtMs(sr.ms)}</span>` : ''}${sr.error ? `<span class="err">${esc(sr.error)}${sr.url ? '<br>Страница: ' + esc(sr.url) : ''}</span>` : ''}</span></div>${img}`);
     }
+    let stop = '';
+    const fi = res.steps.findIndex((x) => x.status === 'failed');
+    if (fi >= 0) {
+      const fs = res.steps[fi].s || (t && t.steps[fi]) || {};
+      const real = res.steps.filter((x) => !(x.s && x.s.type === 'call'));
+      const done = real.filter((x) => x.status === 'passed').length;
+      const left = res.steps.filter((x) => x.status === 'skipped');
+      const total = real.filter((x) => x.status !== 'off').length;
+      const leftN = real.filter((x) => x.status === 'skipped').length;
+      const scen = res.failedIn ? ` в сценарии «${esc(res.failedIn)}»` : '';
+      const what = fs.type === 'call' ? `▶ Сценарий «${esc(fs.name || '')}»` : `${STEP_RU[fs.type] || fs.type || ''}${stepDesc(fs) || fs.url ? ': ' + esc(stepDesc(fs) || fs.url) : ''}`;
+      const nextScen = [...new Set(left.map((x) => x.s).filter((s) => s && s.type === 'call' && !(s.depth > 0)).map((s) => s.name))];
+      stop = `<div class="stop-sum"><b>⛔ Остановился${scen} на шаге ${res.failedStep || fi + 1}:</b> ${what}<br>Причина: ${esc(res.steps[fi].error || '')}<br>Выполнено ${done} из ${total} шагов${leftN ? `, не выполнено ${leftN}` : ''}${nextScen.length ? `. Не запускались сценарии: ${nextScen.map((n) => '«' + esc(n) + '»').join(', ')}` : ''}.</div>`;
+    }
     const open = forExport || res.status === 'failed' || res.status === 'running';
     parts.push(`<div class="rr"><details ${open ? 'open' : ''}><summary class="rr-h"><span class="badge b-${res.status}">${{ passed: '✓ прошёл', failed: '✗ упал', running: '⏳ идёт', queued: 'в очереди', stopped: 'остановлен' }[res.status] || res.status}</span><b>${esc(res.name)}</b><span style="color:#6b7280">${fmtMs(res.ms)}</span></summary>
-      ${res.reason ? `<div class="rs failed"><span class="ic">!</span><span>${esc(res.reason)}</span></div>` : ''}
+      ${stop}${res.reason ? `<div class="rs failed"><span class="ic">!</span><span>${esc(res.reason)}</span></div>` : ''}
       <div class="rr-steps">${steps.join('')}</div>
       ${res.errors && res.errors.length ? `<div class="errs"><b>Ошибки во время сценария (${res.errors.length}):</b>${res.errors.map((x) => `<div title="${esc(x.text)}">${x.kind === 'net' ? '🌐' : '⚠️'} ${esc(x.text)}</div>`).join('')}</div>` : ''}</details></div>`);
   }
@@ -331,6 +351,40 @@ $('#exp-pw').onclick = () => {
   files.push({ name: 'playwright.config.ts', data: `import { defineConfig } from '@playwright/test';\n\nexport default defineConfig({\n  testDir: './tests',\n  timeout: 60_000,\n  expect: { timeout: 10_000 },\n  use: { headless: true, screenshot: 'only-on-failure', trace: 'retain-on-failure' },\n  reporter: [['html', { open: 'never' }], ['list']],\n});\n` });
   files.push({ name: 'README.md', data: `# Автотесты из QA Bug Recorder\n\n\`\`\`bash\nnpm init -y\nnpm i -D @playwright/test\nnpx playwright install chromium\nnpx playwright test\nnpx playwright show-report\n\`\`\`\n\nТесты можно запускать в любом CI — см. https://playwright.dev/docs/ci\n` });
   download(QAZip.makeZip(files), 'playwright-tests.zip');
+};
+// ---------- сборка сценария из готовых ----------
+let combo = [];
+function renderCombo() {
+  $('#combo-list').innerHTML = combo.length ? combo.map((id, i) => { const x = testById(id); return `<li data-i="${i}"><b>${esc(x ? x.name : '?')}</b> <span class="muted">${x ? plural(x.steps.length, 'шаг', 'шага', 'шагов') : ''}</span><span class="x"><button data-c="up" title="Выше">↑</button><button data-c="down" title="Ниже">↓</button><button data-c="del" title="Убрать">✕</button></span></li>`; }).join('') : '<li class="muted empty-c">Пока пусто — добавьте первый сценарий ниже.</li>';
+  $('#combo-sel').innerHTML = `<option value="">+ Добавить сценарий…</option>${tests.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}`;
+}
+$('#combo-open').onclick = () => {
+  if (!tests.length) return alert('Сначала запишите хотя бы один сценарий');
+  combo = tests.filter((t) => t.sel !== false).length > 1 && tests.filter((t) => t.sel !== false).length < tests.length ? tests.filter((t) => t.sel !== false).map((t) => t.id) : [];
+  $('#combo').hidden = false; $('#combo-name').value = ''; renderCombo(); $('#combo-name').focus();
+};
+$('#combo-cancel').onclick = () => { $('#combo').hidden = true; };
+$('#combo-sel').onchange = (e) => { if (e.target.value) combo.push(e.target.value); renderCombo(); };
+$('#combo-list').onclick = (e) => {
+  const b = e.target.closest('[data-c]'); if (!b) return;
+  const i = +b.closest('li').dataset.i;
+  if (b.dataset.c === 'del') combo.splice(i, 1);
+  if (b.dataset.c === 'up' && i > 0) [combo[i - 1], combo[i]] = [combo[i], combo[i - 1]];
+  if (b.dataset.c === 'down' && i < combo.length - 1) [combo[i + 1], combo[i]] = [combo[i], combo[i + 1]];
+  renderCombo();
+};
+$('#combo-save').onclick = async () => {
+  if (!combo.length) return alert('Добавьте хотя бы один сценарий');
+  const name = $('#combo-name').value.trim();
+  if (!name) { $('#combo-name').focus(); $('#combo-name').placeholder = 'Укажите название'; return; }
+  const list = combo.map(testById).filter(Boolean);
+  const t = { id: 't' + Date.now().toString(36), name, startUrl: list[0].startUrl, endUrl: endOf(list[list.length - 1]), steps: list.map((x) => ({ type: 'call', sid: x.id, name: x.name })), created: Date.now(), updated: Date.now(), viewport: null };
+  tests.push(t);
+  await saveTests();
+  $('#combo').hidden = true;
+  openIds.add(t.id);
+  renderTests();
+  document.querySelector(`.tc[data-id="${t.id}"]`).scrollIntoView({ behavior: 'smooth', block: 'center' });
 };
 $('#exp-json').onclick = () => download(new Blob([JSON.stringify({ app: 'qa-bug-recorder', version: 1, tests: tests.map(({ last, sel, ...t }) => t) }, null, 2)], { type: 'application/json' }), 'qa-scenarios.json');
 $('#imp-json').onchange = async (e) => {

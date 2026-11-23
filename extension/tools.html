@@ -31,6 +31,16 @@
       <button id="exp-pw">⬇ Playwright (.zip)</button>
       <button id="exp-json">⬇ Экспорт сценариев</button>
       <label class="filebtn">⬆ Импорт<input type="file" id="imp-json" accept=".json" hidden></label>
+      <span class="sp"></span>
+      <button id="combo-open" class="combo-btn">🔗 Собрать из сценариев</button>
+    </div>
+    <div id="combo" class="combo" hidden>
+      <h3>🔗 Новый сценарий из готовых</h3>
+      <p class="muted">Выберите сценарии в нужном порядке — они выполнятся один за другим, каждый до конца. Если какой-то упадёт, прогон остановится и покажет, в каком сценарии и на каком шаге.</p>
+      <label>Название<input id="combo-name" placeholder="Например: Покупка от входа до оплаты"></label>
+      <ol id="combo-list"></ol>
+      <div class="combo-add"><select id="combo-sel"></select></div>
+      <div class="toolbar"><button id="combo-save" class="primary">Создать сценарий</button><button id="combo-cancel">Отмена</button></div>
     </div>
 
     <div id="run-box"></div>
