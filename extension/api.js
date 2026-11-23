@@ -171,23 +171,47 @@ function effSpec(p) {
   for (const [id, ex] of Object.entries(p.overrides || {})) { const e = s.endpoints.find((x) => x.id === id); if (e && e.body) e.body.example = ex; }
   return s;
 }
+const EXPECTS = ['2xx', '200', '201', '204', '4xx', '400', '401/403', '404', '409', '422', 'не 5xx'];
+const ASSERT_HELP = 'По одной в строке: $.status == "paid" · $.items.length > 0 · $.id exists · $.error !exists · $.name contains Анна · status == 201 · time < 500. Можно {{переменные}}.';
+// шаблоны своих проверок: тело собирается из правильного примера
+function tplBody(e, kind) {
+  if (!e.body) return '';
+  const ex = e.body.example != null ? e.body.example : A.sample(e.body.schema || {});
+  const sch = e.body.schema || {};
+  const req = sch.required || [];
+  if (kind === 'required' && ex && typeof ex === 'object') return JSON.stringify(Object.fromEntries(Object.entries(ex).filter(([k]) => req.includes(k))), null, 2);
+  if (kind === 'empty') return '{}';
+  if (kind === 'none') return '';
+  return JSON.stringify(ex, null, 2);
+}
+function customHTML(p, e) {
+  const list = (p.custom || {})[e.id] || [];
+  return `<div class="cust"><div class="cust-h"><b>Мои проверки</b><small>свой payload и ожидаемый ответ — для правил, которых нет в Swagger (например, «нельзя оплатить отменённый заказ → 409»)</small></div>
+    ${list.map((u, i) => `<div class="cu" data-ci="${i}">
+      <div class="cu-r"><input data-u="title" value="${esc(u.title || '')}" placeholder="Название проверки"><label class="sm">Ожидается <select data-u="expect">${EXPECTS.map((x) => `<option ${x === (u.expect || '2xx') ? 'selected' : ''}>${x}</option>`).join('')}</select></label><button data-u-del title="Удалить">✕</button></div>
+      ${e.body || A.WRITE.includes(e.method) ? `<label>Тело запроса <small>JSON, {{переменные}} подставляются; пусто — без тела</small><textarea data-u="body" rows="5" spellcheck="false">${esc(u.body || '')}</textarea></label>` : ''}
+      <label>Проверки ответа <small>${esc(ASSERT_HELP)}</small><textarea data-u="asserts" rows="3" spellcheck="false" placeholder='$.status == "created"'>${esc(u.asserts || '')}</textarea></label>
+    </div>`).join('')}
+    <select data-u-add><option value="">＋ Своя проверка…</option>${e.body ? '<option value="valid">с правильным телом</option><option value="required">только обязательные поля</option><option value="empty">с пустым телом {}</option>' : '<option value="none">без тела</option>'}</select></div>`;
+}
 function renderEps() {
   const p = P();
   const q = ($('#ep-filter').value || '').toLowerCase();
   const eps = effSpec(p).endpoints.filter((e) => !q || `${e.method} ${e.path} ${e.summary} ${e.tag}`.toLowerCase().includes(q));
   const unsel = new Set(p.unsel || []);
-  const opts = { authOn: authOn(), canBadAuth: ['bearer', 'basic', 'apikey'].includes((p.env.auth || {}).type) };
+  const opts0 = { authOn: authOn(), canBadAuth: ['bearer', 'basic', 'apikey'].includes((p.env.auth || {}).type) };
   const groups = new Map();
   eps.forEach((e) => (groups.get(e.tag) || groups.set(e.tag, []).get(e.tag)).push(e));
   let total = 0, runnable = 0;
   $('#eps').innerHTML = [...groups.entries()].map(([tag, list]) => `<div class="tag-h">${esc(tag)}</div>` + list.map((e) => {
-    const cs = A.casesFor(e, opts);
+    const cs = A.casesFor(e, { ...opts0, custom: (p.custom || {})[e.id] });
     const ok = cs.filter((c) => !c.chainOnly && (!c.destructive || p.env.testStand)).length;
     if (!unsel.has(e.id)) { total += cs.length; runnable += ok; }
     const open = openEp.has(e.id);
     return `<div class="ep" data-id="${esc(e.id)}"><div class="ep-h"><input type="checkbox" ${unsel.has(e.id) ? '' : 'checked'}><span class="mth m-${e.method}">${e.method}</span><span class="pth">${esc(e.path)}</span>${e.secured ? '<span title="Требует авторизации">🔒</span>' : ''}<span class="sm">${esc(e.summary)}${e.deprecated ? ' · устарел' : ''}</span><span class="cnt">${ok} из ${cs.length} проверок</span></div>
       ${open ? `<div class="ep-b"><ul class="cases">${cs.map((c) => `<li class="${c.chainOnly || (c.destructive && !p.env.testStand) ? 'w' : ''}">${esc(c.title)} → <b>${esc(c.expect)}</b>${c.chainOnly ? ' (в цепочке)' : c.destructive && !p.env.testStand ? ' (нужен стенд)' : ''}</li>`).join('')}</ul>
         ${e.body ? `<label>Тело правильного запроса <small>можно поправить — используется во всех проверках этого эндпоинта, {{переменные}} подставляются</small><textarea data-body spellcheck="false">${esc(JSON.stringify(e.body.example != null ? e.body.example : A.sample(e.body.schema || {}), null, 2))}</textarea></label><div class="row"><button data-save-body>Сохранить тело</button><button data-reset-body class="link">Вернуть из спецификации</button><span class="st" data-bst></span></div>` : ''}
+        ${customHTML(p, e)}
         <div class="row"><button data-run-one class="primary">▶ Проверить только этот</button></div></div>` : ''}</div>`;
   }).join('')).join('') || '<div class="empty">Ничего не найдено</div>';
   $('#ep-sum').textContent = `Выбрано проверок: ${runnable}${total > runnable ? ` (ещё ${total - runnable} — только на тестовом стенде или в цепочках)` : ''}`;
@@ -211,6 +235,28 @@ $('#eps').addEventListener('click', async (ev) => {
   }
   if (ev.target.matches('[data-reset-body]')) { if (p.overrides) delete p.overrides[id]; await save(); renderEps(); }
   if (ev.target.matches('[data-run-one]')) start({ endpoints: [id], chains: false });
+  if (ev.target.matches('[data-u-del]')) { const i = +ev.target.closest('.cu').dataset.ci; p.custom[id].splice(i, 1); await save(); renderEps(); }
+});
+$('#eps').addEventListener('change', async (ev) => {
+  const box = ev.target.closest('.ep');
+  if (!box) return;
+  const id = box.dataset.id, p = P();
+  if (ev.target.matches('[data-u-add]')) {
+    const k = ev.target.value; if (!k) return;
+    const e = effSpec(p).endpoints.find((x) => x.id === id);
+    const T = { valid: ['Правильное тело', '2xx'], required: ['Только обязательные поля', '2xx'], empty: ['Пустое тело', '4xx'], none: ['Мой запрос', '2xx'] }[k];
+    p.custom = p.custom || {};
+    (p.custom[id] = p.custom[id] || []).push({ id: 'u' + Date.now().toString(36), title: T[0], expect: T[1], body: tplBody(e, k), asserts: '' });
+    await save();
+    return renderEps();
+  }
+  const cu = ev.target.closest('.cu');
+  if (cu && ev.target.dataset.u) {
+    const u = p.custom[id][+cu.dataset.ci];
+    u[ev.target.dataset.u] = ev.target.value;
+    await save();
+    if (ev.target.dataset.u === 'expect') renderEps();
+  }
 });
 $('#ep-all').onclick = async () => { P().unsel = []; await save(); renderEps(); };
 $('#ep-none').onclick = async () => { P().unsel = P().spec.endpoints.map((e) => e.id); await save(); renderEps(); };
@@ -227,10 +273,15 @@ function renderChains() {
       <input data-f="title" value="${esc(s.title || '')}">
       <select data-f="expect">${['2xx', '200', '201', '204', '4xx', '400', '401/403', '404', '409', '422'].map((x) => `<option ${x === s.expect ? 'selected' : ''}>${x}</option>`).join('')}</select>
       <input data-f="extra" placeholder="id=$.id; {userId}={{users_id}}" value="${esc([(s.extract || []).filter((x) => x.path).map((x) => `${x.var}=${x.path}`).join('; '), Object.entries(s.pathParams || {}).map(([k, v]) => `{${k}}=${v}`).join('; ')].filter(Boolean).join('; '))}">
-      <span class="x"><button data-st="up">↑</button><button data-st="down">↓</button><button data-st="del">✕</button></span></div>`).join('')}
+      <span class="x"><button data-st="more" title="Тело запроса и проверки ответа" class="${s.body || s.asserts || s.badField ? 'on' : ''}">⋯</button><button data-st="up">↑</button><button data-st="down">↓</button><button data-st="del">✕</button></span></div>
+      ${openStep.has(c.id + ':' + si) ? `<div class="cs-more" data-si="${si}">
+        ${(() => { const e = P().spec.endpoints.find((x) => x.id === s.ep); return e && (e.body || A.WRITE.includes(e.method)) ? `<label>Тело запроса <small>пусто — правильное тело из спецификации${s.badField ? `; сейчас в поле «${esc(s.badField)}» подставляется значение неверного типа` : ''}. JSON, {{переменные}} из прошлых шагов подставляются</small><textarea data-f="body" rows="5" spellcheck="false" placeholder="${esc(JSON.stringify(e.body ? (e.body.example != null ? e.body.example : A.sample(e.body.schema || {})) : {}, null, 2))}">${esc(typeof s.body === 'string' ? s.body : s.body != null ? JSON.stringify(s.body, null, 2) : '')}</textarea></label>` : ''; })()}
+        <label>Проверки ответа <small>${esc(ASSERT_HELP)}</small><textarea data-f="asserts" rows="3" spellcheck="false" placeholder='$.status == "paid"'>${esc(s.asserts || '')}</textarea></label>
+      </div>` : ''}`).join('')}
     <div class="addstep"><select data-add><option value="">＋ Добавить шаг…</option>${p.spec.endpoints.map((e) => `<option value="${esc(e.id)}">${esc(e.method + ' ' + e.path + (e.summary ? ' — ' + e.summary : ''))}</option>`).join('')}</select></div>
   </div>`).join('') : '<div class="empty">Цепочек нет. Для OpenAPI они создаются автоматически, если есть пара «POST /items» и «GET/PUT/DELETE /items/{id}». Можно собрать свою: «＋ Новая цепочка».</div>';
 }
+const openStep = new Set();
 function parseExtra(t) {
   const extract = [], pathParams = {};
   t.split(';').map((x) => x.trim()).filter(Boolean).forEach((x) => {
@@ -243,6 +294,14 @@ function parseExtra(t) {
 }
 $('#chains').addEventListener('change', async (ev) => {
   const c = P().chains[+ev.target.closest('.ch').dataset.ci];
+  if (ev.target.closest('.cs-more')) {
+    const s = c.steps[+ev.target.closest('.cs-more').dataset.si];
+    s[ev.target.dataset.f] = ev.target.value;
+    if (ev.target.dataset.f === 'body' && ev.target.value.trim()) delete s.badField;
+    c.auto = false;
+    await save();
+    return;
+  }
   if (ev.target.matches('[data-on]')) c.on = ev.target.checked;
   else if (ev.target.matches('.nm')) c.name = ev.target.value;
   else if (ev.target.matches('[data-add]')) { if (ev.target.value) c.steps.push({ ep: ev.target.value, title: '', expect: '2xx', extract: [] }); }
@@ -264,6 +323,7 @@ $('#chains').addEventListener('click', async (ev) => {
   if (ev.target.matches('[data-ch-del]')) { if (!confirm(`Удалить цепочку «${c.name}»?`)) return; p.chains.splice(ci, 1); }
   else if (ev.target.dataset.st) {
     const si = +ev.target.closest('.cs').dataset.si, st = ev.target.dataset.st;
+    if (st === 'more') { const k = c.id + ':' + si; openStep.has(k) ? openStep.delete(k) : openStep.add(k); return renderChains(); }
     if (st === 'del') c.steps.splice(si, 1);
     if (st === 'up' && si > 0) [c.steps[si - 1], c.steps[si]] = [c.steps[si], c.steps[si - 1]];
     if (st === 'down' && si < c.steps.length - 1) [c.steps[si + 1], c.steps[si]] = [c.steps[si], c.steps[si + 1]];

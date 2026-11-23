@@ -384,20 +384,46 @@
     const add = (c) => C.push({ ep: ep.id, ...c });
     const write = WRITE.includes(ep.method);
     if (ep.method === 'DELETE') add({ kind: 'positive', title: 'Удаление проверяется в цепочке', expect: '2xx', destructive: true, chainOnly: true });
-    else add({ kind: 'positive', title: 'Правильный запрос', expect: '2xx', destructive: write });
+    else add({ kind: 'positive', title: 'Правильный запрос', expect: '2xx', destructive: write, echo: write && ep.method !== 'DELETE' });
     const bs = ep.body && ep.body.schema ? allOf(ep.body.schema) : null;
     const base = () => (ep.body ? (ep.body.example != null ? clone(ep.body.example) : sample(ep.body.schema || {})) : undefined);
+    if (bs && typeOf(bs) === 'object' && bs.properties) {
+      const req0 = (bs.required || []).filter((r) => bs.properties[r] && !bs.properties[r].readOnly);
+      const opt = Object.keys(bs.properties).filter((k) => !req0.includes(k) && !(bs.properties[k] || {}).readOnly);
+      // частичная и полная передача — правильные варианты, сервер должен их принять
+      if (req0.length && opt.length) add({ kind: 'partial', title: 'Только обязательные поля', expect: '2xx', destructive: write, echo: write, mutate: (b) => (b && typeof b === 'object' ? Object.fromEntries(Object.entries(b).filter(([k]) => req0.includes(k))) : b) });
+      if (opt.length) add({ kind: 'full', title: 'Все поля, включая необязательные', expect: '2xx', destructive: write, echo: write, mutate: (b) => { if (b && typeof b === 'object') for (const k of opt) if (!(k in b)) { const v = sample(bs.properties[k], k); if (v !== undefined) b[k] = v; } return b; } });
+      add({ kind: 'extra', title: 'Лишнее неизвестное поле', expect: bs.additionalProperties === false ? '4xx' : 'не 5xx', destructive: write, mutate: (b) => { if (b && typeof b === 'object') b.qa_unknown_field = 'qa'; return b; } });
+    }
     if (bs && typeOf(bs) === 'object' && bs.properties) {
       const req = (bs.required || []).filter((r) => bs.properties[r] && !bs.properties[r].readOnly);
       req.slice(0, opts.maxFields || 6).forEach((f) => add({ kind: 'missing', title: `Нет обязательного поля «${f}»`, field: f, expect: '4xx', destructive: write, mutate: (b) => { if (b && typeof b === 'object') delete b[f]; return b; } }));
       Object.entries(bs.properties).filter(([, p]) => !p.readOnly && typeOf(p)).slice(0, opts.maxFields || 6).forEach(([f, p]) => add({ kind: 'type', title: `Неверный тип поля «${f}» (ожидается ${typeOf(p)})`, field: f, expect: '4xx', destructive: write, mutate: (b) => { if (b && typeof b === 'object') b[f] = wrongTypeValue(p); return b; } }));
       req.slice(0, 3).forEach((f) => add({ kind: 'null', title: `null в обязательном поле «${f}»`, field: f, expect: '4xx', destructive: write, mutate: (b) => { if (b && typeof b === 'object' && !(allOf(bs.properties[f]) || {}).nullable) b[f] = null; return b; } }));
+      let edges = 0;
+      const edge = (c) => { if (edges++ < (opts.maxEdges || 8)) add(c); };
       Object.entries(bs.properties).filter(([, p]) => !p.readOnly).forEach(([f, p0]) => {
         const p = allOf(p0) || {};
-        if (p.enum) add({ kind: 'enum', title: `Значение не из списка в «${f}»`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = typeOf(p) === 'string' || !typeOf(p) ? 'нет-такого-значения' : 987654; return b; } });
-        else if (typeOf(p) === 'string' && p.maxLength) add({ kind: 'long', title: `Слишком длинное «${f}» (> ${p.maxLength} симв.)`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = 'x'.repeat(p.maxLength + 1); return b; } });
-        else if (typeOf(p) === 'string' && p.format && FMT[p.format]) add({ kind: 'format', title: `Неверный формат «${f}» (${p.format})`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = 'не-' + p.format; return b; } });
-        else if ((typeOf(p) === 'integer' || typeOf(p) === 'number') && p.minimum != null) add({ kind: 'range', title: `«${f}» меньше минимума (${p.minimum})`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = p.minimum - 1; return b; } });
+        const t = typeOf(p);
+        if (p.enum) add({ kind: 'enum', title: `Значение не из списка в «${f}»`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = t === 'string' || !t ? 'нет-такого-значения' : 987654; return b; } });
+        if (t === 'string' && !p.enum) {
+          if (p.maxLength) {
+            add({ kind: 'long', title: `Слишком длинное «${f}» (> ${p.maxLength} симв.)`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = 'x'.repeat(p.maxLength + 1); return b; } });
+            if (!p.format && !p.pattern) edge({ kind: 'edge', title: `«${f}» ровно ${p.maxLength} симв. (граница)`, field: f, expect: '2xx', destructive: write, mutate: (b) => { b[f] = 'x'.repeat(p.maxLength); return b; } });
+          }
+          if (p.minLength > 0) add({ kind: 'short', title: `Слишком короткое «${f}» (< ${p.minLength} симв.)`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = 'x'.repeat(p.minLength - 1); return b; } });
+          if (p.format && FMT[p.format]) add({ kind: 'format', title: `Неверный формат «${f}» (${p.format})`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = 'не-' + p.format; return b; } });
+        }
+        if (t === 'integer' || t === 'number') {
+          if (p.minimum != null) {
+            add({ kind: 'range', title: `«${f}» меньше минимума (${p.minimum})`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = p.minimum - 1; return b; } });
+            edge({ kind: 'edge', title: `«${f}» = ${p.minimum} (минимум, граница)`, field: f, expect: '2xx', destructive: write, mutate: (b) => { b[f] = p.minimum; return b; } });
+          }
+          if (p.maximum != null) {
+            add({ kind: 'range', title: `«${f}» больше максимума (${p.maximum})`, field: f, expect: '4xx', destructive: write, mutate: (b) => { b[f] = p.maximum + 1; return b; } });
+            edge({ kind: 'edge', title: `«${f}» = ${p.maximum} (максимум, граница)`, field: f, expect: '2xx', destructive: write, mutate: (b) => { b[f] = p.maximum; return b; } });
+          }
+        }
       });
       if (req.length) add({ kind: 'empty', title: 'Пустое тело {}', expect: '4xx', destructive: write, mutate: () => ({}) });
     }
@@ -414,6 +440,8 @@
       add({ kind: 'noauth', title: 'Без авторизации', expect: '401/403', destructive: false, noAuth: true });
       if (opts.canBadAuth) add({ kind: 'badauth', title: 'С неверным токеном', expect: '401/403', destructive: false, badAuth: true });
     }
+    // проверки, которые добавил пользователь
+    (opts.custom || []).forEach((u, i) => add({ kind: 'custom', title: u.title || `Своя проверка ${i + 1}`, expect: u.expect || '2xx', destructive: write, customBody: u.body, asserts: u.asserts, cid: u.id }));
     return C;
   }
 
@@ -438,6 +466,13 @@
       if (get) S.push({ ep: get.id, title: 'Получить созданное', expect: '200', pathParams: { [idName]: `{{${v}}}` }, checkSaved: true });
       if (put) S.push({ ep: put.id, title: 'Изменить', expect: '2xx', pathParams: { [idName]: `{{${v}}}` }, setUpdated: true });
       if (put && get) S.push({ ep: get.id, title: 'Получить после изменения', expect: '200', pathParams: { [idName]: `{{${v}}}` }, checkUpdated: true });
+      // изменить неверными данными: сервер должен отказать и ничего не испортить
+      const ps = put && put.body && put.body.schema ? allOf(put.body.schema) : null;
+      const badF = ps && ps.properties ? [...(ps.required || []), ...Object.keys(ps.properties)].find((k) => ps.properties[k] && !ps.properties[k].readOnly && ['integer', 'number', 'boolean', 'string'].includes(typeOf(allOf(ps.properties[k])))) : null;
+      if (put && get && badF) {
+        S.push({ ep: put.id, title: `Изменить с неверным «${badF}»`, expect: '4xx', pathParams: { [idName]: `{{${v}}}` }, badField: badF });
+        S.push({ ep: get.id, title: 'Получить: данные не испорчены', expect: '200', pathParams: { [idName]: `{{${v}}}` }, checkUpdated: true, checkLabel: 'После неверного изменения данные испорчены' });
+      }
       if (del) S.push({ ep: del.id, title: 'Удалить', expect: '2xx', pathParams: { [idName]: `{{${v}}}` } });
       if (del && get) S.push({ ep: get.id, title: 'Получить удалённое', expect: '404', pathParams: { [idName]: `{{${v}}}` }, order: true });
       if (del) S.push({ ep: del.id, title: 'Удалить повторно', expect: '404', pathParams: { [idName]: `{{${v}}}` }, order: true });
@@ -455,6 +490,7 @@
   const statusOk = (expect, st) => {
     if (!st) return false;
     if (expect === '2xx') return st >= 200 && st < 300;
+    if (expect === 'не 5xx') return st < 500;
     if (expect === '4xx') return st >= 400 && st < 500;
     if (expect === '401/403') return st === 401 || st === 403;
     if (expect === '404') return st === 404 || st === 410;
@@ -467,7 +503,10 @@
   function judge(ep, c, req, res) {
     const P = [];
     const prob = (sev, code, text, extra) => P.push({ sev, code, text, ...extra });
-    const NEG = ['missing', 'type', 'null', 'enum', 'long', 'format', 'range', 'empty', 'badjson', 'noquery', 'badid', 'notfound'];
+    const NEG0 = ['missing', 'type', 'null', 'enum', 'long', 'short', 'format', 'range', 'empty', 'badjson', 'noquery', 'badid', 'notfound'];
+    const negCustom = ['custom', 'chainbad'].includes(c.kind) && /^4/.test(String(c.expect));
+    const NEG = negCustom ? [...NEG0, c.kind] : NEG0;
+    const POS = ['positive', 'chain', 'partial', 'full', 'edge'].includes(c.kind) || (c.kind === 'custom' && /^2/.test(String(c.expect)));
     if (!res.status) {
       if (NEG.includes(c.kind) || c.order) prob('major', '5xx-bad', `Сервер оборвал соединение на «${c.title}» — вероятно, упал обработчик`);
       else prob('critical', 'down', res.error || 'Нет ответа');
@@ -475,17 +514,18 @@
     }
     const st = res.status;
     if (st >= 500) {
-      if (c.kind === 'positive' || c.kind === 'chain') prob('critical', '5xx-ok', `Сервер вернул ${st} на правильный запрос`);
+      if (POS) prob('critical', '5xx-ok', `Сервер вернул ${st} на правильный запрос${c.kind === 'positive' || c.kind === 'chain' ? '' : `: «${c.title}»`}`);
       else prob('major', '5xx-bad', `Сервер упал (${st}) на неверных данных: «${c.title}». Ожидался ${c.expect}`);
     } else if (!statusOk(c.expect, st)) {
-      if (['missing', 'type', 'null', 'enum', 'long', 'format', 'range', 'empty', 'badjson', 'noquery'].includes(c.kind) && st >= 200 && st < 300) prob('major', 'accepts-bad', `Принял неверные данные (${st}): «${c.title}». Ожидалась ошибка 400/422`);
+      if ((NEG.includes(c.kind) && !['badid', 'notfound'].includes(c.kind) || (c.kind === 'extra' && c.expect === '4xx')) && st >= 200 && st < 300) prob('major', 'accepts-bad', `Принял неверные данные (${st}): «${c.title}». Ожидалась ошибка ${c.expect === '4xx' ? '400/422' : c.expect}`);
+      else if (POS && !['positive', 'chain'].includes(c.kind) && st >= 400 && st < 500) prob('major', 'rejects-valid', `Отклонил правильный запрос (${st}): «${c.title}»`, { detail: short(res.text, 200) });
       else if ((c.kind === 'noauth' || c.kind === 'badauth') && st >= 200 && st < 300) {
         if (ep.secured) prob('critical', 'no-auth', `Отвечает ${st} ${c.kind === 'noauth' ? 'без авторизации' : 'с неверным токеном'} — данные доступны без доступа`);
         else prob('minor', 'maybe-public', `Отвечает ${st} ${c.kind === 'noauth' ? 'без авторизации' : 'с неверным токеном'}, а авторизация в спецификации не описана — публичный ли это эндпоинт?`);
       }
       else if (c.kind === 'notfound' && st >= 200 && st < 300) prob('major', 'notfound-200', `Несуществующий объект — ответ ${st} вместо 404`);
       else if (c.order) prob('major', 'order', `${c.title}: ответ ${st}, ожидался ${c.expect}`);
-      else prob(c.kind === 'positive' || c.kind === 'chain' ? 'major' : 'minor', 'status', `Статус ${st}, ожидался ${c.expect}`);
+      else prob(POS || c.kind === 'custom' ? 'major' : 'minor', 'status', `${c.kind === 'custom' || c.kind === 'chainbad' ? '«' + c.title + '»: статус' : 'Статус'} ${st}, ожидался ${c.expect}`);
     }
     if (st && !documented(ep, st) && Object.keys(ep.responses || {}).length && !(ep.responses[Object.keys(ep.responses)[0]] || {}).inferred) prob('minor', 'undoc', `Статус ${st} не описан в спецификации`);
     // схема ответа
@@ -500,9 +540,50 @@
     if (st >= 400 && res.text && LEAK.test(res.text)) prob('major', 'leak', 'В ответе об ошибке видны внутренности сервера (стек, SQL, пути файлов)', { detail: short(res.text.match(LEAK)[0], 120) });
     if (st >= 400 && st < 500 && res.text && res.json === undefined && /json/.test(req.headers.Accept || '')) prob('trivial', 'err-format', 'Ошибка возвращается не в JSON — клиенту сложно показать понятное сообщение', { detail: short(res.text, 120) });
     if (res.ms > VERY_SLOW) prob('major', 'slow', `Очень медленный ответ: ${res.ms} мс`);
-    else if (res.ms > SLOW && (c.kind === 'positive' || c.kind === 'chain')) prob('minor', 'slow', `Медленный ответ: ${res.ms} мс`);
+    else if (res.ms > SLOW && POS) prob('minor', 'slow', `Медленный ответ: ${res.ms} мс`);
     if (res.text && !res.headers['content-type']) prob('trivial', 'no-ct', 'В ответе нет заголовка Content-Type');
     return P;
+  }
+
+  // ================= проверки тела ответа =================
+  // строка: «$.status == "paid"», «$.items.length > 0», «$.id exists», «$.error !exists», «$.name contains Анна», «$.email matches ^qa\.»
+  function parseVal(v, vars) {
+    v = subst(v.trim(), vars);
+    try { return JSON.parse(v); } catch (_) { return v.replace(/^["'](.*)["']$/, '$1'); }
+  }
+  function checkAsserts(text, res, vars) {
+    const P = [];
+    const lines = String(text || '').split(/\n/).map((x) => x.trim()).filter((x) => x && !x.startsWith('#') && !x.startsWith('//'));
+    for (const line of lines) {
+      const m = line.match(/^(\$[^\s]*|status|header\.[\w-]+|time)\s*(==|!=|>=|<=|>|<|contains|!contains|matches|exists|!exists|empty|!empty)\s*(.*)$/i);
+      if (!m) { P.push({ sev: 'minor', code: 'assert', text: `Не понял проверку «${line}»`, detail: 'Формат: $.поле == значение · $.список.length > 0 · $.id exists · $.error !exists · $.name contains текст · status == 201 · time < 500' }); continue; }
+      const [, path, op0, raw] = m;
+      const op = op0.toLowerCase();
+      const got = path === 'status' ? res.status : path === 'time' ? res.ms : /^header\./i.test(path) ? res.headers[path.slice(7).toLowerCase()] : getPath(res.json, path);
+      const exp = parseVal(raw, vars);
+      const num = (x) => (typeof x === 'number' ? x : x != null && x !== '' && !isNaN(+x) ? +x : NaN);
+      const eq = (a, b) => (a != null && typeof a === 'object' ? JSON.stringify(a) === JSON.stringify(b) : String(a) === String(b));
+      const isEmpty = (x) => x == null || x === '' || (Array.isArray(x) && !x.length) || (typeof x === 'object' && !Object.keys(x).length);
+      const ok = op === '==' ? eq(got, exp) : op === '!=' ? !eq(got, exp)
+        : op === '>' ? num(got) > num(exp) : op === '>=' ? num(got) >= num(exp) : op === '<' ? num(got) < num(exp) : op === '<=' ? num(got) <= num(exp)
+        : op === 'contains' ? got != null && (Array.isArray(got) ? got.some((x) => eq(x, exp)) : String(typeof got === 'object' ? JSON.stringify(got) : got).includes(String(exp)))
+        : op === '!contains' ? !(got != null && (Array.isArray(got) ? got.some((x) => eq(x, exp)) : String(typeof got === 'object' ? JSON.stringify(got) : got).includes(String(exp))))
+        : op === 'matches' ? (() => { try { return got != null && new RegExp(String(exp)).test(String(got)); } catch (_) { return false; } })()
+        : op === 'exists' ? got !== undefined : op === '!exists' ? got === undefined
+        : op === 'empty' ? isEmpty(got) : op === '!empty' ? !isEmpty(got) : false;
+      if (!ok) P.push({ sev: 'major', code: 'assert', text: `Проверка ответа не прошла: ${line}`, detail: `Получено: ${got === undefined ? '(поля нет)' : short(typeof got === 'object' ? JSON.stringify(got) : String(got), 200)}` });
+    }
+    return P;
+  }
+  // правильный запрос на запись: что отправили, то сервер и вернул в ответе
+  function echoCheck(ep, sent, res) {
+    if (!sent || typeof sent !== 'object' || Array.isArray(sent) || !res.json || typeof res.json !== 'object' || res.status >= 300) return [];
+    const got = res.json.data && typeof res.json.data === 'object' && !Array.isArray(res.json.data) ? res.json.data : res.json;
+    if (Array.isArray(got)) return [];
+    const sch = (ep.body && allOf(ep.body.schema || {})) || {};
+    const diff = Object.entries(sent).filter(([k, v]) => v !== null && typeof v !== 'object' && k in got && got[k] !== null && typeof got[k] !== 'object' && String(got[k]) !== String(v)
+      && !/pass|secret|token/i.test(k) && !['date', 'date-time', 'email'].includes(((sch.properties || {})[k] || {}).format)).slice(0, 8);
+    return diff.length ? [{ sev: 'minor', code: 'echo', text: 'В ответе не те значения, что отправили', detail: diff.map(([k, v]) => `${k}: отправили «${v}», в ответе «${got[k]}»`).join('\n') }] : [];
   }
 
   const sevRank = { critical: 4, major: 3, minor: 2, trivial: 1 };
@@ -520,7 +601,7 @@
     const sel = new Set(opts.endpoints || spec.endpoints.map((e) => e.id));
     const eps = spec.endpoints.filter((e) => sel.has(e.id));
     const plan = [];
-    for (const ep of eps) for (const c of casesFor(ep, { authOn, canBadAuth: env.auth && ['bearer', 'basic', 'apikey'].includes(env.auth.type) })) plan.push({ ep, c });
+    for (const ep of eps) for (const c of casesFor(ep, { authOn, canBadAuth: env.auth && ['bearer', 'basic', 'apikey'].includes(env.auth.type), custom: (project.custom || {})[ep.id] })) plan.push({ ep, c });
     const chains = (opts.chains !== false ? project.chains || [] : []).filter((ch) => ch.on !== false);
     R.total = plan.length + chains.reduce((s, ch) => s + ch.steps.length, 0);
     onProgress(R);
@@ -548,11 +629,19 @@
       if (c.destructive && !writes) { R.skipped++; R.done++; R.results.push({ ep: ep.id, case: c.title, kind: c.kind, verdict: 'skip', reason: 'изменяющий запрос — включите «тестовый стенд»' }); return; }
       const over = { noAuth: c.noAuth, badAuth: c.badAuth, pathParams: c.pathOver, query: c.queryOver };
       if (c.mutate) { const b = ep.body ? (ep.body.example != null ? substDeep(clone(ep.body.example), vars) : sample(ep.body.schema || {})) : {}; over.body = c.mutate(b); }
+      else if (c.echo && ep.body) over.body = ep.body.example != null ? substDeep(clone(ep.body.example), vars) : sample(ep.body.schema || {});
+      if (c.customBody != null && String(c.customBody).trim()) {
+        try { over.body = substDeep(JSON.parse(c.customBody), vars); } catch (_) { over.rawBody = subst(c.customBody, vars); }
+      }
       if (c.raw) over.rawBody = c.raw;
       let req;
       try { req = buildRequest(ep, env, vars, over); } catch (e) { R.done++; R.results.push({ ep: ep.id, case: c.title, kind: c.kind, verdict: 'fail', problems: [{ sev: 'major', code: 'build', text: 'Не удалось собрать запрос: ' + e.message }] }); return; }
       const res = await send(req, env, opts.signal);
       const P = judge(ep, c, req, res);
+      if (res.status) {
+        if (c.asserts) P.push(...checkAsserts(c.asserts, res, vars));
+        if (c.echo && statusOk('2xx', res.status)) P.push(...echoCheck(ep, over.body, res));
+      }
       R.done++;
       R.results.push({ ep: ep.id, case: c.title, kind: c.kind, expect: c.expect, verdict: caseVerdict(P), problems: P, req: { method: req.method, url: req.url, headers: maskHeaders(req.headers), body: short(req.bodyText, 4000) }, res: { status: res.status, ms: res.ms, headers: res.headers, body: short(res.text || res.error || '', 6000) } });
       onProgress(R);
@@ -578,7 +667,7 @@
         if (pp && Object.values(pp).some((v) => /\{\{/.test(v))) { cr.steps.push({ title: st.title, ep: ep.id, verdict: 'skip', reason: 'нет id из предыдущего шага' }); R.done++; broken = true; continue; }
         let body;
         if (ep.body && WRITE.includes(ep.method)) {
-          body = st.body != null ? substDeep(clone(st.body), cv) : ep.body.example != null ? substDeep(clone(ep.body.example), cv) : sample(ep.body.schema || {});
+          body = st.body != null && st.body !== '' ? (typeof st.body === 'string' ? (() => { try { return substDeep(JSON.parse(st.body), cv); } catch (_) { return subst(st.body, cv); } })() : substDeep(clone(st.body), cv)) : ep.body.example != null ? substDeep(clone(ep.body.example), cv) : sample(ep.body.schema || {});
           if (st.setUpdated && body && typeof body === 'object') {
             // при изменении отправляем другие значения, чтобы было видно, что они сохранились
             const sch = allOf(ep.body.schema || {}) || {};
@@ -591,11 +680,16 @@
             updated = body;
           }
           if (st.compareSaved) saved = body;
+          if (st.badField && body && typeof body === 'object') {
+            const ps = ((allOf(ep.body.schema || {}) || {}).properties || {})[st.badField];
+            body[st.badField] = wrongTypeValue(allOf(ps) || {});
+          }
         }
         const req = buildRequest(ep, env, cv, { pathParams: pp, body });
         const res = await send(req, env, opts.signal);
-        const c = { kind: st.order ? 'order' : 'chain', title: st.title, expect: st.expect || '2xx', order: st.order };
+        const c = { kind: st.order ? 'order' : /^4/.test(st.expect || '') ? 'chainbad' : 'chain', title: st.title || `${ep.method} ${ep.path}`, expect: st.expect || '2xx', order: st.order };
         const P = judge(ep, c, req, res);
+        if (res.status && st.asserts) P.push(...checkAsserts(st.asserts, res, cv));
         // извлечение переменных
         const got = new Set();
         for (const ex of st.extract || []) {
@@ -610,13 +704,13 @@
           if (!exp || !res.json || typeof exp !== 'object') return;
           const got = res.json.data && typeof res.json.data === 'object' ? res.json.data : res.json;
           const diff = Object.entries(exp).filter(([k, v]) => typeof v !== 'object' && k in got && String(got[k]) !== String(v) && !/pass/i.test(k)).slice(0, 8);
-          if (diff.length) P.push({ sev: 'major', code: 'mismatch', text: `${label}: сохранились не те данные`, detail: diff.map(([k, v]) => `${k}: отправили «${v}», получили «${got[k]}»`).join('\n') });
+          if (diff.length) P.push({ sev: 'major', code: 'mismatch', text: /испорчены/.test(label) ? label : `${label}: сохранились не те данные`, detail: diff.map(([k, v]) => `${k}: отправили «${v}», получили «${got[k]}»`).join('\n') });
         };
         if (st.checkSaved) cmp(saved, 'После создания');
-        if (st.checkUpdated) cmp(updated, 'После изменения');
+        if (st.checkUpdated) cmp(updated, st.checkLabel || 'После изменения');
         const verdict = caseVerdict(P);
         if (verdict === 'fail') cr.verdict = 'fail'; else if (verdict === 'warn' && cr.verdict === 'pass') cr.verdict = 'warn';
-        if (!st.order && res.status >= 400) broken = true;
+        if (!st.order && c.kind !== 'chainbad' && res.status >= 400) broken = true;
         cr.steps.push({ title: st.title, ep: ep.id, verdict, problems: P, req: { method: req.method, url: req.url, headers: maskHeaders(req.headers), body: short(req.bodyText, 4000) }, res: { status: res.status, ms: res.ms, headers: res.headers, body: short(res.text || res.error || '', 6000) } });
         R.done++;
         onProgress(R);
@@ -647,6 +741,9 @@
     'err-format': ['trivial', 'Ошибки не в JSON', 'Клиенту сложно показать понятное сообщение пользователю.', 'Единый формат ошибок, например { "error": { "code", "message", "fields" } } или RFC 9457 (problem+json).'],
     'slow': ['minor', 'Медленные ответы', 'Ответ дольше 1 секунды заметен пользователю; больше 3 секунд — воспринимается как зависание.', 'Индексы в БД, пагинация, кэш, отсутствие N+1 запросов к базе.'],
     'no-ct': ['trivial', 'Нет Content-Type', 'Без заголовка клиент может неправильно разобрать ответ.', 'Всегда указывать Content-Type.'],
+    'rejects-valid': ['major', 'Отклоняет правильные запросы', 'Запрос по спецификации (только обязательные поля, все поля или значение на границе) получает ошибку 4xx — клиенты, которые так отправляют, не смогут работать.', 'Сверить валидацию сервера со спецификацией: необязательные поля действительно необязательны, границы minimum/maximum/maxLength включительно.'],
+    'assert': ['major', 'Ответ не прошёл проверки', 'Значения в ответе отличаются от ожидаемых по вашим проверкам.', 'Сравнить ответ с ожидаемым и поправить логику или проверку.'],
+    'echo': ['minor', 'Ответ не совпадает с отправленным', 'После создания или изменения сервер возвращает значения, отличные от отправленных: возможно, поля не сохраняются или преобразуются.', 'Проверить сохранение и сериализацию полей; если преобразование задумано — описать его в спецификации.'],
     'no-id': ['major', 'Создание не возвращает id', 'После создания нельзя получить или изменить объект.', 'Возвращать созданный объект с id (или заголовок Location).'],
     'mismatch': ['major', 'Сохраняются не те данные', 'Значения после сохранения отличаются от отправленных.', 'Проверить маппинг полей при сохранении и чтении.'],
     'build': ['minor', 'Не удалось собрать запрос', 'В спецификации не хватает данных для запроса.', 'Добавить примеры (example) в спецификацию.'],
@@ -672,5 +769,5 @@
     return { pass: n('pass'), warn: n('warn'), fail: n('fail'), skip: n('skip'), total: all.length };
   }
 
-  g.QAApi = { importSpec, casesFor, crudChains, postmanChain, run, issues, stats, buildRequest, sample, validate, WRITE, ISSUE, sevRank, maskHeaders };
+  g.QAApi = { importSpec, checkAsserts, casesFor, crudChains, postmanChain, run, issues, stats, buildRequest, sample, validate, WRITE, ISSUE, sevRank, maskHeaders };
 })(globalThis);

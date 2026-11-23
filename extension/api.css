@@ -96,3 +96,17 @@ label small code,p code{background:#f3f4f6;border-radius:4px;padding:0 4px}
 .ticks2{padding-left:4px;list-style:none}
 .ticks2 li{margin:6px 0}
 @media (max-width:1000px){.api{grid-template-columns:1fr}aside{position:static}.kpi{grid-template-columns:repeat(2,1fr)}.cs{grid-template-columns:22px 1fr 1fr}.cases{columns:1}}
+.cust{margin:12px 0 6px;padding:10px 12px;border:1px dashed #c4b5fd;border-radius:10px;background:#faf5ff}
+.cust-h{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+.cust-h small{color:#6b7280;font-weight:400}
+.cu{padding:8px 0;border-top:1px solid #ede9fe}
+.cu:first-of-type{border-top:0}
+.cu-r{display:flex;gap:8px;align-items:center}
+.cu-r input{flex:1}
+.cu-r button{border:1px solid #e5e7eb;background:#fff;border-radius:6px;cursor:pointer;padding:3px 8px}
+.cu label,.cs-more label{display:block;margin-top:6px;font-size:12.5px;font-weight:600}
+.cu label small,.cs-more label small{font-weight:400;color:#6b7280}
+.cu textarea,.cs-more textarea{display:block;width:100%;box-sizing:border-box;margin-top:3px;font:12px/1.45 ui-monospace,Menlo,monospace;padding:6px 8px;border:1px solid #d1d5db;border-radius:8px}
+.cust select[data-u-add]{margin-top:8px}
+.cs-more{margin:0 0 8px 28px;padding:8px 12px;background:#f9fafb;border-radius:8px;border:1px solid #eef0f3}
+.cs .x button.on{background:#ede9fe;border-color:#c4b5fd}
