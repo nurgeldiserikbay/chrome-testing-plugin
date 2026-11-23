@@ -207,7 +207,7 @@ async function retroTest(tabId, sec) {
   const { qa_tests = [] } = await chrome.storage.local.get('qa_tests');
   const t = {
     id: 't' + Date.now().toString(36), name: `Из последних действий · ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
-    startUrl, steps, created: Date.now(), updated: Date.now(), viewport: null, fromBuffer: { sec, skipped },
+    startUrl, endUrl: acts[acts.length - 1].page || '', steps, created: Date.now(), updated: Date.now(), viewport: null, fromBuffer: { sec, skipped },
   };
   qa_tests.push(t);
   await chrome.storage.local.set({ qa_tests });

@@ -189,7 +189,7 @@ async function recSave(tabId, name) {
   if (!r) return { ok: false, error: 'Запись не идёт' };
   if (!r.steps.length) return { ok: false, error: 'В сценарии нет шагов' };
   const { qa_tests = [] } = await chrome.storage.local.get('qa_tests');
-  const t = { id: 't' + Date.now().toString(36), name: name || 'Сценарий ' + (qa_tests.length + 1), startUrl: r.startUrl, steps: r.steps, created: Date.now(), updated: Date.now(), viewport: r.viewport };
+  const t = { id: 't' + Date.now().toString(36), name: name || 'Сценарий ' + (qa_tests.length + 1), startUrl: r.startUrl, endUrl: r.lastUrl || '', steps: r.steps, created: Date.now(), updated: Date.now(), viewport: r.viewport };
   qa_tests.push(t);
   await chrome.storage.local.set({ qa_tests });
   delete REC[tabId];
@@ -315,7 +315,31 @@ async function qaRunStep(step, timeout) {
 
 let RUN = null;
 const progress = () => chrome.runtime.sendMessage({ type: 'qa-test-progress', run: RUN }).catch(() => {});
+// Сценарий может вызывать другие сценарии (шаг «▶ Выполнить сценарий»).
+// Перед прогоном разворачиваем вызовы в плоский список: переход на начальную
+// страницу вызываемого сценария + его шаги. top — номер шага верхнего уровня.
+function flattenTest(t, all, stack = [], depth = 0, top = null) {
+  const out = [];
+  t.steps.forEach((s, i) => {
+    const ti = top == null ? i : top;
+    if (s.type !== 'call') { out.push({ ...s, depth, top: ti }); return; }
+    if (s.off) { out.push({ ...s, depth, top: ti }); return; }
+    const sub = all.find((x) => x.id === s.sid);
+    const name = sub ? sub.name : s.name || '?';
+    if (!sub) { out.push({ type: 'call', name, depth, top: ti, err: `Сценарий «${name}» удалён` }); return; }
+    if (stack.includes(sub.id) || sub.id === t.id) { out.push({ type: 'call', name, depth, top: ti, err: `Сценарий «${name}» вызывает сам себя по кругу` }); return; }
+    out.push({ type: 'call', name, url: sub.startUrl, depth, top: ti });
+    out.push(...flattenTest(sub, all, [...stack, t.id], depth + 1, ti).map((x) => ({ ...x, via: x.via || name })));
+  });
+  return out;
+}
+const runLabel = (s) => ({ type: s.type, desc: s.desc, url: s.url, value: s.secret ? '' : s.value, key: s.key, secret: s.secret, name: s.name, depth: s.depth || 0 });
 async function getTests() { return (await chrome.storage.local.get('qa_tests')).qa_tests || []; }
+// загрузилась ли страница на самом деле (а не страница ошибки Chrome)
+async function pageError(tabId) {
+  try { await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, func: () => 1 }); return ''; }
+  catch (e) { return /error page/i.test(e.message) ? 'Страница не открылась (ошибка загрузки: сайт недоступен или нет сети)' : ''; }
+}
 async function runTests(ids, opts = {}) {
   if (RUN && RUN.status === 'running') return { ok: false, error: 'Прогон уже идёт' };
   const all = await getTests();
@@ -324,7 +348,8 @@ async function runTests(ids, opts = {}) {
   const { qa_test_opts: to = {} } = await chrome.storage.local.get('qa_test_opts');
   const failOnErrors = to.failOnErrors !== false;
   const stepTimeout = (+to.timeout || 10) * 1000;
-  RUN = { id: 'r' + Date.now().toString(36), ts: Date.now(), status: 'running', results: list.map((t) => ({ sid: t.id, name: t.name, status: 'queued', steps: t.steps.map((s) => ({ status: 'queued' })), errors: [] })) };
+  const flat = list.map((t) => flattenTest(t, all));
+  RUN = { id: 'r' + Date.now().toString(36), ts: Date.now(), status: 'running', results: list.map((t, k) => ({ sid: t.id, name: t.name, status: 'queued', steps: flat[k].map((s) => ({ status: 'queued', s: runLabel(s) })), errors: [] })) };
   progress();
   const win = await chrome.windows.getLastFocused().catch(() => null);
   const tab = await chrome.tabs.create({ url: 'about:blank', active: true, windowId: win ? win.id : undefined });
@@ -332,7 +357,7 @@ async function runTests(ids, opts = {}) {
   try {
     for (let k = 0; k < list.length; k++) {
       if (RUN.stop) break;
-      await runOne(list[k], RUN.results[k], tab.id, { failOnErrors, stepTimeout });
+      await runOne({ ...list[k], steps: flat[k] }, RUN.results[k], tab.id, { failOnErrors, stepTimeout });
       progress();
     }
   } finally {
@@ -349,7 +374,7 @@ async function runTests(ids, opts = {}) {
     await chrome.storage.local.set({ qa_test_runs });
     // результат — в сценарий, чтобы видеть статус в списке
     const tests = await getTests();
-    RUN.results.forEach((r) => { const t = tests.find((x) => x.id === r.sid); if (t) t.last = { status: r.status, ts: RUN.ts, ms: r.ms, failedStep: r.failedStep }; });
+    RUN.results.forEach((r) => { const t = tests.find((x) => x.id === r.sid); if (t) t.last = { status: r.status, ts: RUN.ts, ms: r.ms, failedStep: r.failedStep, failedIn: r.failedIn }; });
     await chrome.storage.local.set({ qa_tests: tests });
     progress();
     try { await chrome.tabs.remove(tab.id); } catch (_) {}
@@ -363,9 +388,13 @@ async function runOne(t, res, tabId, { failOnErrors, stepTimeout }) {
   res.start = Date.now();
   progress();
   delete buffers[tabId];
-  await chrome.tabs.update(tabId, { url: t.startUrl });
-  await waitTabLoaded(tabId);
-  await sleepMs(300);
+  // если сценарий начинается с другого сценария — тот сам откроет свою страницу
+  const first = t.steps.find((s) => !s.off);
+  if (!(first && first.type === 'call')) {
+    await chrome.tabs.update(tabId, { url: t.startUrl });
+    await waitTabLoaded(tabId);
+    await sleepMs(300);
+  }
   const t0 = Date.now();
   let failed = false;
   for (let i = 0; i < t.steps.length; i++) {
@@ -376,17 +405,28 @@ async function runOne(t, res, tabId, { failOnErrors, stepTimeout }) {
     progress();
     const s0 = Date.now();
     let r;
-    if (step.type === 'goto') {
+    if (step.type === 'call') {
+      if (step.err) r = { ok: false, error: step.err };
+      else if (step.url) {
+        await chrome.tabs.update(tabId, { url: step.url });
+        r = { ok: await waitTabLoaded(tabId) };
+        if (!r.ok) r.error = 'Страница не загрузилась';
+        else { const pe = await pageError(tabId); if (pe) r = { ok: false, error: pe }; }
+        await sleepMs(300);
+      } else r = { ok: true };
+    } else if (step.type === 'goto') {
       await chrome.tabs.update(tabId, { url: step.url });
       r = { ok: await waitTabLoaded(tabId) };
       if (!r.ok) r.error = 'Страница не загрузилась';
+      else { const pe = await pageError(tabId); if (pe) r = { ok: false, error: pe }; }
     } else {
       try {
         const [x] = await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, func: qaRunStep, args: [step, step.timeout ? step.timeout * 1000 : stepTimeout] });
         r = x && x.result ? x.result : { ok: false, error: 'Страница не ответила' };
       } catch (e) {
         // шаг вызвал переход на другую страницу — скрипт выгружен, это нормально
-        r = /removed|closed|navigat|unload|No frame|Frame with ID/i.test(e.message) ? { ok: true } : { ok: false, error: e.message };
+        r = /error page/i.test(e.message) ? { ok: false, error: 'Страница не открылась (ошибка загрузки: сайт недоступен или нет сети)' }
+          : /removed|closed|navigat|unload|No frame|Frame with ID/i.test(e.message) && !/^assert/.test(step.type) ? { ok: true } : { ok: false, error: e.message };
       }
       await waitTabLoaded(tabId, 15000);
       await sleepMs(step.type === 'click' || step.type === 'press' ? 350 : 80);
@@ -396,7 +436,8 @@ async function runOne(t, res, tabId, { failOnErrors, stepTimeout }) {
     if (!r.ok) {
       failed = true;
       sr.error = r.error;
-      res.failedStep = i + 1;
+      res.failedStep = (step.top != null ? step.top : i) + 1;
+      if (step.via || step.type === 'call') res.failedIn = step.type === 'call' ? step.name : step.via;
       try {
         const tb = await chrome.tabs.get(tabId);
         const shot = await chrome.tabs.captureVisibleTab(tb.windowId, { format: 'jpeg', quality: 75 });

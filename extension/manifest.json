@@ -3,7 +3,7 @@
   "name": "QA Bug Recorder",
   "short_name": "QA Bug",
   "description": "__MSG_desc__",
-  "version": "2.3.3",
+  "version": "2.4.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "tabs",

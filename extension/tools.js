@@ -32,7 +32,7 @@ window.addEventListener('hashchange', showTab);
 showTab();
 
 // ================= 🤖 автотесты =================
-const STEP_RU = { click: 'Клик', fill: 'Ввод', select: 'Выбор', check: 'Отметка', press: 'Клавиша', goto: 'Переход', assertVisible: '✓ Виден', assertText: '✓ Текст', assertValue: '✓ Значение', assertUrl: '✓ Адрес', assertHidden: '✓ Скрыт' };
+const STEP_RU = { click: 'Клик', fill: 'Ввод', select: 'Выбор', check: 'Отметка', press: 'Клавиша', goto: 'Переход', assertVisible: '✓ Виден', assertText: '✓ Текст', assertValue: '✓ Значение', assertUrl: '✓ Адрес', assertHidden: '✓ Скрыт', call: '▶ Сценарий' };
 const EDITABLE = { fill: 'value', select: 'value', assertText: 'value', assertValue: 'value', assertUrl: 'value', goto: 'url' };
 let tests = [], runs = [], RUN = null, openIds = new Set(), shownRun = null;
 const openParam = params.get('open');
@@ -64,9 +64,35 @@ function lastBadge(t) {
   if (!t.last) return '<span class="badge b-none">не запускался</span>';
   return t.last.status === 'passed'
     ? `<span class="badge b-passed" title="${fmtDate(t.last.ts)}">✓ прошёл · ${fmtMs(t.last.ms)}</span>`
-    : `<span class="badge b-failed" title="${fmtDate(t.last.ts)}">✗ упал${t.last.failedStep ? ' на шаге ' + t.last.failedStep : ''}</span>`;
+    : `<span class="badge b-failed" title="${fmtDate(t.last.ts)}">✗ упал${t.last.failedStep ? ' на шаге ' + t.last.failedStep : ''}${t.last.failedIn ? ` (в «${esc(t.last.failedIn)}»)` : ''}</span>`;
 }
+// ---------- связи между сценариями ----------
+const testById = (id) => tests.find((x) => x.id === id);
+const callName = (s) => { const x = testById(s.sid); return x ? x.name : s.name || '?'; };
+// вызывает ли сценарий a (через любые вложенные) сценарий b
+function calls(a, bId, seen = new Set()) {
+  if (!a || seen.has(a.id)) return false;
+  seen.add(a.id);
+  return a.steps.some((s) => s.type === 'call' && (s.sid === bId || calls(testById(s.sid), bId, seen)));
+}
+const pathKey = (u) => { try { const x = new URL(u); return x.origin + x.pathname.replace(/\/+$/, ''); } catch (_) { return ''; } };
+function endOf(t) {
+  if (t.endUrl) return t.endUrl;
+  const g = [...t.steps].reverse().find((s) => s.type === 'goto' && !s.off);
+  return g ? g.url : '';
+}
+// сценарии, которые заканчиваются там, где начинается t — их можно подключить как начало
+function startCandidates(t) {
+  const first = t.steps.find((s) => !s.off);
+  if (t.noSuggest || (first && first.type === 'call')) return [];
+  const k = pathKey(t.startUrl);
+  if (!k) return [];
+  return tests.filter((x) => x.id !== t.id && !calls(x, t.id) && pathKey(endOf(x)) === k && pathKey(x.startUrl) !== k);
+}
+const callTargets = (t) => tests.filter((x) => x.id !== t.id && !calls(x, t.id));
+const usedBy = (t) => tests.filter((x) => x.id !== t.id && x.steps.some((s) => s.type === 'call' && s.sid === t.id));
 function stepDesc(s) {
+  if (s.type === 'call') return `«${callName(s)}»`;
   if (s.type === 'goto') return '';
   if (s.type === 'press') return `${s.key} в ${s.desc || ''}`;
   if (s.type === 'check') return `${s.desc || ''} → ${s.value ? 'включить' : 'выключить'}`;
@@ -87,12 +113,13 @@ function renderTests() {
     ${openIds.has(t.id) && t.fromBuffer && t.id === openParam ? `<div class="fresh">🤖 Сценарий собран из ваших действий за последние ${t.fromBuffer.sec < 60 ? t.fromBuffer.sec + ' с' : t.fromBuffer.sec / 60 + ' мин'}. Проверьте начальную страницу, удалите лишние шаги (✕) и добавьте проверки ниже — без них автотест только повторяет клики.${t.fromBuffer.skipped ? ` Пропущено действий: ${t.fromBuffer.skipped} (загрузка файлов или записанные до обновления расширения).` : ''}</div>` : ''}
     ${openIds.has(t.id) ? `<div class="steps">
       <label style="margin:0 0 8px">Название<input class="name-in" value="${esc(t.name)}"></label>
-      <div class="st-r"><span class="i">0</span><span class="k">Открыть</span><span class="d" title="${esc(t.startUrl)}">${esc(t.startUrl)}</span><input data-start value="${esc(t.startUrl)}"><span></span></div>
+      ${startCandidates(t).map((x) => `<div class="link-sug">🔗 Этот сценарий начинается на <b>${esc(pathKey(t.startUrl).replace(/^https?:\/\//, ''))}</b>, а сценарий <b>«${esc(x.name)}»</b> заканчивается там же. Подключить его как начало — тогда страница откроется в нужном состоянии.<span><button data-link="${x.id}">▶ Подключить как начало</button><button data-nolink>Не нужно</button></span></div>`).join('')}
+      <div class="st-r ${(t.steps.find((s) => !s.off) || {}).type === 'call' ? 'off' : ''}"><span class="i">0</span><span class="k">Открыть</span><span class="d" title="${esc(t.startUrl)}">${esc(t.startUrl)}${(t.steps.find((s) => !s.off) || {}).type === 'call' ? '<br><span class="loc">не открывается: сначала выполняется сценарий из шага 1</span>' : ''}</span><input data-start value="${esc(t.startUrl)}"><span></span></div>
       ${t.steps.map((s, i) => `<div class="st-r ${s.off ? 'off' : ''}" data-i="${i}"><span class="i">${i + 1}</span><span class="k ${/^assert/.test(s.type) ? 'as' : ''}">${STEP_RU[s.type] || s.type}</span>
-        <span class="d" title="${esc((s.loc || []).map((l) => l.css || 'текст: ' + l.text).join('\n'))}">${esc(stepDesc(s))}${s.loc && s.loc[0] ? `<br><span class="loc">${esc(s.loc[0].css || 'текст «' + s.loc[0].text + '»')}</span>` : ''}</span>
+        <span class="d" title="${esc((s.loc || []).map((l) => l.css || 'текст: ' + l.text).join('\n'))}">${s.type === 'call' && testById(s.sid) ? `<a href="#" data-goto="${s.sid}">${esc(stepDesc(s))}</a> <span class="loc">${plural(testById(s.sid).steps.length, 'шаг', 'шага', 'шагов')}</span>` : s.type === 'call' ? `<span style="color:#b91c1c">${esc(stepDesc(s))} — сценарий удалён</span>` : esc(stepDesc(s))}${s.loc && s.loc[0] ? `<br><span class="loc">${esc(s.loc[0].css || 'текст «' + s.loc[0].text + '»')}</span>` : ''}</span>
         ${EDITABLE[s.type] ? `<input data-v="${EDITABLE[s.type]}" type="${s.secret ? 'password' : 'text'}" value="${esc(s[EDITABLE[s.type]])}">` : '<span></span>'}
         <span class="x"><button data-s="up" title="Выше">↑</button><button data-s="down" title="Ниже">↓</button><button data-s="off" title="${s.off ? 'Включить шаг' : 'Пропускать шаг'}">${s.off ? '▶' : '⏸'}</button><button data-s="del" title="Удалить шаг">✕</button></span></div>`).join('')}
-      <div class="add-as"><span>Добавить в конец:</span><button data-add="assertText">+ ✓ На странице есть текст</button><button data-add="assertUrl">+ ✓ Адрес содержит</button></div>
+      <div class="add-as"><span>Добавить в конец:</span><button data-add="assertText">+ ✓ На странице есть текст</button><button data-add="assertUrl">+ ✓ Адрес содержит</button>${callTargets(t).length ? `<select data-call><option value="">+ ▶ Выполнить сценарий…</option>${callTargets(t).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><select data-call-start><option value="">▶ Начать со сценария…</option>${callTargets(t).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>` : ''}</div>
     </div>` : ''}
   </div>`).join('');
 }
@@ -103,6 +130,11 @@ $('#tests-list').addEventListener('click', async (e) => {
   const a = e.target.closest('[data-a]');
   const sb = e.target.closest('[data-s]');
   const ad = e.target.closest('[data-add]');
+  const lk = e.target.closest('[data-link]');
+  const gt = e.target.closest('[data-goto]');
+  if (gt) { e.preventDefault(); openIds.add(gt.dataset.goto); renderTests(); const el = document.querySelector(`.tc[data-id="${gt.dataset.goto}"]`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (lk) { const x = testById(lk.dataset.link); t.steps.unshift({ type: 'call', sid: x.id, name: x.name }); t.updated = Date.now(); await saveTests(); return renderTests(); }
+  if (e.target.closest('[data-nolink]')) { t.noSuggest = true; await saveTests(); return renderTests(); }
   if (ad) {
     const type = ad.dataset.add;
     t.steps.push(type === 'assertUrl' ? { type, value: '', desc: 'адрес содержит' } : { type, value: '', desc: 'на странице есть текст' });
@@ -119,7 +151,7 @@ $('#tests-list').addEventListener('click', async (e) => {
     if (act === 'edit') { openIds.has(t.id) ? openIds.delete(t.id) : openIds.add(t.id); return renderTests(); }
     if (act === 'dup') { tests.splice(tests.indexOf(t) + 1, 0, { ...JSON.parse(JSON.stringify(t)), id: 't' + Date.now().toString(36), name: t.name + ' (копия)', last: null }); await saveTests(); return renderTests(); }
     if (act === 'pw') return download(new Blob([toPlaywright(t)], { type: 'text/plain' }), slug(t.name) + '.spec.ts');
-    if (act === 'del') { if (!confirm(`Удалить сценарий «${t.name}»?`)) return; tests = tests.filter((x) => x !== t); await saveTests(); return renderTests(); }
+    if (act === 'del') { const u = usedBy(t); if (!confirm(`Удалить сценарий «${t.name}»?` + (u.length ? `\n\nЕго выполняют другие сценарии: ${u.map((x) => '«' + x.name + '»').join(', ')} — они начнут падать на этом шаге.` : ''))) return; tests = tests.filter((x) => x !== t); await saveTests(); return renderTests(); }
   }
   if (sb) {
     const i = +sb.closest('.st-r').dataset.i;
@@ -137,8 +169,15 @@ $('#tests-list').addEventListener('change', async (e) => {
   const tc = e.target.closest('.tc');
   if (!tc) return;
   const t = tests.find((x) => x.id === tc.dataset.id);
+  if (e.target.matches('[data-call],[data-call-start]')) {
+    const x = testById(e.target.value);
+    if (x) { const st = { type: 'call', sid: x.id, name: x.name }; e.target.matches('[data-call-start]') ? t.steps.unshift(st) : t.steps.push(st); }
+    t.updated = Date.now();
+    await saveTests();
+    return renderTests();
+  }
   if (e.target.classList.contains('sel')) t.sel = e.target.checked;
-  else if (e.target.classList.contains('name-in')) t.name = e.target.value.trim() || t.name;
+  else if (e.target.classList.contains('name-in')) { t.name = e.target.value.trim() || t.name; tests.forEach((x) => x.steps.forEach((s) => { if (s.type === 'call' && s.sid === t.id) s.name = t.name; })); }
   else if (e.target.hasAttribute('data-start')) t.startUrl = e.target.value.trim() || t.startUrl;
   else if (e.target.dataset.v) t.steps[+e.target.closest('.st-r').dataset.i][e.target.dataset.v] = e.target.value;
   t.updated = Date.now();
@@ -184,10 +223,11 @@ async function runHTML(r, forExport) {
     const t = tl.find((x) => x.id === res.sid);
     const steps = [];
     for (let i = 0; i < res.steps.length; i++) {
-      const sr = res.steps[i], s = t && t.steps[i];
+      const sr = res.steps[i], s = sr.s || (t && t.steps[i]);
+      const pad = s && s.depth ? ` style="margin-left:${s.depth * 18}px"` : '';
       let img = '';
       if (sr.shotKey) { const d = await QADB.get('blobs', sr.shotKey).catch(() => null); if (d) img = `<img src="${d}" alt="Скриншот при падении">`; }
-      steps.push(`<div class="rs ${sr.status}"><span class="ic">${ICON[sr.status] || ''}</span><span>${i + 1}. ${s ? `${STEP_RU[s.type] || s.type}${stepDesc(s) || s.url ? ': ' + esc(stepDesc(s) || s.url) : ''}${EDITABLE[s.type] && !s.secret && s.type !== 'goto' && !(stepDesc(s) || '').includes(String(s[EDITABLE[s.type]])) ? ' — «' + esc(String(s[EDITABLE[s.type]]).slice(0, 80)) + '»' : ''}` : ''}${sr.ms != null && sr.status !== 'queued' ? ` <span style="color:#9ca3af">${fmtMs(sr.ms)}</span>` : ''}${sr.error ? `<span class="err">${esc(sr.error)}${sr.url ? '<br>Страница: ' + esc(sr.url) : ''}</span>` : ''}</span></div>${img}`);
+      steps.push(`<div class="rs ${sr.status}${s && s.type === 'call' ? ' call' : ''}"${pad}><span class="ic">${ICON[sr.status] || ''}</span><span>${sr.s ? '' : i + 1 + '. '}${s ? `${STEP_RU[s.type] || s.type}${s.type === 'call' ? ' «' + esc(s.name || callName(s)) + '»' : stepDesc(s) || s.url ? ': ' + esc(stepDesc(s) || s.url) : ''}${EDITABLE[s.type] && !s.secret && s.type !== 'goto' && !(stepDesc(s) || '').includes(String(s[EDITABLE[s.type]])) ? ' — «' + esc(String(s[EDITABLE[s.type]]).slice(0, 80)) + '»' : ''}` : ''}${sr.ms != null && sr.status !== 'queued' ? ` <span style="color:#9ca3af">${fmtMs(sr.ms)}</span>` : ''}${sr.error ? `<span class="err">${esc(sr.error)}${sr.url ? '<br>Страница: ' + esc(sr.url) : ''}</span>` : ''}</span></div>${img}`);
     }
     const open = forExport || res.status === 'failed' || res.status === 'running';
     parts.push(`<div class="rr"><details ${open ? 'open' : ''}><summary class="rr-h"><span class="badge b-${res.status}">${{ passed: '✓ прошёл', failed: '✗ упал', running: '⏳ идёт', queued: 'в очереди', stopped: 'остановлен' }[res.status] || res.status}</span><b>${esc(res.name)}</b><span style="color:#6b7280">${fmtMs(res.ms)}</span></summary>
@@ -239,10 +279,11 @@ function pwLoc(s) {
   if (m) return `page.getByTestId(${JSON.stringify(m[1])})`;
   return `page.locator(${JSON.stringify(l.css)}).first()`;
 }
-function toPlaywright(t) {
-  const L = [];
+const pwFn = (x) => 'scenario_' + (slug(x.name).replace(/[^a-z0-9]+/gi, '_') || 'x') + '_' + x.id.slice(-4);
+function pwSteps(t, L, ind = '  ') {
   t.steps.forEach((s, i) => {
     if (s.off) return;
+    if (s.type === 'call') { const x = testById(s.sid); L.push(`${ind}// ${i + 1}. Сценарий «${x ? x.name : s.name}»`, x ? `${ind}await ${pwFn(x)}(page);` : `${ind}throw new Error(${JSON.stringify('Сценарий «' + s.name + '» удалён')});`); return; }
     const loc = pwLoc(s);
     const c = `  // ${i + 1}. ${STEP_RU[s.type] || s.type}${s.desc ? ': ' + s.desc.replace(/\n/g, ' ') : ''}`;
     L.push(c);
@@ -257,18 +298,27 @@ function toPlaywright(t) {
     else if (s.type === 'assertValue') L.push(`  await expect(${loc}).toHaveValue(${JSON.stringify(s.value)});`);
     else if (s.type === 'assertUrl') L.push(`  await expect(page).toHaveURL(new RegExp(${JSON.stringify(s.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))}));`);
   });
+  if (ind !== '  ') for (let k = 0; k < L.length; k++) L[k] = L[k].replace(/^  /, ind);
+}
+function toPlaywright(t) {
+  const L = [];
+  pwSteps(t, L);
+  // вызываемые сценарии — функциями в этом же файле
+  const used = [], walk = (x) => x.steps.forEach((s) => { const y = s.type === 'call' && !s.off && testById(s.sid); if (y && !used.includes(y) && y.id !== t.id) { used.push(y); walk(y); } });
+  walk(t);
+  const helpers = used.map((x) => { const H = []; pwSteps(x, H); return `// Сценарий «${x.name}» — подключается в других сценариях\nasync function ${pwFn(x)}(page: Page) {\n  await page.goto(${JSON.stringify(x.startUrl)});\n${H.join('\n')}\n}\n`; }).join('\n');
+  const startsWithCall = (t.steps.find((s) => !s.off) || {}).type === 'call';
   return `// Сценарий «${t.name}» — записан в QA Bug Recorder ${fmtDate(t.created || Date.now())}
 // Запуск: npx playwright test ${slug(t.name)}.spec.ts
-import { test, expect } from '@playwright/test';
-
+import { test, expect${used.length ? ', type Page' : ''} } from '@playwright/test';
+${helpers ? '\n' + helpers : ''}
 test(${JSON.stringify(t.name)}, async ({ page }) => {
   // ошибки консоли считаем падением теста — как в расширении
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
-  await page.goto(${JSON.stringify(t.startUrl)});
-${L.join('\n')}
+${startsWithCall ? '' : `  await page.goto(${JSON.stringify(t.startUrl)});\n`}${L.join('\n')}
 
   expect(errors, 'Ошибки в консоли во время сценария').toEqual([]);
 });
@@ -288,7 +338,10 @@ $('#imp-json').onchange = async (e) => {
   if (!f) return;
   try {
     const j = JSON.parse(await f.text());
-    const add = (j.tests || []).map((t) => ({ ...t, id: 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5) }));
+    const ids = {};
+    const add = (j.tests || []).map((t) => { const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); ids[t.id] = id; return { ...t, id }; });
+    // ссылки «▶ Выполнить сценарий» — на новые id; если вызываемого нет в файле, ищем по названию среди своих
+    add.forEach((t) => t.steps.forEach((s) => { if (s.type === 'call') { if (ids[s.sid]) s.sid = ids[s.sid]; else { const m = tests.find((x) => x.name === s.name); if (m) s.sid = m.id; } } }));
     if (!add.length) throw new Error('в файле нет сценариев');
     tests = tests.concat(add);
     await saveTests();
