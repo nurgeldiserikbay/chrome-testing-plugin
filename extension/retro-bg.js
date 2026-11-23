@@ -109,7 +109,9 @@ async function actShot(tab, label, url) {
 }
 
 // ---------- 🐞 «Нашёл баг»: пункт «Последние N секунд» ----------
-async function addRetro(tabId, sec) {
+const ALL_PARTS = { replay: true, shots: true, steps: true, console: true, network: true, events: true };
+async function addRetro(tabId, sec, parts) {
+  parts = { ...ALL_PARTS, ...(parts || (await getSettings()).retroParts || {}) };
   if (!S || !S.active || S.tabId !== tabId) return { ok: false, error: 'Фиксация бага не активна' };
   const to = Date.now();
   const from = to - sec * 1000;
@@ -117,12 +119,12 @@ async function addRetro(tabId, sec) {
   let tab = null;
   try { tab = await chrome.tabs.get(tabId); } catch (_) {}
   // повтор страницы
-  const ev = await rrEvents(tabId, from, to);
+  const ev = parts.replay ? await rrEvents(tabId, from, to) : [];
   let replayKey = null;
   if (ev.length > 2) { replayKey = `${S.id}_replay_${n}`; await QADB.put('blobs', replayKey, ev); }
   // скриншоты после действий + снимок «сейчас»
   const shots = [];
-  const src = (getBuf(tabId).shots || []).filter((x) => x.ts >= from - 1500);
+  const src = parts.shots ? (getBuf(tabId).shots || []).filter((x) => x.ts >= from - 1500) : [];
   for (const [i, x] of src.entries()) {
     const d = await QADB.get('blobs', x.key).catch(() => null);
     if (!d) continue;
@@ -140,16 +142,16 @@ async function addRetro(tabId, sec) {
       shots.push({ ts: Date.now(), key, label: 'Момент, когда нажали «Нашёл баг»', url: tab.url, now: true });
     } catch (_) {}
   }
-  S.videos.push({ n, retro: true, start: from, end: to, sec, replayKey, shots, url: tab && tab.url, title: tab && tab.title, cond: emuLabel(tabId) });
+  S.videos.push({ n, retro: true, parts, start: from, end: to, sec, replayKey, shots, url: tab && tab.url, title: tab && tab.title, cond: emuLabel(tabId) });
   await saveSessionNow();
   pushOverlayState();
-  const parts = [replayKey ? 'повтор экрана' : null, shots.length ? `скриншотов после действий: ${shots.length}` : null, 'действия, запросы и консоль'].filter(Boolean);
-  toast(`⏪ Сохранено за последние ${fmtSec(sec)}: ${parts.join(', ')}. Отметьте проблему (🎯 ➚ ▭ 💬) и нажмите «✓ Готово».`);
+  const what = [replayKey ? 'повтор экрана' : null, shots.length ? `скриншотов после действий: ${shots.length}` : null, parts.steps ? 'шаги' : null, parts.console ? 'консоль' : null, parts.network ? 'запросы' : null, parts.events ? 'события страницы' : null].filter(Boolean);
+  toast(`⏪ Сохранено за последние ${fmtSec(sec)}: ${what.join(', ')}. Отметьте проблему (🎯 ➚ ▭ 💬) и нажмите «✓ Готово».`);
   return { ok: true, n, replay: !!replayKey, shots: shots.length };
 }
 const fmtSec = (s) => (s < 60 ? `${s} с` : `${Math.round(s / 60)} мин`);
 
-async function foundBug(tabId, sec) {
+async function foundBug(tabId, sec, parts) {
   await ready;
   const st = await getSettings();
   sec = +sec || st.retroSec || RETRO_DEF;
@@ -157,7 +159,7 @@ async function foundBug(tabId, sec) {
     const r = await startBug(tabId, { retroSec: sec });
     if (r && r.ok === false) return r;
   }
-  const r = await addRetro(tabId, sec);
+  const r = await addRetro(tabId, sec, parts);
   if (r.ok === false) return r;
   return { ...status(), retro: r };
 }
@@ -240,8 +242,8 @@ Object.assign(handlers, {
     return {};
   },
   'act-shot': async (m, sender) => { if (sender.tab && !sender.frameId) actShot(sender.tab, m.label, m.url); return {}; },
-  'found-bug': async (m) => foundBug(m.tabId, m.sec),
-  'retro-add': async (m) => { await ready; return S && S.active ? addRetro(S.tabId, +m.sec || RETRO_DEF) : { ok: false, error: 'Фиксация бага не активна' }; },
+  'found-bug': async (m) => foundBug(m.tabId, m.sec, m.parts),
+  'retro-add': async (m) => { await ready; return S && S.active ? addRetro(S.tabId, +m.sec || RETRO_DEF, m.parts) : { ok: false, error: 'Фиксация бага не активна' }; },
   'retro-test': async (m) => retroTest(m.tabId, m.sec),
   'retro-info': async (m) => {
     await ready; await rrReady;

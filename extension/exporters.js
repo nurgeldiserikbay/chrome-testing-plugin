@@ -344,12 +344,14 @@ ${htmlStorage(m.storage)}
       if (it.url) L.push(`Страница: ${it.url}`);
       if (it.cond) L.push(`Условия: ${it.cond}`);
       sevLine();
+      if (it.retro && (it.steps || []).length) { L.push('', 'Шаги воспроизведения:'); it.steps.slice(-40).forEach((x, k) => L.push(`${k + 1}. ${x.text}`)); }
+      if (it.retro) { const ce = it.console.filter((c) => c.level === 'error' || c.level === 'warn'); if (ce.length) { L.push('', 'Консоль:'); ce.slice(-10).forEach((c) => L.push(`- ${fmtRel(c.rel)} ${c.text}`)); } }
       const bad = it.timeline.filter((e) => e.level === 'error' || e.level === 'warn');
       const reqBad = it.requests.filter(isErr);
       if (reqBad.length) { L.push('', 'Запросы с ошибкой:'); reqBad.forEach((e) => L.push(`- ${e.method} ${statusLabel(e)} ${e.url}`)); }
       if (bad.length) { L.push('', 'Что пошло не так:'); bad.slice(0, 10).forEach((e) => L.push(`- ${fmtRel(e.rel)} ${e.text}`)); }
       const acts = it.timeline.filter((e) => e.cat === 'Действие' || e.cat === 'Переход');
-      if (acts.length) { L.push('', 'Действия:'); acts.slice(-10).forEach((e, i) => L.push(`${i + 1}. ${e.text}`)); }
+      if (acts.length && !(it.retro && (it.steps || []).length)) { L.push('', 'Действия:'); acts.slice(-10).forEach((e, i) => L.push(`${i + 1}. ${e.text}`)); }
     }
     if (it.link) L.push('', `Видео: ${it.link}`);
     if (it.ai) L.push('', ...aiLines(it.ai));
@@ -387,6 +389,7 @@ ${htmlStorage(m.storage)}
         </div>`;
       }
       const retroTop = it.retro ? `${it.replayN ? (media.__rr ? `<div class="rrp" data-f="${escH(it.replayFile)}"></div>` : `<p class="meta">⏪ Повтор экрана: файл <b>${escH(it.replayFile)}</b> прикладывается отдельно — откройте его в браузере.</p>`) : ''}
+        ${(it.steps || []).length ? `<h3>Шаги воспроизведения</h3><ol>${it.steps.map((x) => `<li>${escH(x.text)}</li>`).join('')}</ol>` : ''}
         ${(it.story || []).length ? `<h3>Скриншоты после действий</h3><div class="story">${it.story.map((x) => `<figure>${x.dataUrl ? `<img src="${x.dataUrl}" alt="">` : ''}<figcaption><b>${fmtRel(x.rel)}</b> ${escH(x.label)}</figcaption></figure>`).join('')}</div>` : ''}` : '';
       return `<div class="card item">${head}
         ${it.retro ? retroTop : media[it.file] ? `<video controls preload="metadata" src="${media[it.file]}"></video>` : it.link ? `<p>🎬 Видео в Google Drive: <a href="${escH(it.link)}">${escH(it.link)}</a></p>` : `<p class="meta">Видео: файл <b>${escH(it.file)}</b> (${fmtSize(it.size)}) прикладывается отдельно.</p>`}
@@ -429,6 +432,7 @@ ${htmlStorage(m.storage)}
       } else {
         if (it.retro) {
           if (it.replayN) md += `⏪ [Повтор экрана](${it.replayFile}) — откройте файл в браузере\n\n`;
+          if ((it.steps || []).length) md += '**Шаги воспроизведения**\n\n' + it.steps.map((x, k) => `${k + 1}. ${x.text}`).join('\n') + '\n\n';
           if ((it.story || []).length) md += '**Скриншоты после действий**\n\n' + it.story.map((x) => `${fmtRel(x.rel)} — ${x.label}\n\n![${mdCell(x.label, 80)}](${x.file})`).join('\n\n') + '\n\n';
         } else md += `🎬 [Видео](${it.link || it.file}) — ${fmtDur(it.durationMs)}, ${fmtSize(it.size)}\n\n`;
         if (it.timeline.length) md += '**Что происходило во время записи**\n\n' + mdTable(['Время', 'Тип', 'Событие'], it.timeline.map((e) => [fmtRel(e.rel), e.cat, (e.level === 'error' ? '🔴 ' : e.level === 'warn' ? '🟡 ' : '') + mdCell(e.text, 300)])) + '\n';
@@ -474,6 +478,7 @@ ${htmlStorage(m.storage)}
       } else {
         if (it.retro) {
           if (it.replayN) d.p(`⏪ Повтор экрана: файл «${it.replayFile.split('/').pop()}» прикладывается отдельно — откройте его в браузере.`);
+          if ((it.steps || []).length) { d.h('Шаги воспроизведения', 3); it.steps.forEach((x, k) => d.p(`${k + 1}. ${x.text}`)); }
           if ((it.story || []).length) { d.h('Скриншоты после действий', 3); it.story.forEach((x) => { d.p(`${fmtRel(x.rel)} — ${x.label}`, { run: { size: 18, color: '6B7280' } }); if (x.bytes && x.w) d.image(x.bytes, x.w, x.h); }); }
         } else d.p(it.link ? `🎬 Видео в Google Drive (${fmtDur(it.durationMs)}): ${it.link}` : `🎬 Видео: файл «${it.file.split('/').pop()}», ${fmtDur(it.durationMs)}, ${fmtSize(it.size)}. Прикладывается отдельным файлом.`);
         if (it.timeline.length) { d.h('Что происходило во время записи', 3); d.table([['Время', 'Тип', 'Событие'], ...it.timeline.map((e) => [{ text: fmtRel(e.rel), fill: lvlFill(e.level) }, { text: e.cat, fill: lvlFill(e.level) }, { text: e.text, fill: lvlFill(e.level) }])], { widths: [1000, 1500, W - 2500] }); }

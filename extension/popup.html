@@ -2,11 +2,24 @@
 <html lang="ru"><head><script src="i18n.js"></script><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
 <body>
 <header><img src="icons/32.png" alt=""><span>QA Bug Recorder</span></header>
-<div class="per" id="per" title="Сколько последних секунд взять в пункт или автотест"><span>⏪ За последние</span><button data-s="30">30 с</button><button data-s="60">1 мин</button><button data-s="120">2 мин</button><button data-s="300">5 мин</button><button data-s="600">10 мин</button><button data-s="900">15 мин</button><button data-s="1800">30 мин</button></div>
+<section id="pick" hidden>
+  <div class="pk-h"><button id="pk-back" class="link" title="Назад">←</button><b id="pk-title">🐞 За какой период сохранить?</b></div>
+  <p class="sub" id="pk-sub">Повтор экрана, скриншоты после действий, шаги, консоль, события страницы и запросы за это время станут пунктом отчёта — всё, что нужно разработчику или ИИ, чтобы понять и воспроизвести баг.</p>
+  <div class="per" id="per"><button data-s="30">30 с</button><button data-s="60">1 мин</button><button data-s="120">2 мин</button><button data-s="300">5 мин</button><button data-s="600">10 мин</button><button data-s="900">15 мин</button><button data-s="1800">30 мин</button></div>
+  <details class="parts" id="pk-parts"><summary>Что сохранить: <span id="pk-sum">всё</span></summary>
+    <label><input type="checkbox" data-p="replay" checked> ⏪ Повтор экрана</label>
+    <label><input type="checkbox" data-p="shots" checked> 📸 Скриншоты после действий</label>
+    <label><input type="checkbox" data-p="steps" checked> 👣 Шаги (клики, ввод, переходы)</label>
+    <label><input type="checkbox" data-p="console" checked> 🖥 Консоль</label>
+    <label><input type="checkbox" data-p="network" checked> 🌐 Запросы</label>
+    <label><input type="checkbox" data-p="events" checked> ⚡ События страницы и производительность</label>
+  </details>
+  <p class="hint" id="pk-hint"></p>
+</section>
 
 <section id="idle" hidden>
   <button id="found" class="big">🐞 Нашёл баг</button>
-  <p class="sub">Заранее ничего включать не нужно: расширение помнит последние минуты на этой вкладке — повтор экрана, скриншоты после действий, действия, запросы и ошибки. Заметили баг — нажмите, и всё за выбранный период станет пунктом отчёта.</p>
+  <p class="sub">Заранее ничего включать не нужно: расширение помнит последние минуты на этой вкладке. Заметили баг — нажмите и выберите, за какой период сохранить.</p>
   <div class="buf" id="buf"></div>
   <button id="start" class="sec2" title="Для длинной сессии: один отчёт на много багов">▶ Начать долгую проверку</button>
 
@@ -53,7 +66,7 @@
     <button id="voice">🎤 Голос</button>
     <button id="video">⏺ Записать видео</button>
   </div>
-  <button id="retro-add" class="sec2" title="Добавить в отчёт ещё один пункт: повтор экрана, скриншоты и данные за выбранный выше период">⏪ Сохранить последние <span class="pl">1 мин</span></button>
+  <button id="retro-add" class="sec2" title="Добавить в отчёт ещё один пункт: повтор экрана, скриншоты и данные за выбранный период">⏪ Сохранить последние…</button>
   <button id="finish" class="big green">✓ Завершить — открыть отчёт</button>
   <button id="cancel" class="link danger">Отменить проверку и удалить данные</button>
 </section>
@@ -61,7 +74,7 @@
 <section id="xtools">
   <div class="xh">Инструменты</div>
   <div id="rec-on" class="recon" hidden>● Идёт запись автотеста: <b id="rec-n">0</b> <button id="rec-cancel" class="link danger">Отменить</button></div>
-  <div class="tools one"><button id="rtest" title="Шаги автотеста из того, что вы уже сделали на этой вкладке за выбранный период">🤖 Автотест из последних действий · <span class="pl">1 мин</span></button></div>
+  <div class="tools one"><button id="rtest" title="Шаги автотеста из того, что вы уже сделали на этой вкладке за выбранный период">🤖 Автотест из последних действий…</button></div>
   <div class="tools two">
     <button id="rec" title="Запишите сценарий на этой странице: клики, ввод, проверки">🤖 Записать автотест</button>
     <button id="tests" title="Сценарии, прогон и результаты">▶ Автотесты</button>

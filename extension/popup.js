@@ -12,6 +12,7 @@ async function loadSettings() {
   const s = Object.assign({}, DEF, qa_settings);
   retroSec = s.retroSec || 60;
   memoryMin = s.memoryMin || 10;
+  if (s.retroParts) retroParts = { ...retroParts, ...s.retroParts };
   $('s-memoryMin').value = String(memoryMin);
   showPer();
   ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders', 'autoErrors', 'ownOnly', 'autoAudit', 'replay', 'actShots'].forEach((k) => {
@@ -43,14 +44,17 @@ async function save(e) {
       actShots: $('s-actShots').checked,
       retroSec,
       memoryMin: +$('s-memoryMin').value,
+      retroParts,
     },
   });
 }
 
 async function refresh() {
   st = await send({ type: 'status' });
-  $('idle').hidden = st.active;
-  $('active').hidden = !st.active;
+  const picking = !$('pick').hidden;
+  $('idle').hidden = picking || st.active;
+  $('active').hidden = picking || !st.active;
+  if (picking) { $('idle').dataset.was = st.active ? '' : '1'; $('active').dataset.was = st.active ? '1' : ''; }
   if (st.active) {
     $('timer').textContent = fmt(Date.now() - st.startTime);
     $('c-ann').textContent = st.annotations;
@@ -83,25 +87,65 @@ async function bufferInfo() {
   } catch (_) {}
 }
 
-// ⏪ период «за последние …»
+// ⏪ выбор периода: сначала «Нашёл баг», потом — за сколько сохранить
 const perLabel = (s) => (s < 60 ? `${s} с` : `${s / 60} мин`);
+let pickAction = null;
 function showPer() {
   if (retroSec > memoryMin * 60) retroSec = memoryMin * 60;
-  document.querySelectorAll('#per [data-s]').forEach((b) => { b.hidden = +b.dataset.s > memoryMin * 60 || (+b.dataset.s > 300 && +b.dataset.s !== memoryMin * 60); b.classList.toggle('on', +b.dataset.s === retroSec); });
+  document.querySelectorAll('#per [data-s]').forEach((b) => {
+    const v = +b.dataset.s;
+    b.hidden = v > memoryMin * 60 || (v > 300 && v !== memoryMin * 60);
+    b.classList.toggle('all', v === memoryMin * 60 && v > 300);
+    b.classList.toggle('on', v === retroSec);
+    if (v === memoryMin * 60 && v > 300) b.textContent = `Всё, что помню · ${perLabel(v)}`; else b.textContent = perLabel(v);
+  });
   document.querySelectorAll('.mm').forEach((x) => (x.textContent = memoryMin));
-  document.querySelectorAll('.pl').forEach((x) => (x.textContent = perLabel(retroSec)));
 }
-document.querySelectorAll('#per [data-s]').forEach((b) => (b.onclick = () => { retroSec = +b.dataset.s; showPer(); save(); }));
-
-$('found').onclick = async () => {
+const PARTS = ['replay', 'shots', 'steps', 'console', 'network', 'events'];
+let retroParts = Object.fromEntries(PARTS.map((k) => [k, true]));
+function showParts() {
+  document.querySelectorAll('#pk-parts [data-p]').forEach((c) => (c.checked = retroParts[c.dataset.p] !== false));
+  const off = PARTS.filter((k) => retroParts[k] === false).length;
+  $('pk-sum').textContent = !off ? 'всё' : `${PARTS.length - off} из ${PARTS.length}`;
+}
+document.querySelectorAll('#pk-parts [data-p]').forEach((c) => (c.onchange = () => {
+  retroParts[c.dataset.p] = c.checked;
+  if (!PARTS.some((k) => retroParts[k] !== false)) { retroParts[c.dataset.p] = true; c.checked = true; }
+  showParts(); save();
+}));
+function openPick(kind) {
   showErr('');
+  pickAction = kind;
+  $('pk-title').textContent = kind === 'test' ? '🤖 Из действий за какой период собрать автотест?' : '🐞 За какой период сохранить?';
+  $('pk-sub').textContent = kind === 'test'
+    ? 'Шаги автотеста соберутся из ваших кликов, ввода и переходов за это время. Потом можно удалить лишнее и добавить проверки.'
+    : 'Повтор экрана, скриншоты после действий, шаги, консоль, события страницы и запросы за это время станут пунктом отчёта — всё, что нужно разработчику или ИИ, чтобы понять и воспроизвести баг.';
+  $('pk-hint').textContent = `Расширение помнит последние ${memoryMin} мин — это меняется в настройках.`;
+  $('pk-parts').hidden = kind === 'test';
+  showParts();
+  showPer();
+  ['idle', 'active'].forEach((id) => { $(id).dataset.was = $(id).hidden ? '' : '1'; $(id).hidden = true; });
+  $('pick').hidden = false;
+}
+function closePick() {
+  $('pick').hidden = true;
+  ['idle', 'active'].forEach((id) => { if ($(id).dataset.was) $(id).hidden = false; });
+}
+$('pk-back').onclick = closePick;
+document.querySelectorAll('#per [data-s]').forEach((b) => (b.onclick = async () => {
+  retroSec = +b.dataset.s; showPer(); save();
+  document.querySelectorAll('#per button').forEach((x) => (x.disabled = true));
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  $('found').disabled = true;
-  const r = await send({ type: 'found-bug', tabId: tab.id, sec: retroSec });
-  $('found').disabled = false;
-  if (r && r.ok === false) { showErr(r.error); return; }
+  const r = pickAction === 'test' ? await send({ type: 'retro-test', tabId: tab.id, sec: retroSec })
+    : pickAction === 'add' ? await send({ type: 'retro-add', sec: retroSec, parts: retroParts })
+    : await send({ type: 'found-bug', tabId: tab.id, sec: retroSec, parts: retroParts });
+  document.querySelectorAll('#per button').forEach((x) => (x.disabled = false));
+  if (r && r.ok === false) { closePick(); showErr(r.error); return; }
   window.close();
-};
+}));
+$('found').onclick = () => openPick('found');
+$('retro-add').onclick = () => openPick('add');
+$('rtest').onclick = () => openPick('test');
 $('start').onclick = async () => {
   showErr('');
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -109,21 +153,7 @@ $('start').onclick = async () => {
   if (r && r.ok === false) { showErr(r.error); return; }
   window.close();
 };
-$('retro-add').onclick = async () => {
-  showErr('');
-  $('retro-add').disabled = true;
-  const r = await send({ type: 'retro-add', sec: retroSec });
-  $('retro-add').disabled = false;
-  if (r && r.ok === false) { showErr(r.error); return; }
-  window.close();
-};
-$('rtest').onclick = async () => {
-  showErr('');
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const r = await send({ type: 'retro-test', tabId: tab.id, sec: retroSec });
-  if (r && r.ok === false) { showErr(r.error); return; }
-  window.close();
-};
+
 
 document.querySelectorAll('[data-tool]').forEach((b) => {
   b.onclick = async () => { await send({ type: 'tool', tool: b.dataset.tool }); window.close(); };
@@ -242,5 +272,8 @@ showIgnore();
 showShortcut();
 loadSettings();
 bufferInfo();
-refresh();
+refresh().then(async () => {
+  const { qa_pick } = await chrome.storage.session.get('qa_pick').catch(() => ({}));
+  if (qa_pick && Date.now() - qa_pick < 5000 && !$('idle').hidden) { chrome.storage.session.remove('qa_pick'); openPick('found'); }
+});
 setInterval(refresh, 1000);

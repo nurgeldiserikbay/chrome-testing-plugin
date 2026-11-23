@@ -1000,7 +1000,14 @@ chrome.commands.onCommand.addListener(async (cmd, tab) => {
   try {
     const t = tab || (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
     if (!t) return;
-    if (cmd === 'found-bug') { if (S && S.active && S.tabId === t.id) await startBug(t.id); else await foundBug(t.id); }
+    if (cmd === 'found-bug') {
+      if (S && S.active && S.tabId === t.id) await startBug(t.id);
+      else {
+        // открываем окно расширения сразу на выборе периода; если Chrome не дал — берём последний выбранный период
+        await chrome.storage.session.set({ qa_pick: Date.now() }).catch(() => {});
+        try { await chrome.action.openPopup(); } catch (_) { await chrome.storage.session.remove('qa_pick').catch(() => {}); await foundBug(t.id); }
+      }
+    }
     else if (cmd === 'finish') await finishBug({ open: true });
     else if (cmd === 'pick-element' || cmd === 'annotate') {
       if (!S || !S.active) await startBug(t.id);

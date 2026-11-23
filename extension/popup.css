@@ -72,3 +72,17 @@ footer{flex-wrap:wrap;gap:4px 14px;justify-content:flex-start}footer .link{white
 .per{gap:3px;flex-wrap:nowrap;white-space:nowrap}
 .per button{padding:3px 7px;font-size:11.5px}
 .per{flex-wrap:wrap;row-gap:4px}
+
+#pick{padding:10px 14px 14px}
+.pk-h{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px}
+.pk-h .link{font-size:18px;line-height:1;padding:2px 6px}
+#pick .per{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:6px 0 0}
+#pick .per button{padding:11px 8px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
+#pick .per button:hover{border-color:#7c3aed;background:#f5f3ff}
+#pick .per button.on{background:#fff;color:#5b21b6;border-color:#7c3aed;box-shadow:inset 0 0 0 1px #7c3aed}
+#pick .per button.all{grid-column:1/-1;background:#7c3aed;color:#fff;border-color:#7c3aed}
+
+.parts{margin-top:10px;border:1px solid #e5e7eb;border-radius:10px;padding:6px 10px;font-size:12.5px}
+.parts summary{cursor:pointer;font-weight:600;color:#374151}
+.parts summary span{color:#7c3aed;font-weight:600}
+.parts label{display:flex;gap:6px;align-items:center;padding:4px 0;color:#111827}

@@ -302,13 +302,18 @@ function errorCtx(x) {
 function recCtx(v) {
   const pre = ((R.options && R.options.bufferMin) || 2) * 60000;
   const from = v.retro ? v.start : v.start - Math.min(pre, 120000), to = v.end || Date.now();
-  const tl = timelineItems('important').filter((x) => x.ts >= from && x.ts <= to && x.cat !== 'net' && x.cat !== 'console');
+  const P = v.retro ? { replay: true, shots: true, steps: true, console: true, network: true, events: true, ...(v.parts || {}) } : null;
+  let tl = (v.retro ? timelineItems('all').filter((x) => x.imp || ['action', 'nav', 'mark', 'user', 'ws', 'storage'].includes(x.cat)) : timelineItems('important')).filter((x) => x.ts >= from && x.ts <= to && x.cat !== 'net' && x.cat !== 'console');
+  if (P) tl = tl.filter((x) => (x.cat === 'action' || x.cat === 'nav' ? P.steps : x.cat === 'mark' ? true : P.events));
+  const con = between(R.console, from, to);
   return {
     from, to,
     timeline: tl,
-    requests: between(allNet(), from, to).filter((e) => !noise(e) && (['XHR', 'Fetch'].includes(e.type) || netErr(e))),
-    console: between(R.console, from, to).filter((c) => c.level === 'error' || c.level === 'warn'),
-    perf: between(R.events, from, to).filter((e) => ['long-frame', 'slow-interaction', 'fps', 'layout-shift', 'rerender'].includes(e.kind) && e.level !== 'info'),
+    // для «Нашёл баг» — пошаговый сценарий: всё, что поможет воспроизвести
+    steps: P && P.steps ? [...between(R.actions, from, to).map((a) => ({ ts: a.ts, text: X.describeAction(a) })), ...between(R.nav, from, to).map((n) => ({ ts: n.ts, text: `Переход на ${n.url}` }))].sort((a, b) => a.ts - b.ts) : [],
+    requests: P && !P.network ? [] : between(allNet(), from, to).filter((e) => !noise(e) && (['XHR', 'Fetch'].includes(e.type) || netErr(e))),
+    console: P ? (P.console ? con.slice(-200) : []) : con.filter((c) => c.level === 'error' || c.level === 'warn'),
+    perf: P && !P.events ? [] : between(R.events, from, to).filter((e) => ['long-frame', 'slow-interaction', 'fps', 'layout-shift', 'rerender'].includes(e.kind) && e.level !== 'info'),
   };
 }
 const voiceFor = (a) => R.voice.filter((v) => mediaBlobs[v.key] && a.ts >= v.start - 2000 && a.ts <= (v.end || Date.now()) + 2000);
@@ -395,16 +400,18 @@ function renderItems() {
     }
     const v = i.v;
     const c = recCtx(v);
+    const P = v.retro ? { replay: true, steps: true, console: true, network: true, events: true, ...(v.parts || {}) } : null;
     const tabs = [
-      ['Что происходило', tbl(['Время', 'Тип', 'Событие'], c.timeline.map((x) => `<tr class="${x.cat === 'mark' ? 'mark' : x.level === 'error' ? 'ev-err' : x.level === 'warn' ? 'ev-warn' : ''}">${relCell(x.ts)}<td><span class="cat cat-${x.cat}">${CAT_RU[x.cat] || x.cat}</span></td><td>${esc(x.text)}</td></tr>`))],
-      ['Запросы', tbl(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], reqRows(c.requests))],
-      ['Консоль', tbl(['Время', 'Уровень', 'Сообщение'], conRows(c.console))],
+      P && P.steps ? ['Шаги', c.steps.length ? `<ol class="steps">${c.steps.map((x) => `<li><span class="muted">${X.fmtRel(x.ts - R.startTime)}</span> ${esc(x.text)}</li>`).join('')}</ol>` : '<p class="muted">Действий за этот период не было.</p>'] : null,
+      P && !P.steps && !P.events ? null : ['Что происходило', tbl(['Время', 'Тип', 'Событие'], c.timeline.map((x) => `<tr class="${x.cat === 'mark' ? 'mark' : x.level === 'error' ? 'ev-err' : x.level === 'warn' ? 'ev-warn' : ''}">${relCell(x.ts)}<td><span class="cat cat-${x.cat}">${CAT_RU[x.cat] || x.cat}</span></td><td>${esc(x.text)}</td></tr>`))],
+      P && !P.network ? null : ['Запросы', tbl(['Время', 'Метод', 'Статус', 'URL', 'Время отв.'], reqRows(c.requests))],
+      P && !P.console ? null : ['Консоль', tbl(['Время', 'Уровень', 'Сообщение'], conRows(c.console))],
       c.perf.length ? ['Производительность', tbl(['Время', 'Событие'], c.perf.map((e) => `<tr class="${cls(e.level)}">${relCell(e.ts)}<td>${esc(e.text)}</td></tr>`))] : null,
     ];
     if (v.retro) {
       const sh = retroShots[v.n] || [];
-      return `<div class="it recording retro">${head(i, v.n, `⏪ Нашёл баг · последние ${X.fmtPeriod(v.end - v.start)}`, `<span class="muted">${replays[v.n] ? 'повтор экрана · ' : ''}скриншотов: ${sh.length} · действия, запросы, консоль</span>`)}
-        ${replays[v.n] ? `<div class="rrp" data-n="${v.n}"></div>` : '<div class="it-b one muted" style="padding:10px 16px">Повтор экрана не записан: он включается в настройках (⏪ Повтор страницы) и начинается после загрузки страницы.</div>'}
+      return `<div class="it recording retro">${head(i, v.n, `⏪ Нашёл баг · последние ${X.fmtPeriod(v.end - v.start)}`, `<span class="muted">${[replays[v.n] ? 'повтор экрана' : '', sh.length ? `скриншотов: ${sh.length}` : '', P.steps ? `шагов: ${c.steps.length}` : '', P.network ? `запросов: ${c.requests.length}` : '', P.console ? `консоль: ${c.console.length}` : ''].filter(Boolean).join(' · ')}</span>`)}
+        ${replays[v.n] ? `<div class="rrp" data-n="${v.n}"></div>` : P.replay === false ? '' : '<div class="it-b one muted" style="padding:10px 16px">Повтор экрана не записан: он включается в настройках (⏪ Повтор страницы) и начинается после загрузки страницы.</div>'}
         ${sh.length ? `<div class="story">${sh.map((x, k) => `<figure data-ts="${x.ts}"><img src="${x.dataUrl}" data-k="${k}" alt=""><figcaption><b>${X.fmtRel(x.ts - R.startTime)}</b> ${esc(x.label || '')}</figcaption></figure>`).join('')}</div>` : ''}
         ${aiBox(i)}${mini(i.key, tabs)}</div>`;
     }
@@ -690,6 +697,7 @@ async function itemModel(i, o) {
       kind: 'recording', retro: true, ai: v.ai, key: i.key, sev: itemSev(i), sevLabel: sevLabel(itemSev(i)), n: v.n, rel: v.end - st, durationMs: v.end - v.start, size: 0,
       url: o.mask ? maskS(v.url || '') : v.url || '', cond: v.cond || '', story,
       replayN: replays[v.n] ? v.n : null, replayFile: replays[v.n] ? `replay/povtor-${v.n}.html` : null,
+      steps: c.steps.map((x) => ({ rel: x.ts - st, text: o.mask ? maskS(x.text) : x.text })),
       timeline: c.timeline.map((x) => ({ rel: x.ts - st, cat: CAT_RU[x.cat] || x.cat, level: x.level, text: o.mask ? maskS(x.text) : x.text })),
       requests: c.requests.map(m),
       console: c.console.map((cc) => ({ rel: cc.ts - st, level: cc.level, text: o.mask ? maskS(cc.text) : cc.text })),
