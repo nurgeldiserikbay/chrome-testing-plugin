@@ -2,7 +2,7 @@
 <html lang="ru"><head><script src="i18n.js"></script><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
 <body>
 <header><img src="icons/32.png" alt=""><span>QA Bug Recorder</span></header>
-<div class="per" id="per" title="Сколько последних секунд взять в пункт или автотест"><span>⏪ За последние</span><button data-s="30">30 с</button><button data-s="60">1 мин</button><button data-s="120">2 мин</button><button data-s="300">5 мин</button></div>
+<div class="per" id="per" title="Сколько последних секунд взять в пункт или автотест"><span>⏪ За последние</span><button data-s="30">30 с</button><button data-s="60">1 мин</button><button data-s="120">2 мин</button><button data-s="300">5 мин</button><button data-s="600">10 мин</button><button data-s="900">15 мин</button><button data-s="1800">30 мин</button></div>
 
 <section id="idle" hidden>
   <button id="found" class="big">🐞 Нашёл баг</button>
@@ -13,8 +13,12 @@
   <details id="settings">
     <label class="row">🌐 Язык / Language <select id="s-lang"></select></label>
     <summary>Настройки</summary>
-    <label><input type="checkbox" id="s-replay"> ⏪ Повтор страницы<small>Незаметно запоминает изменения страницы за последние 10 минут. По кнопке «Нашёл баг» покажет, что было на экране. Пароли и секретные поля скрываются.</small></label>
-    <label><input type="checkbox" id="s-actShots"> 📸 Скриншоты после действий<small>Снимок видимой части страницы после клика, выбора, отправки формы и загрузки страницы. Хранятся только последние 10 минут.</small></label>
+    <label class="row">⏪ Помнить последние
+      <select id="s-memoryMin"><option value="5">5 мин</option><option value="10">10 мин</option><option value="15">15 мин</option><option value="30">30 мин</option></select>
+    </label>
+    <small class="hint">Столько расширение держит в памяти на каждой вкладке: действия, запросы, консоль, повтор и скриншоты. Чем больше, тем больше памяти занимает; на тяжёлых страницах повтор может храниться меньше.</small>
+    <label><input type="checkbox" id="s-replay"> ⏪ Повтор страницы<small>Незаметно запоминает изменения страницы за последние <span class="mm">10</span> минут. По кнопке «Нашёл баг» покажет, что было на экране. Пароли и секретные поля скрываются.</small></label>
+    <label><input type="checkbox" id="s-actShots"> 📸 Скриншоты после действий<small>Снимок видимой части страницы после клика, выбора, отправки формы и загрузки страницы. Хранятся только последние <span class="mm">10</span> минут.</small></label>
     <label><input type="checkbox" id="s-videoOnStart"> Записывать видео автоматически<small>Сразу при начале проверки. По умолчанию выключено: видео включается кнопкой, когда нужно.</small></label>
     <label><input type="checkbox" id="s-tabAudio"> Записывать звук вкладки в видео</label>
     <label><input type="checkbox" id="s-autoAudit"> Проверять каждую открытую страницу<small>Автопроверка: SEO, семантика, доступность, скорость загрузки, безопасность. Идёт в фоне через несколько секунд после загрузки страницы.</small></label>

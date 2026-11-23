@@ -71,3 +71,4 @@ footer{flex-wrap:wrap;gap:4px 14px;justify-content:flex-start}footer .link{white
 #active .sec2{margin:10px 0 0;border-color:#ddd6fe;background:#f5f3ff;color:#5b21b6}
 .per{gap:3px;flex-wrap:nowrap;white-space:nowrap}
 .per button{padding:3px 7px;font-size:11.5px}
+.per{flex-wrap:wrap;row-gap:4px}

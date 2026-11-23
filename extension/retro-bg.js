@@ -4,10 +4,11 @@
 // период становится пунктом отчёта, а действия можно превратить в автотест.
 // Подключается из background.js (importScripts) и пользуется его функциями.
 
-const RR_KEEP = 11 * 60 * 1000;   // сколько минут повтора держим на вкладку
-const RR_CAP = 40e6;              // и не больше ~40 МБ событий
-const SHOT_KEEP = 11 * 60 * 1000;
-const SHOT_LIM = 90;
+// сколько помнить — настройка «⏪ Помнить последние» (MEM_MIN в background.js)
+const rrKeep = () => memMs();
+const rrCap = () => Math.min(120e6, 40e6 * Math.max(1, MEM_MIN / 10)); // и не больше ~40 МБ на 10 минут
+const shotKeep = () => memMs();
+const shotLim = () => Math.round(90 * Math.max(1, MEM_MIN / 10));
 const RETRO_DEF = 60;             // период по умолчанию, секунд
 
 let RR = {}; // tabId -> { seq, size, chunks: [{ key, t0, t1, meta, size }] }
@@ -42,12 +43,12 @@ async function rrDrop(r, n) {
 async function rrPrune(tabId) {
   const r = RR[tabId];
   if (!r) return;
-  const cut = Date.now() - RR_KEEP;
+  const cut = Date.now() - rrKeep();
   // оставляем последний «полный снимок» до границы — без него повтор не собрать
   let keep = -1;
   r.chunks.forEach((c, i) => { if (c.meta && c.t0 <= cut) keep = i; });
   if (keep > 0) await rrDrop(r, keep);
-  while (r.size > RR_CAP) {
+  while (r.size > rrCap()) {
     const next = r.chunks.findIndex((c, i) => i > 0 && c.meta);
     if (next <= 0) break;
     await rrDrop(r, next);
@@ -97,8 +98,8 @@ async function actShot(tab, label, url) {
     await QADB.put('blobs', key, dataUrl);
     const arr = (getBuf(tab.id).shots ||= []);
     arr.push({ ts, key, label: String(label || '').slice(0, 140), url: url || cur.url });
-    const cut = ts - SHOT_KEEP;
-    while (arr.length && (arr.length > SHOT_LIM || arr[0].ts < cut)) QADB.del('blobs', arr.shift().key).catch(() => {});
+    const cut = ts - shotKeep();
+    while (arr.length && (arr.length > shotLim() || arr[0].ts < cut)) QADB.del('blobs', arr.shift().key).catch(() => {});
     saveBuf();
   } catch (_) {
     // лимит Chrome на частоту скриншотов или служебная страница — просто пропускаем
@@ -253,7 +254,7 @@ Object.assign(handlers, {
       shots: b && b.shots ? b.shots.length : 0,
       actions: b ? b.actions.length : 0,
       oldest: b ? Math.min(...['actions', 'network', 'console'].map((k) => (b[k] && b[k][0] ? b[k][0].ts : Date.now()))) : null,
-      replay: en.replay, actShots: en.actShots, consent: en.consent,
+      replay: en.replay, actShots: en.actShots, consent: en.consent, memoryMin: MEM_MIN,
     };
   },
 });

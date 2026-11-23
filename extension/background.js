@@ -1,8 +1,14 @@
 importScripts('db.js');
 
 // ================= настройки и лимиты =================
-const DEFAULT_SETTINGS = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true, replay: true, actShots: true, retroSec: 60 };
+const DEFAULT_SETTINGS = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true, replay: true, actShots: true, retroSec: 60, memoryMin: 10 };
 const BUF_LIM = { console: 800, network: 500, actions: 300, nav: 100, events: 1500, samples: 60, resources: 400 };
+// сколько минут расширение помнит на вкладке (настройка «⏪ Помнить последние»)
+let MEM_MIN = 10;
+const memMs = () => (MEM_MIN + 1) * 60 * 1000;
+const loadMem = () => chrome.storage.local.get('qa_settings').then((r) => { MEM_MIN = Math.min(60, Math.max(1, +(r.qa_settings && r.qa_settings.memoryMin) || 10)); }).catch(() => {});
+loadMem();
+chrome.storage.onChanged.addListener((ch) => { if (ch.qa_settings) loadMem(); });
 const SES_LIM = { console: 5000, network: 3000, actions: 2000, nav: 500, events: 10000, samples: 2000, resources: 3000 };
 const BUF_BODY = 4000;
 
@@ -50,8 +56,9 @@ function getBuf(tabId) {
 function pushBuf(tabId, kind, e) {
   const arr = getBuf(tabId)[kind];
   arr.push(e);
-  const cut = Date.now() - 15 * 60 * 1000; // буфер храним максимум 15 минут
-  while (arr.length && (arr.length > BUF_LIM[kind] || arr[0].ts < cut)) arr.shift();
+  const cut = Date.now() - Math.max(15 * 60 * 1000, memMs()); // не меньше 15 минут, иначе — сколько выбрано в настройках
+  const lim = Math.round(BUF_LIM[kind] * Math.max(1, MEM_MIN / 15));
+  while (arr.length && (arr.length > lim || arr[0].ts < cut)) arr.shift();
 }
 
 function ingest(tabId, kind, e) {

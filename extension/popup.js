@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
-const DEF = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true, replay: true, actShots: true, retroSec: 60 };
-let retroSec = 60;
+const DEF = { bufferMin: 2, videoOnStart: false, tabAudio: false, cdp: false, reactRenders: true, autoErrors: true, ownOnly: true, autoAudit: true, replay: true, actShots: true, retroSec: 60, memoryMin: 10 };
+let retroSec = 60, memoryMin = 10;
 let st = null;
 
 const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
@@ -11,6 +11,8 @@ async function loadSettings() {
   const { qa_settings } = await chrome.storage.local.get('qa_settings');
   const s = Object.assign({}, DEF, qa_settings);
   retroSec = s.retroSec || 60;
+  memoryMin = s.memoryMin || 10;
+  $('s-memoryMin').value = String(memoryMin);
   showPer();
   ['videoOnStart', 'tabAudio', 'cdp', 'reactRenders', 'autoErrors', 'ownOnly', 'autoAudit', 'replay', 'actShots'].forEach((k) => {
     $('s-' + k).checked = !!s[k];
@@ -18,6 +20,7 @@ async function loadSettings() {
   });
   $('s-bufferMin').value = String(s.bufferMin);
   $('s-bufferMin').onchange = save;
+  $('s-memoryMin').onchange = () => { memoryMin = +$('s-memoryMin').value; showPer(); save(); };
 }
 // «Отладка вкладки» — необязательное разрешение, спрашиваем при первом использовании
 async function needDebugger() {
@@ -39,6 +42,7 @@ async function save(e) {
       replay: $('s-replay').checked,
       actShots: $('s-actShots').checked,
       retroSec,
+      memoryMin: +$('s-memoryMin').value,
     },
   });
 }
@@ -82,7 +86,9 @@ async function bufferInfo() {
 // ⏪ период «за последние …»
 const perLabel = (s) => (s < 60 ? `${s} с` : `${s / 60} мин`);
 function showPer() {
-  document.querySelectorAll('#per [data-s]').forEach((b) => b.classList.toggle('on', +b.dataset.s === retroSec));
+  if (retroSec > memoryMin * 60) retroSec = memoryMin * 60;
+  document.querySelectorAll('#per [data-s]').forEach((b) => { b.hidden = +b.dataset.s > memoryMin * 60 || (+b.dataset.s > 300 && +b.dataset.s !== memoryMin * 60); b.classList.toggle('on', +b.dataset.s === retroSec); });
+  document.querySelectorAll('.mm').forEach((x) => (x.textContent = memoryMin));
   document.querySelectorAll('.pl').forEach((x) => (x.textContent = perLabel(retroSec)));
 }
 document.querySelectorAll('#per [data-s]').forEach((b) => (b.onclick = () => { retroSec = +b.dataset.s; showPer(); save(); }));
