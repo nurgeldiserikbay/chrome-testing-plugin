@@ -208,6 +208,12 @@ async function showIgnore() {
 // ---------- инструменты ----------
 const curTab = async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
 $('tests').onclick = async () => { const t = await curTab(); await send({ type: 'open-tools', hash: 'tests', tabId: t && t.id }); window.close(); };
+$('design').onclick = async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const r = await send({ type: 'design-open', tabId: tab.id });
+  if (r && r.ok === false) return alert(r.error);
+  window.close();
+};
 $('apitests').onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL('api.html') }); window.close(); };
 $('mocks').onclick = async () => { const t = await curTab(); await send({ type: 'open-tools', hash: 'mocks', tabId: t && t.id }); window.close(); };
 $('rec').onclick = async () => {

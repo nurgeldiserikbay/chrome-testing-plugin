@@ -3,7 +3,7 @@
   "name": "QA Bug Recorder",
   "short_name": "QA Bug",
   "description": "__MSG_desc__",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "tabs",
@@ -86,6 +86,9 @@
         "default": "Alt+Shift+S"
       },
       "description": "__MSG_cmd_finish__"
+    },
+    "design": {
+      "description": "__MSG_cmd_design__"
     }
   },
   "options_ui": {

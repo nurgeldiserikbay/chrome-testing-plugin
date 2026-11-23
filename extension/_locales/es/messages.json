@@ -19,5 +19,8 @@
   },
   "title": {
     "message": "QA Bug Recorder — iniciar comprobación"
+  },
+  "cmd_design": {
+    "message": "Comparar la página con el diseño (superposición)"
   }
 }

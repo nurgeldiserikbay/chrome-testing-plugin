@@ -1009,6 +1009,7 @@ chrome.commands.onCommand.addListener(async (cmd, tab) => {
       }
     }
     else if (cmd === 'finish') await finishBug({ open: true });
+    else if (cmd === 'design') await designOpen(t.id);
     else if (cmd === 'pick-element' || cmd === 'annotate') {
       if (!S || !S.active) await startBug(t.id);
       chrome.tabs.sendMessage(S.tabId, { type: 'qa-overlay-tool', tool: cmd === 'pick-element' ? 'element' : 'arrow' }).catch(() => {});
@@ -1018,8 +1019,52 @@ chrome.commands.onCommand.addListener(async (cmd, tab) => {
   }
 });
 
+// ================= наложение макета =================
+async function designOpen(tabId) {
+  const tab = await chrome.tabs.get(tabId);
+  if (!/^(https?|file):/.test(tab.url || '')) return { ok: false, error: 'Откройте страницу сайта — на служебных страницах Chrome наложение недоступно.' };
+  await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, files: [...(await i18nFiles()), 'design.js'] });
+  return { ok: true };
+}
+async function designFit(m, sender) {
+  const tab = sender.tab;
+  const win = await chrome.windows.get(tab.windowId);
+  if (win.state !== 'normal') await chrome.windows.update(win.id, { state: 'normal' });
+  // рамка окна = внешняя ширина − ширина страницы (с учётом масштаба страницы)
+  const zoom = await chrome.tabs.getZoom(tab.id).catch(() => 1);
+  const frame = Math.max(0, (m.outer || win.width) - Math.round((m.inner || 0) * zoom));
+  const width = Math.round(m.width * zoom) + frame;
+  try {
+    await chrome.windows.update(win.id, { width });
+    const w2 = await chrome.windows.get(win.id);
+    if (Math.abs(w2.width - width) <= 2) return { ok: true, width };
+  } catch (_) {}
+  // экран уже макета — уменьшаем масштаб страницы, чтобы в окне поместилась ширина макета
+  // окно не поменялось (развёрнуто, экран уже макета) — подгоняем масштабом страницы
+  const [{ result: inner }] = await chrome.scripting.executeScript({ target: { tabId: tab.id, frameIds: [0] }, func: () => innerWidth });
+  const z = Math.max(0.25, Math.min(5, Math.round(((zoom * inner) / m.width) * 1000) / 1000));
+  await chrome.tabs.setZoom(tab.id, z);
+  return { ok: true, zoom: z, note: `Окно не поменять до ${m.width} px — масштаб страницы ${Math.round(z * 100)}%, ширина страницы теперь как у макета. Вернуть 100%: Ctrl+0.` };
+}
+async function designReport(m, sender) {
+  await ready;
+  const tabId = sender.tab.id;
+  if (!S || !S.active || S.tabId !== tabId) {
+    const r = await startBug(tabId);
+    if (r && r.ok === false) return r;
+    await new Promise((res) => setTimeout(res, 400));
+  }
+  await chrome.tabs.sendMessage(tabId, { type: 'qa-capture-prep' }).catch(() => {});
+  const r = await addAnnotation({ kind: 'screen', comment: m.comment, severity: 'minor', viewport: m.viewport }, sender);
+  chrome.tabs.sendMessage(tabId, { type: 'qa-capture-done' }).catch(() => {});
+  return r;
+}
+
 // ================= сообщения =================
 const handlers = {
+  'design-open': async (m) => designOpen(m.tabId),
+  'design-fit': (m, sender) => designFit(m, sender),
+  'design-report': (m, sender) => designReport(m, sender),
   buf: async (m, sender) => {
     await ready;
     const tabId = sender.tab && sender.tab.id;

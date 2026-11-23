@@ -19,5 +19,8 @@
   },
   "title": {
     "message": "QA Bug Recorder — 开始检查"
+  },
+  "cmd_design": {
+    "message": "将页面与设计稿对比（叠加）"
   }
 }

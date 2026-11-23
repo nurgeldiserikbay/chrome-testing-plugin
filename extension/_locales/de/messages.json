@@ -19,5 +19,8 @@
   },
   "title": {
     "message": "QA Bug Recorder — Prüfung starten"
+  },
+  "cmd_design": {
+    "message": "Seite mit Design vergleichen (Overlay)"
   }
 }

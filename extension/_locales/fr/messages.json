@@ -19,5 +19,8 @@
   },
   "title": {
     "message": "QA Bug Recorder — lancer la vérification"
+  },
+  "cmd_design": {
+    "message": "Comparer la page à la maquette (superposition)"
   }
 }

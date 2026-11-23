@@ -19,5 +19,8 @@
   },
   "title": {
     "message": "QA Bug Recorder — начать проверку"
+  },
+  "cmd_design": {
+    "message": "Сравнить страницу с макетом (наложение)"
   }
 }
